@@ -1,0 +1,11 @@
+name = "team1-backend"
+compatibility_date = "2026-03-09"
+main = ".open-next/worker.js"
+
+# Required for Next.js runtime features on Cloudflare Workers.
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "team_one"
+database_id = "ddf47cf4-38cf-495e-9ed7-6fb746fe6ebc"

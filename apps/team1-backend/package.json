@@ -2,7 +2,15 @@
   "name": "@team1/team1-backend",
   "version": "0.0.1",
   "private": true,
+  "scripts": {
+    "build": "next build",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cf:preview": "opennextjs-cloudflare preview"
+  },
   "dependencies": {
+    "graphql": "^16.11.0",
+    "graphql-yoga": "^5.16.0",
     "next": "~16.0.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

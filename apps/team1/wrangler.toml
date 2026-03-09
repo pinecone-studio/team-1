@@ -1,0 +1,8 @@
+name = "team1-frontend"
+compatibility_date = "2026-03-09"
+main = ".open-next/worker.js"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
