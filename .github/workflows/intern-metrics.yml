@@ -15,15 +15,16 @@ concurrency:
 
 env:
   OWNER: pinecone-studio
-  REPO: ${{ github.event.inputs.repo || 'unknown' }}
   START_DATE: '2026-01-01T00:00:00Z'
   END_DATE: '2026-12-31T23:59:59Z'
-  KV_KEY: ${{ github.event.inputs.kv_key || 'pinequest:unknown' }}
 
 jobs:
   metrics:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      REPO: ${{ github.event.inputs.repo || 'unknown' }}
+      KV_KEY: ${{ github.event.inputs.kv_key || 'pinequest:unknown' }}
 
     steps:
       - name: Setup Node
