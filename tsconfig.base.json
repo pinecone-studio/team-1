@@ -19,7 +19,7 @@
     "customConditions": ["@team1/source"],
     "baseUrl": ".",
     "paths": {
-      "@team1/shared/auth-provider": ["libs/shared/auth-provider/src/index.ts"]
+      "@team1/shared/auth-provider": ["libs/shared/auth-provider"]
     }
   }
 }
