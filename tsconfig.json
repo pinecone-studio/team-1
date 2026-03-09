@@ -5,6 +5,9 @@
   "references": [
     {
       "path": "./apps/team1"
+    },
+    {
+      "path": "./apps/team1-backend"
     }
   ]
 }
