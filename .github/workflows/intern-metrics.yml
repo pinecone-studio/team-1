@@ -15,17 +15,16 @@ concurrency:
 
 env:
   OWNER: pinecone-studio
+  REPO: team-1
   START_DATE: '2026-01-01T00:00:00Z'
   END_DATE: '2026-12-31T23:59:59Z'
+  KV_KEY: 'pinequest:team-1'
 
 jobs:
   metrics:
     runs-on: ubuntu-latest
     timeout-minutes: 20    
-    env:
-      REPO: ${{ inputs.repo }}
-      KV_KEY: ${{ inputs.kv_key }}
-
+    
     steps:
       - name: Setup Node
         uses: actions/setup-node@v4
