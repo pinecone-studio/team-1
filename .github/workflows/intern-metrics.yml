@@ -21,10 +21,10 @@ env:
 jobs:
   metrics:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 20    
     env:
-      REPO: ${{ github.event.inputs.repo || 'unknown' }}
-      KV_KEY: ${{ github.event.inputs.kv_key || 'pinequest:unknown' }}
+      REPO: ${{ inputs.repo }}
+      KV_KEY: ${{ inputs.kv_key }}
 
     steps:
       - name: Setup Node
