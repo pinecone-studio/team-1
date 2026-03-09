@@ -16,6 +16,10 @@
     "skipLibCheck": true,
     "strict": true,
     "target": "es2022",
-    "customConditions": ["@team1/source"]
+    "customConditions": ["@team1/source"],
+    "baseUrl": ".",
+    "paths": {
+      "@team1/shared/auth-provider": ["libs/shared/auth-provider/src/index.ts"]
+    }
   }
 }

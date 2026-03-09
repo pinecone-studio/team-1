@@ -8,6 +8,12 @@
     },
     {
       "path": "./apps/team1-backend"
+    },
+    {
+      "path": "./apps/team1-frontend"
+    },
+    {
+      "path": "./apps/team1-dashboard"
     }
   ]
 }

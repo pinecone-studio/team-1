@@ -1,0 +1,9 @@
+{
+  "name": "team1-frontend",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/team1-frontend",
+  "projectType": "application",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project team1-frontend --web",
+  "targets": {}
+}
