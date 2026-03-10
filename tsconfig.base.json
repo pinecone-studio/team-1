@@ -19,7 +19,8 @@
     "customConditions": ["@team1/source"],
     "baseUrl": ".",
     "paths": {
-      "@team1/shared/auth-provider": ["libs/shared/auth-provider"]
+      "@team1/shared/auth-provider": ["libs/shared/auth-provider"],
+      "@team/shadcn": ["libs/shadcn/src/index.ts"]
     }
   }
 }
