@@ -19,5 +19,8 @@
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7"
+  },
+  "devDependencies": {
+    "@nx/next": "^22.5.4"
   }
 }

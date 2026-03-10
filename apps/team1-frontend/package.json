@@ -4,7 +4,11 @@
   "private": true,
   "dependencies": {
     "next": "~16.0.1",
+    "recharts": "^2.12.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@nx/next": "^22.5.4"
   }
 }

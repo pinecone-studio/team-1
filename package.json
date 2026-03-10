@@ -16,12 +16,12 @@
   "dependencies": {
     "@clerk/nextjs": "^7.0.1",
     "next": "~16.0.1",
-    "react": "^19.0.0",
+    "react": "^19.2.4",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@nx/js": "22.5.4",
-    "@nx/next": "22.5.4",
+    "@nx/next": "^22.5.4",
     "@nx/workspace": "22.5.4",
     "@opennextjs/cloudflare": "^1.17.1",
     "@swc-node/register": "~1.11.1",
