@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "cf:build": "opennextjs-cloudflare build",
-    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cf:build": "NEXT_DISABLE_TURBOPACK=1 next build && node scripts/fix-standalone-middleware.js && opennextjs-cloudflare build --skipNextBuild",
+    "cf:deploy": "npm run cf:build && opennextjs-cloudflare deploy",
     "cf:preview": "opennextjs-cloudflare preview"
   },
   "dependencies": {

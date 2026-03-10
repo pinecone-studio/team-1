@@ -1,0 +1,198 @@
+type Location {
+  id: ID!
+  name: String!
+  code: String!
+}
+
+type Category {
+  id: ID!
+  name: String!
+}
+
+type Employee {
+  id: ID!
+  email: String!
+  role: String
+  locationId: String
+  status: String!
+  location: Location
+}
+
+type Asset {
+  id: ID!
+  assetTag: String!
+  categoryId: String
+  parentAssetId: String
+  locationId: String
+  assignedTo: String
+  status: String!
+  imageR2Key: String
+  purchasePrice: Float
+  currentBookValue: Float
+  purchaseDate: String
+  category: Category
+  location: Location
+  assignedEmployee: Employee
+  parent: Asset
+  children: [Asset!]!
+}
+
+type AuditLog {
+  id: ID!
+  assetId: String!
+  action: String!
+  actorId: String!
+  locationId: String
+  detailsJson: String
+  createdAt: String!
+  asset: Asset
+  location: Location
+}
+
+type DepreciationLog {
+  id: ID!
+  assetId: String!
+  period: String!
+  depreciationAmount: Float!
+  bookValueAfter: Float!
+  calculatedAt: String!
+  asset: Asset
+}
+
+input LocationCreateInput {
+  id: ID
+  name: String!
+  code: String!
+}
+input LocationUpdateInput {
+  name: String
+  code: String
+}
+
+input CategoryCreateInput {
+  id: ID
+  name: String!
+}
+input CategoryUpdateInput {
+  name: String
+}
+
+input EmployeeCreateInput {
+  id: ID
+  email: String!
+  role: String
+  locationId: String
+  status: String!
+}
+input EmployeeUpdateInput {
+  email: String
+  role: String
+  locationId: String
+  status: String
+}
+
+input AssetCreateInput {
+  id: ID
+  assetTag: String!
+  categoryId: String
+  parentAssetId: String
+  locationId: String
+  assignedTo: String
+  status: String!
+  imageR2Key: String
+  purchasePrice: Float
+  currentBookValue: Float
+  purchaseDate: String
+}
+input AssetUpdateInput {
+  assetTag: String
+  categoryId: String
+  parentAssetId: String
+  locationId: String
+  assignedTo: String
+  status: String
+  imageR2Key: String
+  purchasePrice: Float
+  currentBookValue: Float
+  purchaseDate: String
+}
+
+input AuditLogCreateInput {
+  id: ID
+  assetId: String!
+  action: String!
+  actorId: String!
+  locationId: String
+  detailsJson: String
+  createdAt: String!
+}
+input AuditLogUpdateInput {
+  assetId: String
+  action: String
+  actorId: String
+  locationId: String
+  detailsJson: String
+  createdAt: String
+}
+
+input DepreciationLogCreateInput {
+  id: ID
+  assetId: String!
+  period: String!
+  depreciationAmount: Float!
+  bookValueAfter: Float!
+  calculatedAt: String!
+}
+input DepreciationLogUpdateInput {
+  assetId: String
+  period: String
+  depreciationAmount: Float
+  bookValueAfter: Float
+  calculatedAt: String
+}
+
+type Query {
+  locations: [Location!]!
+  location(id: ID!): Location
+  categories: [Category!]!
+  category(id: ID!): Category
+  employees: [Employee!]!
+  employee(id: ID!): Employee
+  assets: [Asset!]!
+  asset(id: ID!): Asset
+  auditLogs: [AuditLog!]!
+  auditLog(id: ID!): AuditLog
+  depreciationLogs: [DepreciationLog!]!
+  depreciationLog(id: ID!): DepreciationLog
+  employeesByLocation(locationId: String!): [Employee!]!
+  assetsByLocation(locationId: String!): [Asset!]!
+  assetsByEmployee(employeeId: String!): [Asset!]!
+  auditLogsByAsset(assetId: String!): [AuditLog!]!
+  depreciationLogsByAsset(assetId: String!): [DepreciationLog!]!
+}
+
+type Mutation {
+  createLocation(input: LocationCreateInput!): Location!
+  updateLocation(id: ID!, input: LocationUpdateInput!): Location
+  deleteLocation(id: ID!): Boolean!
+
+  createCategory(input: CategoryCreateInput!): Category!
+  updateCategory(id: ID!, input: CategoryUpdateInput!): Category
+  deleteCategory(id: ID!): Boolean!
+
+  createEmployee(input: EmployeeCreateInput!): Employee!
+  updateEmployee(id: ID!, input: EmployeeUpdateInput!): Employee
+  deleteEmployee(id: ID!): Boolean!
+
+  createAsset(input: AssetCreateInput!): Asset!
+  updateAsset(id: ID!, input: AssetUpdateInput!): Asset
+  deleteAsset(id: ID!): Boolean!
+
+  createAuditLog(input: AuditLogCreateInput!): AuditLog!
+  updateAuditLog(id: ID!, input: AuditLogUpdateInput!): AuditLog
+  deleteAuditLog(id: ID!): Boolean!
+
+  createDepreciationLog(input: DepreciationLogCreateInput!): DepreciationLog!
+  updateDepreciationLog(id: ID!, input: DepreciationLogUpdateInput!): DepreciationLog
+  deleteDepreciationLog(id: ID!): Boolean!
+}

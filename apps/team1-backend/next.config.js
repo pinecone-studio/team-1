@@ -10,6 +10,11 @@ const nextConfig = {
   // Use this to set Nx-specific options
   // See: https://nx.dev/recipes/next/next-config-setup
   nx: {},
+  // Ensure standalone output contains middleware file expected by OpenNext.
+  output: 'standalone',
+  outputFileTracingIncludes: {
+    '/*': ['.next/server/middleware.js'],
+  },
 };
 
 const plugins = [
