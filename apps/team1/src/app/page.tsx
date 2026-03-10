@@ -2,7 +2,7 @@
 
 import { gql } from '@apollo/client';
 import { useEffect, useState } from 'react';
-import { apolloClient } from '@/lib/apollo-client';
+import { apolloClient } from '../lib/apollo-client';
 
 const GET_HELLO = gql`
   query GetHello {
@@ -45,7 +45,10 @@ export default function Index() {
   return (
     <main style={{ padding: '40px', fontFamily: 'sans-serif' }}>
       <h1>Frontend to Backend GraphQL</h1>
-      <p>Endpoint: https://team1-backend.tsetsegulziiocherdene.workers.dev/api/graphql</p>
+      <p>
+        Endpoint:
+        https://team1-backend.tsetsegulziiocherdene.workers.dev/api/graphql
+      </p>
       {error ? <p>GraphQL call failed: {error}</p> : <p>getHello: {hello}</p>}
     </main>
   );

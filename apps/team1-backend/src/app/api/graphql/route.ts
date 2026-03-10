@@ -1,18 +1,15 @@
-import { getHello } from '@/lib/get-hello';
 import { createSchema, createYoga } from 'graphql-yoga';
+import { resolvers, typeDefs } from '@/graphql';
+import { getDb } from '@/lib/db';
+import type { GraphQLContext } from '@/graphql/context';
 
-const yoga = createYoga({
+const yoga = createYoga<GraphQLContext>({
   schema: createSchema({
-    typeDefs: /* GraphQL */ `
-      type Query {
-        getHello: String!
-      }
-    `,
-    resolvers: {
-      Query: {
-        getHello: () => getHello(),
-      },
-    },
+    typeDefs,
+    resolvers,
+  }),
+  context: async () => ({
+    db: getDb(),
   }),
   graphqlEndpoint: '/api/graphql',
   landingPage: false,
@@ -22,7 +19,7 @@ function withCors(response: Response) {
   response.headers.set('Vary', 'Origin');
   response.headers.set(
     'Access-Control-Allow-Headers',
-    'content-type, authorization'
+    'content-type, authorization',
   );
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   return response;
@@ -48,7 +45,7 @@ export async function GET(request: Request) {
   const endpoint = encodeURIComponent(request.url);
   return Response.redirect(
     `https://studio.apollographql.com/sandbox/explorer?endpoint=${endpoint}`,
-    302
+    302,
   );
 }
 
@@ -58,5 +55,8 @@ export async function POST(request: Request) {
 }
 
 export async function OPTIONS(request: Request) {
-  return applyCorsForRequestOrigin(request, new Response(null, { status: 204 }));
+  return applyCorsForRequestOrigin(
+    request,
+    new Response(null, { status: 204 }),
+  );
 }
