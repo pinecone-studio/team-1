@@ -2,7 +2,8 @@
 
 import { gql } from '@apollo/client';
 import { useEffect, useState } from 'react';
-import { apolloClient } from '@/lib/apollo-client';
+import { apolloClient } from '../lib/apollo-client';
+
 
 const GET_HELLO = gql`
   query GetHello {
