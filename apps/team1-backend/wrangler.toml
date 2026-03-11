@@ -9,3 +9,4 @@ compatibility_flags = ["nodejs_compat"]
 binding = "DB"
 database_name = "team_one"
 database_id = "ddf47cf4-38cf-495e-9ed7-6fb746fe6ebc"
+migrations_dir = "drizzle"

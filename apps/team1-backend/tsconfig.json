@@ -32,7 +32,8 @@
     "src/**/*.jsx",
     "../../apps/team1-backend/.next/types/**/*.ts",
     "../../dist/apps/team1-backend/.next/types/**/*.ts",
-    "next-env.d.ts"
+    "next-env.d.ts",
+    "drizzle.config.ts"
   ],
   "exclude": [
     "out-tsc",
