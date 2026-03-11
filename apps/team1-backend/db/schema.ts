@@ -107,7 +107,10 @@ export const employeesRelations = relations(employees, ({ many }) => ({
 }));
 
 export const assignmentsRelations = relations(assignments, ({ one }) => ({
-  asset: one(assets, { fields: [assignments.assetId], references: [assets.id] }),
+  asset: one(assets, {
+    fields: [assignments.assetId],
+    references: [assets.id],
+  }),
   employee: one(employees, {
     fields: [assignments.employeeId],
     references: [employees.id],
@@ -123,11 +126,17 @@ export const censusTasksRelations = relations(censusTasks, ({ one }) => ({
     fields: [censusTasks.censusId],
     references: [censusEvents.id],
   }),
-  asset: one(assets, { fields: [censusTasks.assetId], references: [assets.id] }),
+  asset: one(assets, {
+    fields: [censusTasks.assetId],
+    references: [assets.id],
+  }),
 }));
 
 export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
-  actor: one(employees, { fields: [auditLogs.actorId], references: [employees.id] }),
+  actor: one(employees, {
+    fields: [auditLogs.actorId],
+    references: [employees.id],
+  }),
 }));
 
 export type Location = InferSelectModel<typeof locations>;

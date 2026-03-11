@@ -9,9 +9,11 @@ import {
   locations,
 } from '../../../db/schema';
 
+import { getHello } from '@/lib/get-hello';
 import type { GraphQLContext } from '../context';
 
 export const queryResolvers = {
+  getHello: () => getHello(),
   assets: async (_parent: unknown, _args: unknown, ctx: GraphQLContext) => {
     if (!ctx.db) {
       return [];

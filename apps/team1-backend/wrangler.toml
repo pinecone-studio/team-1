@@ -4,8 +4,23 @@ main = ".open-next/worker.js"
 
 # Required for Next.js runtime features on Cloudflare Workers.
 compatibility_flags = ["nodejs_compat"]
+[observability]
+enabled = false
+head_sampling_rate = 1
 
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1
 [[d1_databases]]
 binding = "DB"
 database_name = "team_one"
 database_id = "ddf47cf4-38cf-495e-9ed7-6fb746fe6ebc"
+migrations_dir = "./drizzle"
+    
