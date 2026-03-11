@@ -2,6 +2,8 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "baseUrl": ".",
+    "moduleResolution": "bundler",
+    "customConditions": ["workerd", "worker", "browser"],
     "jsx": "preserve",
     "noEmit": true,
     "emitDeclarationOnly": false,
@@ -12,13 +14,16 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "incremental": true,
+    "types": ["@cloudflare/workers-types"],
     "plugins": [
       {
         "name": "next"
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@db/*": ["./db/*"],
+      "@db": ["./db/index"]
     },
     "outDir": "dist",
     "rootDir": ".",

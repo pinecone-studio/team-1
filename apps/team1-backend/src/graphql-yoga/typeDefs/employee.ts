@@ -1,4 +1,4 @@
-export const employeeTypeDefs = /* GraphQL */ `
+export const employeeTypeDefs = `
   # Enum төрлүүдийг тодорхойлж өгвөл алдаа гарах магадлал багасна
   enum EmployeeStatus {
     ACTIVE
@@ -39,6 +39,7 @@ export const employeeTypeDefs = /* GraphQL */ `
     deletedAt: String
   }
 
+  # Шинээр ажилтан үүсгэхэд шаардлагатай талбарууд
   input CreateEmployeeInput {
     id: ID
     entraId: String!
@@ -63,13 +64,38 @@ export const employeeTypeDefs = /* GraphQL */ `
     birthdayPoster: String
   }
 
-  type Query {
-    employees: [Employee!]!
-    employee(id: ID!): Employee
+  # Засахад ашиглах input - Бүх талбар нь Optional (зөвхөн засах талбараа явуулна)
+  input UpdateEmployeeInput {
+    firstName: String
+    lastName: String
+    firstNameEng: String
+    lastNameEng: String
+    email: String
+    imageUrl: String
+    hireDate: String
+    terminationDate: String
+    status: EmployeeStatus
+    numberOfVacationDays: Int
+    github: String
+    department: String
+    branch: String
+    employeeCode: String
+    level: EmployeeLevel
+    isKpi: Boolean
+    isSalaryCompany: Boolean
+    birthDayAndMonth: String
+    birthdayPoster: String
   }
 
-  type Mutation {
+  extend type Query {
+    getAllEmployees: [Employee!]!
+    getEmployeeById(id: ID!): Employee
+  }
+
+  extend type Mutation {
     createEmployee(input: CreateEmployeeInput!): Employee!
-    # Update болон Delete-ийг дараа нь энд нэмж болно
+    updateEmployee(id: ID!, input: UpdateEmployeeInput!): Employee!
+    # Устгах (Ихэвчлэн Soft delete буюу deletedAt-г шинэчилнэ)
+    deleteEmployee(id: ID!): Employee!
   }
 `;

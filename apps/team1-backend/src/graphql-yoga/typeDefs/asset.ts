@@ -5,11 +5,17 @@ export const assetTypeDefs = /* GraphQL */ `
     category: String!
   }
 
-  type Query {
+  extend type Query {
     assets: [Asset!]!
   }
 
-  type Mutation {
-    createAsset(id: ID!, assetTag: String!, ...): Asset!
+  input CreateAssetInput {
+    assetTag: String!
+    category: String!
+  }
+
+  extend type Mutation {
+    # ЗӨВ: Талбаруудыг тодорхой бичих эсвэл input ашиглах
+    createAsset(input: CreateAssetInput!): Asset!
   }
 `;

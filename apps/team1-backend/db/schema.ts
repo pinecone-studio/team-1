@@ -1,6 +1,7 @@
 import { sqliteTable, text, real, integer } from 'drizzle-orm/sqlite-core';
 import type { InferSelectModel } from 'drizzle-orm';
-import { relations, sql } from 'drizzle-orm';
+import { relations } from 'drizzle-orm';
+import { sql } from 'drizzle-orm/sql';
 
 export const employees = sqliteTable('employees', {
   id: text('id').primaryKey(),
@@ -64,6 +65,7 @@ export const assets = sqliteTable('assets', {
   currentBookValue: integer('currentBookValue'),
   locationId: text('locationId'),
   assignedTo: text('assignedTo'),
+  imageUrl: text('imageUrl'),
   createdAt: integer('createdAt', { mode: 'timestamp' })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),
@@ -194,7 +196,7 @@ export const censusTasks = sqliteTable('census_tasks', {
   locationConfirmed: text('locationConfirmed'),
   discrepancyFlag: integer('discrepancyFlag', { mode: 'boolean' })
     .notNull()
-    .default(false),
+    .default(sql`0`),
   createdAt: integer('createdAt', { mode: 'timestamp' })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),
