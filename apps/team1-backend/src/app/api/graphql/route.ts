@@ -1,62 +1,43 @@
-import { createSchema, createYoga } from 'graphql-yoga';
-import { resolvers, typeDefs } from '@/graphql';
-import { getDb } from '@/lib/db';
-import type { GraphQLContext } from '@/graphql/context';
+import { createYoga, createSchema } from 'graphql-yoga';
+import { typeDefs } from 'graphql-gql/schema';
+import { resolvers } from 'graphql-gql/resolvers';
+import { drizzle } from 'drizzle-orm/d1';
+import * as schema from '@/db/schema'; // Өөрийн схемээ импортлох
 
-const yoga = createYoga<GraphQLContext>({
-  schema: createSchema({
-    typeDefs,
-    resolvers,
-  }),
-  context: async () => ({
-    db: getDb(),
-  }),
-  graphqlEndpoint: '/api/graphql',
-  landingPage: false,
+// Edge Runtime ашиглах (Cloudflare Workers-т зориулсан)
+export const runtime = 'edge';
+
+// 1. GraphQL Schema үүсгэх
+const yogaSchema = createSchema({
+  typeDefs,
+  resolvers,
 });
 
-function withCors(response: Response) {
-  response.headers.set('Vary', 'Origin');
-  response.headers.set(
-    'Access-Control-Allow-Headers',
-    'content-type, authorization',
-  );
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  return response;
-}
+// 2. Yoga-г Next.js App Router-т зориулан тохируулах
+const { handleRequest } = createYoga({
+  schema: yogaSchema,
+  graphqlEndpoint: '/api/graphql',
 
-function applyCorsForRequestOrigin(request: Request, response: Response) {
-  const origin = request.headers.get('origin');
-  const allowedOrigins = new Set([
-    'https://studio.apollographql.com',
-    'https://team1-frontend.tsetsegulziiocherdene.workers.dev',
-    'http://localhost:3000',
-    'http://localhost:4200',
-  ]);
+  // 3. Context үүсгэх (Энд D1 датабаазаа холбоно)
+  context: async ({ request }) => {
+    // wrangler.toml дээр binding = "DB" байгаа гэж үзвэл:
+    const db = drizzle(process.env.DB as unknown as D1Database, { schema });
 
-  if (origin && allowedOrigins.has(origin)) {
-    response.headers.set('Access-Control-Allow-Origin', origin);
-  }
+    // Auth logic (Жишээ нь Header-ээс Token авах)
+    const token = request.headers.get('authorization');
 
-  return withCors(response);
-}
+    return {
+      db,
+      token,
+    };
+  },
 
-export async function GET(request: Request) {
-  const endpoint = encodeURIComponent(request.url);
-  return Response.redirect(
-    `https://studio.apollographql.com/sandbox/explorer?endpoint=${endpoint}`,
-    302,
-  );
-}
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'OPTIONS'],
+  },
 
-export async function POST(request: Request) {
-  const response = await yoga.fetch(request);
-  return applyCorsForRequestOrigin(request, response);
-}
+  maskedErrors: process.env.NODE_ENV === 'production',
+});
 
-export async function OPTIONS(request: Request) {
-  return applyCorsForRequestOrigin(
-    request,
-    new Response(null, { status: 204 }),
-  );
-}
+export { handleRequest as GET, handleRequest as POST };

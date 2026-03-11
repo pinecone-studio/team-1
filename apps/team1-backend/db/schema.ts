@@ -23,10 +23,12 @@ export const employees = sqliteTable('employees', {
   branch: text('branch').notNull(),
   employeeCode: text('employeeCode').notNull().unique(),
   level: text('level').$type<'Junior' | 'Mid' | 'Senior'>().notNull(),
-  isKpi: integer('isKpi', { mode: 'boolean' }).notNull().default(false),
+  isKpi: integer('isKpi', { mode: 'boolean' })
+    .notNull()
+    .default(sql`0`),
   isSalaryCompany: integer('isSalaryCompany', { mode: 'boolean' })
     .notNull()
-    .default(true),
+    .default(sql`1`),
   birthDayAndMonth: text('birthDayAndMonth'),
   birthdayPoster: text('birthdayPoster'),
   createdAt: integer('createdAt', { mode: 'timestamp' })
