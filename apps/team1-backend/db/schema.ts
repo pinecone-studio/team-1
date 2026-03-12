@@ -6,6 +6,11 @@ import { sql } from 'drizzle-orm/sql';
 export const employees = sqliteTable('employees', {
   id: text('id').primaryKey(),
   entraId: text('entraId').notNull(),
+  clerkId: text('clerkId').unique(),
+  role: text('role')
+    .$type<'SUPER_ADMIN' | 'HR_MANAGER' | 'IT_ADMIN' | 'FINANCE' | 'EMPLOYEE'>()
+    .notNull()
+    .default('EMPLOYEE'),
   firstName: text('firstName').notNull(),
   lastName: text('lastName').notNull(),
   firstNameEng: text('firstNameEng').notNull(),

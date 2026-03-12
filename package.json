@@ -15,6 +15,7 @@
   },
   "private": true,
   "dependencies": {
+    "@apollo/client": "^4.1.6",
     "@clerk/nextjs": "^7.0.1",
     "@hookform/resolvers": "^5.2.2",
     "dotenv": "^17.3.1",

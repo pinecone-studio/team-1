@@ -1,5 +1,14 @@
 export const employeeTypeDefs = `
   # Enum төрлүүдийг тодорхойлж өгвөл алдаа гарах магадлал багасна
+
+  enum EmployeeRole {
+    SUPER_ADMIN
+    HR_MANAGER
+    IT_ADMIN
+    FINANCE
+    EMPLOYEE
+  }
+
   enum EmployeeStatus {
     ACTIVE
     ON_LEAVE
@@ -15,6 +24,8 @@ export const employeeTypeDefs = `
   type Employee {
     id: ID!
     entraId: String!
+    clerkId: String
+    role: EmployeeRole!
     firstName: String!
     lastName: String!
     firstNameEng: String!
@@ -43,6 +54,8 @@ export const employeeTypeDefs = `
   input CreateEmployeeInput {
     id: ID
     entraId: String!
+    clerkId: String
+    role: EmployeeRole
     firstName: String!
     lastName: String!
     firstNameEng: String!
@@ -66,6 +79,8 @@ export const employeeTypeDefs = `
 
   # Засахад ашиглах input - Бүх талбар нь Optional (зөвхөн засах талбараа явуулна)
   input UpdateEmployeeInput {
+    clerkId: String
+    role: EmployeeRole
     firstName: String
     lastName: String
     firstNameEng: String
@@ -97,5 +112,7 @@ export const employeeTypeDefs = `
     updateEmployee(id: ID!, input: UpdateEmployeeInput!): Employee!
     # Устгах (Ихэвчлэн Soft delete буюу deletedAt-г шинэчилнэ)
     deleteEmployee(id: ID!): Employee!
+
+    syncClerkId(email: String!, clerkId: String!): Employee!
   }
 `;

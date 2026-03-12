@@ -15,6 +15,13 @@
       "when": 1773253808406,
       "tag": "0001_groovy_colossus",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1773276545453,
+      "tag": "0002_cold_whirlwind",
+      "breakpoints": true
     }
   ]
 }
