@@ -1,48 +1,95 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { assets } from "@/lib/mock-data"
+"use client"
 
-const assignedAssets = assets.filter((asset) => asset.status === "ASSIGNED")
+import { useState } from "react"
+import { assets } from "@/lib/mock-data"
+import { NewAssignmentModal } from "./components/new-assignment-modal"
 
 export default function AssignmentPage() {
+  const [tab, setTab] = useState<"all" | "pending" | "confirmed">("all")
+
+  const filteredAssets = assets.filter((asset) => {
+    if (tab === "all") return asset.status === "ASSIGNED"
+    if (tab === "confirmed") return asset.status === "ASSIGNED"
+    if (tab === "pending") return false
+    return true
+  })
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4">
+
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Эд хөрөнгө хуваарилалт</h1>
-          <p className="text-muted-foreground">Эд хөрөнгийг ажилтанд оноож, эзэмшлийг хянах.</p>
-        </div>
-        <Button>Шинэ хуваарилалт</Button>
+        <h1 className="text-2xl font-bold">Хөрөнгө хуваарилалт</h1>
+        <NewAssignmentModal />
       </div>
 
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle>Хуваарилсан эд хөрөнгө</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {assignedAssets.length === 0 && (
-            <p className="text-sm text-muted-foreground">Хуваарилсан эд хөрөнгө олдсонгүй.</p>
-          )}
-          {assignedAssets.map((asset) => (
-            <div
-              key={asset.id}
-              className="flex items-center justify-between rounded-lg border border-border bg-secondary/40 p-4"
-            >
-              <div>
-                <p className="font-medium text-foreground">{asset.assetId}</p>
-                <p className="text-sm text-muted-foreground">{asset.serialNumber}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-medium text-foreground">{asset.assignedEmployeeName ?? "Хариуцагчгүй"}</p>
-                <Badge variant="outline" className="mt-1">
-                  {asset.departmentName ?? "Тодорхойгүй"}
-                </Badge>
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      {/* Tabs */}
+      <div className="flex space-x-2 bg-gray-200 rounded-full p-1">
+        {["all", "pending", "confirmed"].map((value) => (
+          <button
+            key={value}
+            className={`rounded-full px-4 py-1 font-medium ${
+              tab === value ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-700"
+            }`}
+            onClick={() => setTab(value as "all" | "pending" | "confirmed")}
+          >
+            {value === "all"
+              ? "Бүх хуваарилалт"
+              : value === "pending"
+              ? "Хүлээгдэж буй"
+              : "Баталгаажсан"}
+          </button>
+        ))}
+      </div>
+
+      {/* Table */}
+      <div className="border rounded-lg shadow">
+        {/* Header */}
+        <div className="border-b p-4">
+          <h2 className="text-lg font-bold">Хөрөнгийн хуваарилалтын жагсаалт</h2>
+        </div>
+
+        {/* Table content */}
+        <div className="p-4 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="border-b text-gray-500">
+              <tr className="text-left">
+                <th className="py-3">Хөрөнгийн ID</th>
+                <th className="py-3">Ажилтан</th>
+                <th className="py-3">Илгээсэн огноо</th>
+                <th className="py-3">Төлөв</th>
+                <th className="py-3">Баталгаажсан огноо</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredAssets.map((asset) => {
+                const isSigned = asset.status === "ASSIGNED"
+
+                return (
+                  <tr key={asset.id} className="border-b hover:bg-gray-100">
+                    <td className="py-4 font-medium">{asset.assetId}</td>
+                    <td>{asset.assignedEmployeeName ?? "Хариуцагчгүй"}</td>
+                    <td>{asset.purchaseDate ?? "-"}</td>
+                    <td>
+                      {isSigned ? (
+                        <span className="px-2 py-1 rounded bg-green-100 text-green-700">
+                          Гарын үсэг зурсан
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 rounded bg-yellow-100 text-yellow-700">
+                          Гарын үсэг хүлээгдэж буй
+                        </span>
+                      )}
+                    </td>
+                    <td>{isSigned ? asset.purchaseDate : "-"}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   )
 }

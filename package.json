@@ -18,8 +18,10 @@
     "jspdf": "^4.2.0",
     "next": "~16.0.1",
     "qrcode": "^1.5.4",
+    "radix-ui": "^1.4.3",
     "react": "^19.2.4",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "yarn": "^1.22.22"
   },
   "devDependencies": {
     "@nx/js": "22.5.4",

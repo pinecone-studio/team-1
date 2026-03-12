@@ -37,7 +37,7 @@ const navigation = [
   { name: "Хянах самбар", href: "/dashboard", icon: LayoutDashboard },
   { name: "Эд хөрөнгийн бүртгэл", href: "/assets", icon: Package },
   { name: "Эд хөрөнгө бүртгэх", href: "/assets/register", icon: PlusCircle },
-  { name: "Эд хөрөнгө хуваарилах", href: "/assignment", icon: UserCheck },
+  { name: "Хөрөнгө хуваарилах", href: "/assignment", icon: UserCheck },
   { name: "Эд хөрөнгө шилжүүлэх", href: "/transfer", icon: ArrowLeftRight },
   { name: "QR тооллого", href: "/census", icon: QrCode },
   { name: "Ажилтны гаралт", href: "/offboarding", icon: UserMinus },

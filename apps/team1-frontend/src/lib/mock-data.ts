@@ -39,6 +39,7 @@ export const assets: Asset[] = [
     purchaseDate: "2024-03-15",
     currentBookValue: 1874,
     status: "ASSIGNED",
+    assignedDate: "2024-01-16",
     assignedEmployeeId: "emp-1",
     assignedEmployeeName: "John Smith",
     departmentId: "dept-1",
