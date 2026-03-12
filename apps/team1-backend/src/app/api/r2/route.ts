@@ -1,83 +1,44 @@
-import { getR2Binding } from '@/lib/cloudflare-r2';
+// src/app/api/r2/presign/route.ts
+import { NextRequest } from 'next/server';
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+type PresignRequestBody = {
+  key: string;
+  contentType: string;
+  bucketName: string;
+};
 
-export async function GET(request: Request) {
-  const bucket = getR2Binding();
-  if (!bucket) {
-    return Response.json(
-      {
-        ok: false,
-        message:
-          'R2 binding not found. Check apps/team1-backend/wrangler.toml [[r2_buckets]] binding = "FILES".',
+export async function POST(req: NextRequest) {
+  try {
+    const body: PresignRequestBody = await req.json();
+
+    const { key, contentType, bucketName } = body;
+
+    const client = new S3Client({
+      region: 'us-east-1',
+      endpoint: process.env.R2_S3_API,
+      credentials: {
+        accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
       },
-      { status: 500 }
-    );
+    });
+
+    const command = new PutObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+      ContentType: contentType,
+    });
+
+    const signedUrl = await getSignedUrl(client, command, { expiresIn: 3600 });
+
+    return new Response(JSON.stringify({ key, url: signedUrl }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (err: any) {
+    console.error(err);
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
-
-  const url = new URL(request.url);
-  const key = url.searchParams.get('key');
-
-  if (!key) {
-    return Response.json(
-      { ok: false, message: 'Query param "key" is required.' },
-      { status: 400 }
-    );
-  }
-
-  const object = await bucket.get(key);
-  if (!object) {
-    return Response.json(
-      { ok: false, message: `Object not found: ${key}` },
-      { status: 404 }
-    );
-  }
-
-  const content = await object.text();
-
-  return Response.json({
-    ok: true,
-    key,
-    size: object.size,
-    etag: object.httpEtag,
-    uploaded: object.uploaded.toISOString(),
-    content,
-  });
-}
-
-export async function POST(request: Request) {
-  const bucket = getR2Binding();
-  if (!bucket) {
-    return Response.json(
-      {
-        ok: false,
-        message:
-          'R2 binding not found. Check apps/team1-backend/wrangler.toml [[r2_buckets]] binding = "FILES".',
-      },
-      { status: 500 }
-    );
-  }
-
-  const body = (await request.json()) as {
-    key?: string;
-    content?: string;
-    contentType?: string;
-  };
-
-  if (!body.key || typeof body.content !== 'string') {
-    return Response.json(
-      { ok: false, message: 'Body must include { "key": string, "content": string }.' },
-      { status: 400 }
-    );
-  }
-
-  await bucket.put(body.key, body.content, {
-    httpMetadata: {
-      contentType: body.contentType ?? 'text/plain; charset=utf-8',
-    },
-  });
-
-  return Response.json({
-    ok: true,
-    message: 'Object uploaded to R2',
-    key: body.key,
-  });
 }

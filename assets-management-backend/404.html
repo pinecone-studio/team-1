@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>404 - Not Found</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: #ff0000; /* Улаан background */
+        color: white;
+        font-family: "Arial Black", sans-serif;
+        flex-direction: column;
+        text-align: center;
+        overflow: hidden;
+      }
+
+      h1 {
+        font-size: 200px;
+        margin: 0;
+        animation: flicker 1.5s infinite;
+      }
+
+      @keyframes flicker {
+        0%,
+        19%,
+        21%,
+        23%,
+        25%,
+        54%,
+        56%,
+        100% {
+          opacity: 1;
+          text-shadow:
+            0 0 10px #fff,
+            0 0 20px #fff,
+            0 0 30px #fff;
+        }
+        20%,
+        22%,
+        24%,
+        55% {
+          opacity: 0.4;
+          text-shadow: none;
+        }
+      }
+
+      p {
+        font-size: 24px;
+        margin: 20px 0;
+        animation: fadeIn 2s ease-in-out forwards;
+        opacity: 0;
+      }
+
+      a {
+        color: #fff;
+        text-decoration: underline;
+        font-size: 20px;
+        animation: fadeIn 3s ease-in-out forwards;
+        opacity: 0;
+      }
+
+      a:hover {
+        color: #000;
+      }
+
+      @keyframes fadeIn {
+        to {
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>404</h1>
+    <p>Хуудас олдсонгүй!</p>
+    <a href="/">Нүүр хуудас руу буцах</a>
+  </body>
+</html>

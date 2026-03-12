@@ -9,6 +9,7 @@
     "cf:preview": "opennextjs-cloudflare preview"
   },
   "dependencies": {
+    "@aws-sdk/s3-request-presigner": "^3.1007.0",
     "drizzle-orm": "^0.45.1",
     "graphql": "^16.11.0",
     "graphql-yoga": "^5.16.0",
