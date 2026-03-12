@@ -10,7 +10,8 @@
 		"deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
 		"upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
 		"preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts"
+		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
+		"codegen": "graphql-codegen --config codegen.ts"
 	},
 	"dependencies": {
 		"@opennextjs/cloudflare": "^1.17.1",
@@ -39,12 +40,16 @@
 	},
 	"devDependencies": {
 		"@eslint/eslintrc": "^3",
+		"@graphql-codegen/cli": "^6.2.1",
+		"@graphql-codegen/client-preset": "^5.2.4",
+		"@graphql-codegen/introspection": "^5.0.1",
 		"@tailwindcss/postcss": "^4",
 		"@types/node": "^20.19.37",
 		"@types/react": "^19.1.5",
 		"@types/react-dom": "^19.1.5",
 		"eslint": "^9",
 		"eslint-config-next": "15.4.6",
+		"graphql": "^16.13.1",
 		"tailwindcss": "^4",
 		"typescript": "^5.7.4",
 		"wrangler": "^4.72.0"
