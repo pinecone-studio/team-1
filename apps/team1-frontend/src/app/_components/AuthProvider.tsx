@@ -15,10 +15,9 @@ import { SyncUser } from './SyncUser';
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider>
-      <ApolloWrapper> 
-        {/* SyncUser нь ApolloWrapper дотор байх ёстой тул энд байна */}
+      <ApolloWrapper>
         <SyncUser />
-        
+
         <header className="flex justify-end items-center p-4 gap-4 h-16">
           <Show when="signed-out">
             <SignInButton />
@@ -33,7 +32,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           </Show>
         </header>
 
-        {/* МАШ ЧУХАЛ: children энд байх ёстой, тэгж байж бүх хуудас Apollo-г ашиглана */}
         {children}
       </ApolloWrapper>
     </ClerkProvider>

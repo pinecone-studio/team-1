@@ -1,26 +1,31 @@
-// apps/team1-frontend/src/lib/apollo/apollo-client.ts
-import { ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client';
-import { setContext } from '@apollo/client/link/context';
+import { ApolloClient, InMemoryCache, ApolloLink } from '@apollo/client';
+import { HttpLink } from '@apollo/client/link/http'; // Шинэ импорт
+import { SetContextLink } from '@apollo/client/link/context'; // Шинэ импорт
 
 export const createApolloClient = (getToken: () => Promise<string | null>) => {
-  const httpLink = createHttpLink({
+  // 1. HttpLink класс ашиглах
+  const httpLink = new HttpLink({
     uri:
       process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT ||
-      'http://localhost:4000/graphql',
+      'http://localhost:3000/api/graphql',
   });
 
-  const authLink = setContext(async (_, { headers }) => {
+  // 2. SetContextLink класс ашиглах (Аргументууд нь солигдсоныг анхаараарай)
+  const authLink = new SetContextLink(async (prevContext) => {
     const token = await getToken();
+
     return {
+      ...prevContext, // Өмнөх контекстийг хадгалах
       headers: {
-        ...headers,
+        ...prevContext.headers,
         authorization: token ? `Bearer ${token}` : '',
       },
     };
   });
 
   return new ApolloClient({
-    link: authLink.concat(httpLink),
+    // link-үүдийг нэгтгэх
+    link: ApolloLink.from([authLink, httpLink]),
     cache: new InMemoryCache(),
   });
 };
