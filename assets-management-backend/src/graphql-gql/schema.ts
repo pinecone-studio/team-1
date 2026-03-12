@@ -1,0 +1,137 @@
+export const typeDefs = /* GraphQL */ `
+	type Employee {
+		id: ID!
+		entraId: String!
+		firstName: String!
+		lastName: String!
+		firstNameEng: String!
+		lastNameEng: String!
+		email: String!
+		imageUrl: String
+		hireDate: Float!
+		terminationDate: Float
+		status: String!
+		numberOfVacationDays: Int
+		github: String
+		department: String!
+		branch: String!
+		employeeCode: String!
+		level: String!
+		isKpi: Int!
+		isSalaryCompany: Int!
+		birthDayAndMonth: String
+		birthdayPoster: String
+		createdAt: Float!
+		updatedAt: Float!
+		deletedAt: Float
+	}
+
+	type Asset {
+		id: ID!
+		assetTag: String!
+		category: String!
+		serialNumber: String!
+		status: String!
+		purchaseDate: Float
+		purchaseCost: Int
+		currentBookValue: Int
+		locationId: String
+		assignedTo: String
+		imageUrl: String
+		createdAt: Float!
+		updatedAt: Float!
+		deletedAt: Float
+	}
+
+	input AssetCreateInput {
+		assetTag: String!
+		category: String!
+		serialNumber: String!
+		status: String
+		purchaseDate: Float
+		purchaseCost: Int
+		currentBookValue: Int
+		locationId: String
+		assignedTo: String
+		imageUrl: String
+		deletedAt: Float
+	}
+
+	input AssetUpdateInput {
+		assetTag: String
+		category: String
+		serialNumber: String
+		status: String
+		purchaseDate: Float
+		purchaseCost: Int
+		currentBookValue: Int
+		locationId: String
+		assignedTo: String
+		imageUrl: String
+		deletedAt: Float
+	}
+
+	input EmployeeCreateInput {
+		entraId: String!
+		firstName: String!
+		lastName: String!
+		firstNameEng: String!
+		lastNameEng: String!
+		email: String!
+		imageUrl: String
+		hireDate: Float!
+		terminationDate: Float
+		status: String
+		numberOfVacationDays: Int
+		github: String
+		department: String!
+		branch: String!
+		employeeCode: String!
+		level: String!
+		isKpi: Int
+		isSalaryCompany: Int
+		birthDayAndMonth: String
+		birthdayPoster: String
+		deletedAt: Float
+	}
+
+	input EmployeeUpdateInput {
+		entraId: String
+		firstName: String
+		lastName: String
+		firstNameEng: String
+		lastNameEng: String
+		email: String
+		imageUrl: String
+		hireDate: Float
+		terminationDate: Float
+		status: String
+		numberOfVacationDays: Int
+		github: String
+		department: String
+		branch: String
+		employeeCode: String
+		level: String
+		isKpi: Int
+		isSalaryCompany: Int
+		birthDayAndMonth: String
+		birthdayPoster: String
+		deletedAt: Float
+	}
+
+	type Query {
+		employees: [Employee!]!
+		employee(id: ID!): Employee
+		assets: [Asset!]!
+		asset(id: ID!): Asset
+	}
+
+	type Mutation {
+		createEmployee(input: EmployeeCreateInput!): Employee!
+		updateEmployee(id: ID!, input: EmployeeUpdateInput!): Employee
+		deleteEmployee(id: ID!): Boolean!
+		createAsset(input: AssetCreateInput!): Asset!
+		updateAsset(id: ID!, input: AssetUpdateInput!): Asset
+		deleteAsset(id: ID!): Boolean!
+	}
+`;

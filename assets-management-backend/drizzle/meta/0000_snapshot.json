@@ -1,0 +1,1246 @@
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "prevId": "",
+  "version": "6",
+  "dialect": "sqlite",
+  "tables": {
+    "d1_migrations": {
+      "name": "d1_migrations",
+      "columns": {
+        "id": {
+          "autoincrement": true,
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": false
+        },
+        "name": {
+          "autoincrement": false,
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "applied_at": {
+          "default": "(CURRENT_TIMESTAMP)",
+          "autoincrement": false,
+          "name": "applied_at",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {},
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "assets": {
+      "name": "assets",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "assetTag": {
+          "autoincrement": false,
+          "name": "assetTag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "category": {
+          "autoincrement": false,
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "serialNumber": {
+          "autoincrement": false,
+          "name": "serialNumber",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "default": "'AVAILABLE'",
+          "autoincrement": false,
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "purchaseDate": {
+          "autoincrement": false,
+          "name": "purchaseDate",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "purchaseCost": {
+          "autoincrement": false,
+          "name": "purchaseCost",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "currentBookValue": {
+          "autoincrement": false,
+          "name": "currentBookValue",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "locationId": {
+          "autoincrement": false,
+          "name": "locationId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "assignedTo": {
+          "autoincrement": false,
+          "name": "assignedTo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "updatedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deletedAt": {
+          "autoincrement": false,
+          "name": "deletedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "assets_serialNumber_unique": {
+          "name": "assets_serialNumber_unique",
+          "columns": [
+            "serialNumber"
+          ],
+          "isUnique": true
+        },
+        "assets_assetTag_unique": {
+          "name": "assets_assetTag_unique",
+          "columns": [
+            "assetTag"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "assignments": {
+      "name": "assignments",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "assetId": {
+          "autoincrement": false,
+          "name": "assetId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "employeeId": {
+          "autoincrement": false,
+          "name": "employeeId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "assignedAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "assignedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "returnedAt": {
+          "autoincrement": false,
+          "name": "returnedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "conditionAtAssign": {
+          "autoincrement": false,
+          "name": "conditionAtAssign",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "conditionAtReturn": {
+          "autoincrement": false,
+          "name": "conditionAtReturn",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "signatureR2Key": {
+          "autoincrement": false,
+          "name": "signatureR2Key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "accessoriesJson": {
+          "autoincrement": false,
+          "name": "accessoriesJson",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "updatedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deletedAt": {
+          "autoincrement": false,
+          "name": "deletedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {},
+      "foreignKeys": {
+        "assignments_employeeId_employees_id_fk": {
+          "name": "assignments_employeeId_employees_id_fk",
+          "tableFrom": "assignments",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "employeeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "assignments_assetId_assets_id_fk": {
+          "name": "assignments_assetId_assets_id_fk",
+          "tableFrom": "assignments",
+          "tableTo": "assets",
+          "columnsFrom": [
+            "assetId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "audit_logs": {
+      "name": "audit_logs",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tableName": {
+          "autoincrement": false,
+          "name": "tableName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recordId": {
+          "autoincrement": false,
+          "name": "recordId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "action": {
+          "autoincrement": false,
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "oldValueJson": {
+          "autoincrement": false,
+          "name": "oldValueJson",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "newValueJson": {
+          "autoincrement": false,
+          "name": "newValueJson",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actorId": {
+          "autoincrement": false,
+          "name": "actorId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {},
+      "foreignKeys": {
+        "audit_logs_actorId_employees_id_fk": {
+          "name": "audit_logs_actorId_employees_id_fk",
+          "tableFrom": "audit_logs",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "actorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "census_events": {
+      "name": "census_events",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "autoincrement": false,
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scope": {
+          "autoincrement": false,
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scopeFilter": {
+          "autoincrement": false,
+          "name": "scopeFilter",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "startedAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "startedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "closedAt": {
+          "autoincrement": false,
+          "name": "closedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdBy": {
+          "autoincrement": false,
+          "name": "createdBy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "updatedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deletedAt": {
+          "autoincrement": false,
+          "name": "deletedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {},
+      "foreignKeys": {
+        "census_events_createdBy_employees_id_fk": {
+          "name": "census_events_createdBy_employees_id_fk",
+          "tableFrom": "census_events",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "createdBy"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "census_tasks": {
+      "name": "census_tasks",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "censusId": {
+          "autoincrement": false,
+          "name": "censusId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "assetId": {
+          "autoincrement": false,
+          "name": "assetId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "verifierId": {
+          "autoincrement": false,
+          "name": "verifierId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "verifiedAt": {
+          "autoincrement": false,
+          "name": "verifiedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "conditionReported": {
+          "autoincrement": false,
+          "name": "conditionReported",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "locationConfirmed": {
+          "autoincrement": false,
+          "name": "locationConfirmed",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discrepancyFlag": {
+          "default": false,
+          "autoincrement": false,
+          "name": "discrepancyFlag",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "updatedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {},
+      "foreignKeys": {
+        "census_tasks_verifierId_employees_id_fk": {
+          "name": "census_tasks_verifierId_employees_id_fk",
+          "tableFrom": "census_tasks",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "verifierId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "census_tasks_assetId_assets_id_fk": {
+          "name": "census_tasks_assetId_assets_id_fk",
+          "tableFrom": "census_tasks",
+          "tableTo": "assets",
+          "columnsFrom": [
+            "assetId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "census_tasks_censusId_census_events_id_fk": {
+          "name": "census_tasks_censusId_census_events_id_fk",
+          "tableFrom": "census_tasks",
+          "tableTo": "census_events",
+          "columnsFrom": [
+            "censusId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "disposal_records": {
+      "name": "disposal_records",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "assetId": {
+          "autoincrement": false,
+          "name": "assetId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "method": {
+          "autoincrement": false,
+          "name": "method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "writeOffValue": {
+          "autoincrement": false,
+          "name": "writeOffValue",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "certifiedBy": {
+          "autoincrement": false,
+          "name": "certifiedBy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "disposedAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "disposedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "certR2Key": {
+          "autoincrement": false,
+          "name": "certR2Key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recipient": {
+          "autoincrement": false,
+          "name": "recipient",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {},
+      "foreignKeys": {
+        "disposal_records_certifiedBy_employees_id_fk": {
+          "name": "disposal_records_certifiedBy_employees_id_fk",
+          "tableFrom": "disposal_records",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "certifiedBy"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "disposal_records_assetId_assets_id_fk": {
+          "name": "disposal_records_assetId_assets_id_fk",
+          "tableFrom": "disposal_records",
+          "tableTo": "assets",
+          "columnsFrom": [
+            "assetId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "employees": {
+      "name": "employees",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "entraId": {
+          "autoincrement": false,
+          "name": "entraId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "firstName": {
+          "autoincrement": false,
+          "name": "firstName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lastName": {
+          "autoincrement": false,
+          "name": "lastName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "firstNameEng": {
+          "autoincrement": false,
+          "name": "firstNameEng",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lastNameEng": {
+          "autoincrement": false,
+          "name": "lastNameEng",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "autoincrement": false,
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "imageUrl": {
+          "autoincrement": false,
+          "name": "imageUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hireDate": {
+          "autoincrement": false,
+          "name": "hireDate",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "terminationDate": {
+          "autoincrement": false,
+          "name": "terminationDate",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "default": "'ACTIVE'",
+          "autoincrement": false,
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "numberOfVacationDays": {
+          "autoincrement": false,
+          "name": "numberOfVacationDays",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "github": {
+          "autoincrement": false,
+          "name": "github",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "department": {
+          "autoincrement": false,
+          "name": "department",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "branch": {
+          "autoincrement": false,
+          "name": "branch",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "employeeCode": {
+          "autoincrement": false,
+          "name": "employeeCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level": {
+          "autoincrement": false,
+          "name": "level",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "isKpi": {
+          "default": false,
+          "autoincrement": false,
+          "name": "isKpi",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "isSalaryCompany": {
+          "default": true,
+          "autoincrement": false,
+          "name": "isSalaryCompany",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "birthDayAndMonth": {
+          "autoincrement": false,
+          "name": "birthDayAndMonth",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "birthdayPoster": {
+          "autoincrement": false,
+          "name": "birthdayPoster",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "updatedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deletedAt": {
+          "autoincrement": false,
+          "name": "deletedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "employees_employeeCode_unique": {
+          "name": "employees_employeeCode_unique",
+          "columns": [
+            "employeeCode"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "maintenance_tickets": {
+      "name": "maintenance_tickets",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "assetId": {
+          "autoincrement": false,
+          "name": "assetId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reporterId": {
+          "autoincrement": false,
+          "name": "reporterId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "autoincrement": false,
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "severity": {
+          "autoincrement": false,
+          "name": "severity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "default": "'OPEN'",
+          "autoincrement": false,
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vendorId": {
+          "autoincrement": false,
+          "name": "vendorId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "repairCost": {
+          "autoincrement": false,
+          "name": "repairCost",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resolvedAt": {
+          "autoincrement": false,
+          "name": "resolvedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "updatedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {},
+      "foreignKeys": {
+        "maintenance_tickets_reporterId_employees_id_fk": {
+          "name": "maintenance_tickets_reporterId_employees_id_fk",
+          "tableFrom": "maintenance_tickets",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "reporterId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "maintenance_tickets_assetId_assets_id_fk": {
+          "name": "maintenance_tickets_assetId_assets_id_fk",
+          "tableFrom": "maintenance_tickets",
+          "tableTo": "assets",
+          "columnsFrom": [
+            "assetId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "purchase_orders": {
+      "name": "purchase_orders",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "vendorId": {
+          "autoincrement": false,
+          "name": "vendorId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "requestedBy": {
+          "autoincrement": false,
+          "name": "requestedBy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "approvedBy": {
+          "autoincrement": false,
+          "name": "approvedBy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lineItemsJson": {
+          "autoincrement": false,
+          "name": "lineItemsJson",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "totalCost": {
+          "autoincrement": false,
+          "name": "totalCost",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "default": "'PENDING'",
+          "autoincrement": false,
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deliveredAt": {
+          "autoincrement": false,
+          "name": "deliveredAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "updatedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deletedAt": {
+          "autoincrement": false,
+          "name": "deletedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {},
+      "foreignKeys": {
+        "purchase_orders_approvedBy_employees_id_fk": {
+          "name": "purchase_orders_approvedBy_employees_id_fk",
+          "tableFrom": "purchase_orders",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "approvedBy"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "purchase_orders_requestedBy_employees_id_fk": {
+          "name": "purchase_orders_requestedBy_employees_id_fk",
+          "tableFrom": "purchase_orders",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "requestedBy"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "transfers": {
+      "name": "transfers",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "assetId": {
+          "autoincrement": false,
+          "name": "assetId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fromEmployeeId": {
+          "autoincrement": false,
+          "name": "fromEmployeeId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "toEmployeeId": {
+          "autoincrement": false,
+          "name": "toEmployeeId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "autoincrement": false,
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approvedBy": {
+          "autoincrement": false,
+          "name": "approvedBy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "transferredAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "transferredAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "conditionNoted": {
+          "autoincrement": false,
+          "name": "conditionNoted",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "default": "(unixepoch() * 1000)",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {},
+      "foreignKeys": {
+        "transfers_approvedBy_employees_id_fk": {
+          "name": "transfers_approvedBy_employees_id_fk",
+          "tableFrom": "transfers",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "approvedBy"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "transfers_toEmployeeId_employees_id_fk": {
+          "name": "transfers_toEmployeeId_employees_id_fk",
+          "tableFrom": "transfers",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "toEmployeeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "transfers_fromEmployeeId_employees_id_fk": {
+          "name": "transfers_fromEmployeeId_employees_id_fk",
+          "tableFrom": "transfers",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "fromEmployeeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "transfers_assetId_assets_id_fk": {
+          "name": "transfers_assetId_assets_id_fk",
+          "tableFrom": "transfers",
+          "tableTo": "assets",
+          "columnsFrom": [
+            "assetId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  }
+}

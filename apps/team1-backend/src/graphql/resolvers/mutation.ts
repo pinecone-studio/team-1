@@ -2,11 +2,11 @@ import {
   assets,
   assignments,
   auditLogs,
-  categories,
+  // categories,
   censusEvents,
   censusTasks,
   employees,
-  locations,
+  // locations,
 } from '../../../db/schema';
 import type { GraphQLContext } from '../context';
 
@@ -42,7 +42,9 @@ export const mutationResolvers = {
   },
   createEmployee: async (
     _parent: unknown,
-    { input }: InputArgs<{
+    {
+      input,
+    }: InputArgs<{
       firstName: string;
       lastName: string;
       email: string;
@@ -60,7 +62,9 @@ export const mutationResolvers = {
   },
   createAsset: async (
     _parent: unknown,
-    { input }: InputArgs<{
+    {
+      input,
+    }: InputArgs<{
       assetTag: string;
       categoryId?: string | null;
       model?: string | null;
@@ -81,7 +85,9 @@ export const mutationResolvers = {
   },
   createAssignment: async (
     _parent: unknown,
-    { input }: InputArgs<{
+    {
+      input,
+    }: InputArgs<{
       assetId?: string | null;
       employeeId?: string | null;
       assignedAt: string;
@@ -110,7 +116,9 @@ export const mutationResolvers = {
   },
   createCensusTask: async (
     _parent: unknown,
-    { input }: InputArgs<{
+    {
+      input,
+    }: InputArgs<{
       censusId?: string | null;
       assetId?: string | null;
       verifiedAt?: string | null;
@@ -127,7 +135,9 @@ export const mutationResolvers = {
   },
   createAuditLog: async (
     _parent: unknown,
-    { input }: InputArgs<{
+    {
+      input,
+    }: InputArgs<{
       tableName: string;
       recordId: string;
       action: string;
