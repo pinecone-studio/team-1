@@ -1,18 +1,18 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
+import { useState } from 'react';
+import Link from 'next/link';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -20,61 +20,67 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Search, Plus, Filter, Download, Eye } from "lucide-react"
-import { assets } from "@/lib/mock-data"
-import type { AssetStatus, AssetCategory } from "@/lib/types"
+} from '@/components/ui/table';
+import { Search, Plus, Filter, Download, Eye } from 'lucide-react';
+import { assets } from '@/lib/mock-data';
+import type { AssetStatus, AssetCategory } from '@/lib/types';
 
 const statusColors: Record<AssetStatus, string> = {
-  AVAILABLE: "bg-success/10 text-success border-success/20",
-  ASSIGNED: "bg-primary/10 text-primary border-primary/20",
-  IN_REPAIR: "bg-warning/10 text-warning border-warning/20",
-  PENDING_DISPOSAL: "bg-destructive/10 text-destructive border-destructive/20",
-  DISPOSED: "bg-muted text-muted-foreground border-border",
-}
+  AVAILABLE: 'bg-success/10 text-success border-success/20',
+  ASSIGNED: 'bg-primary/10 text-primary border-primary/20',
+  IN_REPAIR: 'bg-warning/10 text-warning border-warning/20',
+  PENDING_DISPOSAL: 'bg-destructive/10 text-destructive border-destructive/20',
+  DISPOSED: 'bg-muted text-muted-foreground border-border',
+};
 
 const statusLabels: Record<AssetStatus, string> = {
-  AVAILABLE: "Бэлэн",
-  ASSIGNED: "Хуваарилсан",
-  IN_REPAIR: "Засварт",
-  PENDING_DISPOSAL: "Устгал хүлээж буй",
-  DISPOSED: "Устсан",
-}
+  AVAILABLE: 'Бэлэн',
+  ASSIGNED: 'Хуваарилсан',
+  IN_REPAIR: 'Засварт',
+  PENDING_DISPOSAL: 'Устгал хүлээж буй',
+  DISPOSED: 'Устсан',
+};
 
 const categoryLabels: Record<AssetCategory, string> = {
-  LAPTOP: "Зөөврийн компьютер",
-  DESKTOP: "Суурин компьютер",
-  MONITOR: "Дэлгэц",
-  PHONE: "Утас",
-  TABLET: "Таблет",
-  PRINTER: "Принтер",
-  NETWORK: "Сүлжээ",
-  OTHER: "Бусад",
-}
+  LAPTOP: 'Зөөврийн компьютер',
+  DESKTOP: 'Суурин компьютер',
+  MONITOR: 'Дэлгэц',
+  PHONE: 'Утас',
+  TABLET: 'Таблет',
+  PRINTER: 'Принтер',
+  NETWORK: 'Сүлжээ',
+  OTHER: 'Бусад',
+};
 
 export default function AssetsPage() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [categoryFilter, setCategoryFilter] = useState<string>("all")
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
   const filteredAssets = assets.filter((asset) => {
     const matchesSearch =
       asset.assetId.toLowerCase().includes(searchQuery.toLowerCase()) ||
       asset.serialNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      asset.assignedEmployeeName?.toLowerCase().includes(searchQuery.toLowerCase())
+      asset.assignedEmployeeName
+        ?.toLowerCase()
+        .includes(searchQuery.toLowerCase());
 
-    const matchesStatus = statusFilter === "all" || asset.status === statusFilter
-    const matchesCategory = categoryFilter === "all" || asset.category === categoryFilter
+    const matchesStatus =
+      statusFilter === 'all' || asset.status === statusFilter;
+    const matchesCategory =
+      categoryFilter === 'all' || asset.category === categoryFilter;
 
-    return matchesSearch && matchesStatus && matchesCategory
-  })
+    return matchesSearch && matchesStatus && matchesCategory;
+  });
 
   return (
     <div className="space-y-6">
       {/* Page header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Эд хөрөнгийн бүртгэл</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            Эд хөрөнгийн бүртгэл
+          </h1>
           <p className="text-muted-foreground">
             Компанийн бүх эд хөрөнгийг удирдаж, хянах
           </p>
@@ -111,7 +117,9 @@ export default function AssetsPage() {
                   <SelectItem value="AVAILABLE">Бэлэн</SelectItem>
                   <SelectItem value="ASSIGNED">Хуваарилсан</SelectItem>
                   <SelectItem value="IN_REPAIR">Засварт</SelectItem>
-                  <SelectItem value="PENDING_DISPOSAL">Устгал хүлээж буй</SelectItem>
+                  <SelectItem value="PENDING_DISPOSAL">
+                    Устгал хүлээж буй
+                  </SelectItem>
                   <SelectItem value="DISPOSED">Устсан</SelectItem>
                 </SelectContent>
               </Select>
@@ -149,18 +157,7 @@ export default function AssetsPage() {
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader>
-                <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="text-muted-foreground">Эд хөрөнгийн ID</TableHead>
-                  <TableHead className="text-muted-foreground">Ангилал</TableHead>
-                  <TableHead className="text-muted-foreground">Серийн дугаар</TableHead>
-                  <TableHead className="text-muted-foreground">Хариуцагч</TableHead>
-                  <TableHead className="text-muted-foreground">Төлөв</TableHead>
-                  <TableHead className="text-muted-foreground">Худалдан авсан огноо</TableHead>
-                  <TableHead className="text-muted-foreground text-right">Дансны үнэ</TableHead>
-                  <TableHead className="text-muted-foreground w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
+              <TableHeader></TableHeader>
               <TableBody>
                 {filteredAssets.map((asset) => (
                   <TableRow key={asset.id} className="border-border">
@@ -174,10 +171,13 @@ export default function AssetsPage() {
                       {asset.serialNumber}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {asset.assignedEmployeeName || "-"}
+                      {asset.assignedEmployeeName || '-'}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={statusColors[asset.status]}>
+                      <Badge
+                        variant="outline"
+                        className={statusColors[asset.status]}
+                      >
                         {statusLabels[asset.status]}
                       </Badge>
                     </TableCell>
@@ -201,11 +201,13 @@ export default function AssetsPage() {
           </div>
           {filteredAssets.length === 0 && (
             <div className="py-12 text-center">
-              <p className="text-muted-foreground">Шүүлтүүрт тохирох эд хөрөнгө олдсонгүй.</p>
+              <p className="text-muted-foreground">
+                Шүүлтүүрт тохирох эд хөрөнгө олдсонгүй.
+              </p>
             </div>
           )}
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
