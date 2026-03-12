@@ -1,0 +1,80 @@
+query Assets {
+  assets {
+    id
+    assetTag
+    category
+    serialNumber
+    status
+    purchaseDate
+    purchaseCost
+    currentBookValue
+    locationId
+    assignedTo
+    imageUrl
+    createdAt
+    updatedAt
+    deletedAt
+  }
+}
+
+query Asset($id: ID!) {
+  asset(id: $id) {
+    id
+    assetTag
+    category
+    serialNumber
+    status
+    purchaseDate
+    purchaseCost
+    currentBookValue
+    locationId
+    assignedTo
+    imageUrl
+    createdAt
+    updatedAt
+    deletedAt
+  }
+}
+
+mutation CreateAsset($input: AssetCreateInput!) {
+  createAsset(input: $input) {
+    id
+    assetTag
+    category
+    serialNumber
+    status
+    purchaseDate
+    purchaseCost
+    currentBookValue
+    locationId
+    assignedTo
+    imageUrl
+    createdAt
+    updatedAt
+    deletedAt
+  }
+}
+
+mutation UpdateAsset($id: ID!, $input: AssetUpdateInput!) {
+  updateAsset(id: $id, input: $input) {
+    id
+    assetTag
+    category
+    serialNumber
+    status
+    purchaseDate
+    purchaseCost
+    currentBookValue
+    locationId
+    assignedTo
+    imageUrl
+    createdAt
+    updatedAt
+    deletedAt
+  }
+}
+
+mutation DeleteAsset($id: ID!) {
+  deleteAsset(id: $id)
+}
+
