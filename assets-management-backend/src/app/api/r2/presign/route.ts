@@ -8,6 +8,16 @@ type PresignRequestBody = {
   bucketName: string;
 };
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+export function OPTIONS() {
+  return new Response(null, { status: 204, headers: corsHeaders });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body: PresignRequestBody = await req.json();
@@ -32,13 +42,13 @@ export async function POST(req: NextRequest) {
     const signedUrl = await getSignedUrl(client, command, { expiresIn: 3600 });
 
     return new Response(JSON.stringify({ key, url: signedUrl }), {
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   } catch (err: any) {
     console.error(err);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   }
 }
