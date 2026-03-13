@@ -28,6 +28,7 @@
     "graphql-request": "^7.4.0",
     "graphql-yoga": "^5.18.1",
     "next": "16.1.5",
+    "nodemailer": "^6.10.1",
     "react": "19.1.5",
     "react-dom": "19.1.5",
     "xlsx": "^0.18.5"
@@ -39,6 +40,7 @@
     "@graphql-codegen/introspection": "5.0.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20.19.37",
+    "@types/nodemailer": "^7.0.11",
     "@types/react": "^19.1.5",
     "@types/react-dom": "^19.1.5",
     "dotenv": "^16.4.7",

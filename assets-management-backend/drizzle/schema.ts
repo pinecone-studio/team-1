@@ -90,3 +90,20 @@ export const maintenanceTickets = sqliteTable("maintenance_tickets", {
 	updatedAt: integer().default(sql`(strftime('%s', 'now') * 1000)`).notNull(),
 });
 
+export const purchaseRequests = sqliteTable("purchase_requests", {
+	id: text().primaryKey().notNull(),
+	assetTag: text().notNull(),
+	category: text().notNull(),
+	serialNumber: text().notNull(),
+	purchaseCost: integer(),
+	purchaseDate: integer(),
+	requesterEmployeeId: text().notNull().references(() => employees.id),
+	requesterEmail: text().notNull(),
+	status: text().default("PENDING").notNull(),
+	token: text().notNull(),
+	expiresAt: integer(),
+	decidedAt: integer(),
+	decidedBy: text(),
+	createdAt: integer().default(sql`(strftime('%s', 'now') * 1000)`).notNull(),
+	updatedAt: integer().default(sql`(strftime('%s', 'now') * 1000)`).notNull(),
+});

@@ -3,6 +3,20 @@ import { assignments, assets } from "../../drizzle/schema";
 import { getDb } from "./client";
 import { getAssetById } from "./assets/queries";
 
+export async function getAssignments() {
+  const db = await getDb();
+  return db.select().from(assignments).all();
+}
+
+export async function getAssignmentsByEmployee(employeeId: string) {
+  const db = await getDb();
+  return db
+    .select()
+    .from(assignments)
+    .where(eq(assignments.employeeId, employeeId))
+    .all();
+}
+
 export async function assignAssetToEmployee(
   assetId: string,
   employeeId: string,

@@ -4,7 +4,7 @@ import { typeDefs } from "@/graphql-gql/schema";
 import { resolvers } from "@/graphql-gql/resolvers";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-// export const runtime = "nodejs";
+export const runtime = "nodejs";
 
 const schema = makeExecutableSchema({
   typeDefs,
