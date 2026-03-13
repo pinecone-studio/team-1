@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { DashboardContent } from "@/components/dashboard-content";
 import { AssetsContent } from "@/components/assets/assets-content";
+import { AssetAllocationContent } from "@/components/asset-allocations/asset-allocation-content";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
 export default function DashboardPage() {
@@ -25,7 +26,12 @@ export default function DashboardPage() {
         <SidebarInset className="min-h-0 bg-transparent">
           {activeTitle === "Хянах самбар" ? <DashboardContent /> : null}
           {activeTitle === "Хөрөнгө" ? <AssetsContent /> : null}
-          {activeTitle !== "Хянах самбар" && activeTitle !== "Хөрөнгө" ? (
+          {activeTitle === "Хөрөнгө хуваарилах" ? (
+            <AssetAllocationContent />
+          ) : null}
+          {activeTitle !== "Хянах самбар" &&
+          activeTitle !== "Хөрөнгө" &&
+          activeTitle !== "Хөрөнгө хуваарилах" ? (
             <div className="min-h-0 flex flex-1 overflow-auto p-6">
               <div className="w-full rounded-xl bg-white" />
             </div>
