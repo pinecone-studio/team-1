@@ -78,3 +78,50 @@ mutation DeleteAsset($id: ID!) {
   deleteAsset(id: $id)
 }
 
+mutation AssignAsset(
+  $assetId: ID!
+  $employeeId: ID!
+  $conditionAtAssign: String
+  $accessoriesJson: String
+) {
+  assignAsset(
+    assetId: $assetId
+    employeeId: $employeeId
+    conditionAtAssign: $conditionAtAssign
+    accessoriesJson: $accessoriesJson
+  ) {
+    id
+    assetTag
+    category
+    serialNumber
+    status
+    purchaseDate
+    purchaseCost
+    currentBookValue
+    locationId
+    assignedTo
+    imageUrl
+    createdAt
+    updatedAt
+    deletedAt
+  }
+}
+
+mutation ReturnAsset($assetId: ID!, $conditionAtReturn: String) {
+  returnAsset(assetId: $assetId, conditionAtReturn: $conditionAtReturn) {
+    id
+    assetTag
+    category
+    serialNumber
+    status
+    purchaseDate
+    purchaseCost
+    currentBookValue
+    locationId
+    assignedTo
+    imageUrl
+    createdAt
+    updatedAt
+    deletedAt
+  }
+}

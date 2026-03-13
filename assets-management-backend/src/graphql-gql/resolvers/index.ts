@@ -1,8 +1,11 @@
+import { Mutation } from "./mutations";
 import { Query } from "./queries";
-// import { Mutation } from "./mutations";
 
 export const resolvers = {
   Query,
-  // Mutation,
+  Mutation,
+  Asset: {
+    category: (asset: { subCategoryId?: string | null; categoryId?: string | null }) =>
+      asset.subCategoryId ?? asset.categoryId ?? "",
+  },
 };
-

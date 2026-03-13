@@ -2,8 +2,8 @@ import type { CodegenConfig } from '@graphql-codegen/cli';
 
 const config: CodegenConfig = {
   overwrite: true,
-  // Production GraphQL endpoint on Cloudflare Workers
-  schema: 'https://my-next-app.tsetsegulziiocherdene.workers.dev/api/graphql',
+  // Local backend schema (keeps codegen aligned with repo)
+  schema: '../../assets-management-backend/src/graphql-gql/schema.graphql',
   documents: 'src/**/*.graphql',
   generates: {
     'src/gql/': {
@@ -17,4 +17,3 @@ const config: CodegenConfig = {
 };
 
 export default config;
-
