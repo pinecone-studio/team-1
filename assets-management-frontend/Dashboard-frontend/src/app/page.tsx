@@ -7,6 +7,7 @@ import { DashboardHeader } from "@/components/dashboard-header";
 import { DashboardContent } from "@/components/dashboard-content";
 import { AssetsContent } from "@/components/assets/assets-content";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import OffboardingContent from "@/components/offboarding/offboarding-content";
 
 export default function DashboardPage() {
   const [activeTitle, setActiveTitle] = useState("Хянах самбар");
@@ -25,7 +26,11 @@ export default function DashboardPage() {
         <SidebarInset className="min-h-0 bg-transparent">
           {activeTitle === "Хянах самбар" ? <DashboardContent /> : null}
           {activeTitle === "Хөрөнгө" ? <AssetsContent /> : null}
-          {activeTitle !== "Хянах самбар" && activeTitle !== "Хөрөнгө" ? (
+          {activeTitle === "Ажлаас гарах" ? <OffboardingContent /> : null}
+
+          {activeTitle !== "Хянах самбар" &&
+          activeTitle !== "Хөрөнгө" &&
+          activeTitle !== "Ажлаас гарах" ? (
             <div className="min-h-0 flex flex-1 overflow-auto p-6">
               <div className="w-full rounded-xl bg-white" />
             </div>

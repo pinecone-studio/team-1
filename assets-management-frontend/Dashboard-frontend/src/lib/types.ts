@@ -36,3 +36,5 @@ export interface Asset {
   createdAt: string;
   updatedAt: string;
 }
+
+export type AssetCondition = "Good" | "Fair" | "Damaged";
