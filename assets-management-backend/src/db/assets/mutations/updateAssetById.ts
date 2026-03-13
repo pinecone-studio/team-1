@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { assets } from "../../../../../drizzle/schema";
+import { assets } from "../../../../drizzle/schema";
 import { getDb } from "../../client";
 import type { Asset, AssetUpdate } from "../types";
 import { getAssetById } from "../queries";

@@ -1,4 +1,4 @@
-import { assets } from "../../../../../drizzle/schema";
+import { assets } from "../../../../drizzle/schema";
 import { getDb } from "../../client";
 import type { Asset, AssetCreate } from "../types";
 import { getAssetById } from "../queries";
