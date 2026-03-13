@@ -1,5 +1,5 @@
-query Assets {
-  assets {
+query Assets($office: String, $categoryIds: [ID!], $subCategoryIds: [ID!]) {
+  assets(office: $office, categoryIds: $categoryIds, subCategoryIds: $subCategoryIds) {
     id
     assetTag
     category

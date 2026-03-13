@@ -43,6 +43,25 @@ export const typeDefs = /* GraphQL */ `
 		deletedAt: Float
 	}
 
+	type Category {
+		id: ID!
+		name: String!
+		parentId: ID
+		subcategories: [Category!]!
+	}
+
+	type Assignment {
+		id: ID!
+		assetId: ID!
+		employeeId: ID!
+		assignedAt: Float!
+		returnedAt: Float
+		conditionAtAssign: String!
+		conditionAtReturn: String
+		employee: Employee
+		asset: Asset
+	}
+
 	input AssetCreateInput {
 		assetTag: String!
 		category: String!
@@ -69,6 +88,36 @@ export const typeDefs = /* GraphQL */ `
 		assignedTo: String
 		imageUrl: String
 		deletedAt: Float
+	}
+
+	enum PurchaseRequestStatus {
+		PENDING
+		APPROVED
+		DECLINED
+	}
+
+	input PurchaseRequestItemInput {
+		assetTag: String!
+		category: String!
+		serialNumber: String!
+		purchaseCost: Int
+		purchaseDate: Float
+	}
+
+	type PurchaseRequest {
+		id: ID!
+		assetTag: String!
+		category: String!
+		serialNumber: String!
+		purchaseCost: Int
+		purchaseDate: Float
+		requesterEmployeeId: ID!
+		requesterEmail: String!
+		status: PurchaseRequestStatus!
+		decidedAt: Float
+		decidedBy: String
+		createdAt: Float!
+		updatedAt: Float!
 	}
 
 	input EmployeeCreateInput {
@@ -122,8 +171,13 @@ export const typeDefs = /* GraphQL */ `
 	type Query {
 		employees: [Employee!]!
 		employee(id: ID!): Employee
-		assets: [Asset!]!
+		assets(office: String, categoryIds: [ID!], subCategoryIds: [ID!]): [Asset!]!
 		asset(id: ID!): Asset
+		assignments: [Assignment!]!
+		employeeAssignments(employeeId: ID!): [Assignment!]!
+		purchaseRequests(status: PurchaseRequestStatus): [PurchaseRequest!]!
+		purchaseRequest(id: ID!): PurchaseRequest
+		categories: [Category!]!
 	}
 
 	type Mutation {
@@ -140,5 +194,21 @@ export const typeDefs = /* GraphQL */ `
 			accessoriesJson: String
 		): Asset
 		returnAsset(assetId: ID!, conditionAtReturn: String): Asset
+		createPurchaseRequest(
+			assetTag: String!
+			category: String!
+			serialNumber: String!
+			purchaseCost: Int
+			purchaseDate: Float
+			requesterEmployeeId: ID!
+			requesterEmail: String!
+		): PurchaseRequest!
+		createPurchaseRequestBatch(
+			items: [PurchaseRequestItemInput!]!
+			requesterEmployeeId: ID!
+			requesterEmail: String!
+		): [PurchaseRequest!]!
+		approvePurchaseRequest(token: String!, approverEmail: String!): PurchaseRequest!
+		declinePurchaseRequest(token: String!, approverEmail: String!): PurchaseRequest!
 	}
 `;

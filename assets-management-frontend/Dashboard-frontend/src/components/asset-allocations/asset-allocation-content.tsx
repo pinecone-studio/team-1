@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import { useMutation, useQuery } from "@apollo/client";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AssignAssetDocument,
+  AssetsDocument,
+  AssignmentsDocument,
+  EmployeesDocument,
+} from "@/gql/graphql";
 
 type AllocationRow = {
   id: string;
@@ -41,21 +48,6 @@ type AllocationRow = {
   emailStatus: string;
   emailStatusKey: "sent" | "failed" | "pending" | "disabled" | "unknown";
 };
-
-const employees = [
-  { name: "Sarah Johnson", email: "sarah.johnson@company.com" },
-  { name: "Michael Chen", email: "michael.chen@company.com" },
-  { name: "Emily Davis", email: "emily.davis@company.com" },
-  { name: "Lisa Anderson", email: "lisa.anderson@company.com" },
-  { name: "Батцоо Жаргал", email: "battsooj1010@gmail.com" },
-];
-
-const assets = [
-  { id: "LAP-2024-001", label: "Laptop - LAP-2024-001" },
-  { id: "MON-2024-003", label: "Monitor - MON-2024-003" },
-  { id: "KEY-2024-006", label: "Keyboard - KEY-2024-006" },
-  { id: "TAB-2024-009", label: "Tablet - TAB-2024-009" },
-];
 
 const STATUS_LABELS: Record<AllocationRow["statusKey"], string> = {
   pending: "Хүлээгдэж буй",
@@ -73,83 +65,35 @@ const EMAIL_STATUS_LABELS: Record<AllocationRow["emailStatusKey"], string> = {
 
 export function AssetAllocationContent() {
   const [statusTab, setStatusTab] = useState("all");
-  const [rows, setRows] = useState<AllocationRow[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState("");
   const [selectedAsset, setSelectedAsset] = useState("");
-  const [listLoading, setListLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-
-  const loadRows = async () => {
-    setListLoading(true);
-    setErrorMessage("");
-    try {
-      const res = await fetch(`/api/allocation-requests`, {
-        cache: "no-store",
-      });
-      if (!res.ok) {
-        const message = await res.text();
-        throw new Error(message || "List fetch failed");
-      }
-      const data = (await res.json()) as Array<{
-        id: string;
-        assetId: string;
-        employeeEmail: string;
-        status: "PENDING" | "APPROVED" | "REJECTED";
-        emailStatus?: "SENT" | "FAILED" | "PENDING" | "DISABLED" | "UNKNOWN";
-        requestedAt: number;
-        respondedAt: number | null;
-      }>;
-
-      if (!Array.isArray(data)) {
-        throw new Error("Жагсаалтын өгөгдөл буруу форматтай байна.");
-      }
-
-      const mapped: AllocationRow[] = data.map((item) => {
-        const statusKey: AllocationRow["statusKey"] =
-          item.status === "APPROVED"
-            ? "approved"
-            : item.status === "REJECTED"
-              ? "rejected"
-              : "pending";
-
-        const emailStatusKey: AllocationRow["emailStatusKey"] =
-          item.emailStatus === "SENT"
-            ? "sent"
-            : item.emailStatus === "FAILED"
-              ? "failed"
-              : item.emailStatus === "DISABLED"
-                ? "disabled"
-              : item.emailStatus === "PENDING"
-                ? "pending"
-                : "unknown";
-
-        return {
-          id: item.assetId,
-          employeeEmail: item.employeeEmail,
-          assignedDate: new Date(item.requestedAt).toLocaleDateString(),
-          statusKey,
-          status: STATUS_LABELS[statusKey],
-          emailStatusKey,
-          emailStatus: EMAIL_STATUS_LABELS[emailStatusKey],
-          confirmedDate: item.respondedAt
-            ? new Date(item.respondedAt).toLocaleDateString()
-            : "-",
-        };
-      });
-
-      setRows(mapped);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Жагсаалт ачаалж чадсангүй.";
-      console.error(error);
-      setErrorMessage(message);
-      toast.error(message);
-    } finally {
-      setListLoading(false);
-    }
-  };
+  const { data: employeesData } = useQuery(EmployeesDocument);
+  const { data: assetsData } = useQuery(AssetsDocument);
+  const { data: assignmentsData, loading: assignmentsLoading, refetch: refetchAssignments } =
+    useQuery(AssignmentsDocument);
+  const [assignAssetMutation] = useMutation(AssignAssetDocument);
+  const rows = useMemo<AllocationRow[]>(() => {
+    const assignments = assignmentsData?.assignments ?? [];
+    return assignments.map((assignment) => {
+      const isReturned = Boolean(assignment.returnedAt);
+      const statusKey = isReturned ? "approved" : "pending";
+      return {
+        id: assignment.asset?.assetTag ?? assignment.assetId,
+        employeeEmail: assignment.employee?.email ?? assignment.employeeId,
+        assignedDate: new Date(assignment.assignedAt).toLocaleDateString(),
+        status: STATUS_LABELS[statusKey],
+        statusKey,
+        confirmedDate: assignment.returnedAt
+          ? new Date(assignment.returnedAt).toLocaleDateString()
+          : "—",
+        emailStatus: EMAIL_STATUS_LABELS.disabled,
+        emailStatusKey: "disabled",
+      };
+    });
+  }, [assignmentsData?.assignments]);
 
   const visibleRows = useMemo(() => {
     if (statusTab === "all") return rows;
@@ -159,49 +103,32 @@ export function AssetAllocationContent() {
   const handleSendRequest = async () => {
     if (!selectedEmployee || !selectedAsset) return;
 
-    const asset = assets.find((item) => item.id === selectedAsset);
+    const asset = (assetsData?.assets ?? []).find(
+      (item) => item.id === selectedAsset,
+    );
     if (!asset) return;
 
     setSubmitLoading(true);
     setErrorMessage("");
     try {
-      const res = await fetch(`/api/allocation-requests`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          employeeEmail: selectedEmployee,
+      await assignAssetMutation({
+        variables: {
           assetId: asset.id,
-        }),
+          employeeId: selectedEmployee,
+          conditionAtAssign: "GOOD",
+        },
       });
-      if (!res.ok) {
-        const message = await res.text();
-        throw new Error(message || "Create request failed");
-      }
-      const data = (await res.json()) as {
-        token: string;
-      };
 
-      const approveUrl = `${window.location.origin}/api/allocation-requests?token=${data.token}&action=approve`;
-      const rejectUrl = `${window.location.origin}/api/allocation-requests?token=${data.token}&action=reject`;
-      const subject = encodeURIComponent("Хөрөнгө хуваарилалтын баталгаажуулалт");
-      const body = encodeURIComponent(
-        `Сайн байна уу,\n\n` +
-          `Хөрөнгө хуваарилалтын хүсэлт үүсгэлээ.\n` +
-          `Хөрөнгө: ${asset.id}\n` +
-          `Ажилтан: ${selectedEmployee}\n\n` +
-          `Зөвшөөрөх: ${approveUrl}\n` +
-          `Зөвшөөрөхгүй: ${rejectUrl}`,
-      );
-
-      window.location.href = `mailto:${selectedEmployee}?subject=${subject}&body=${body}`;
-      await loadRows();
+      await refetchAssignments();
       setDialogOpen(false);
       setSelectedEmployee("");
       setSelectedAsset("");
-      toast.success("Зөвшөөрөх/зөвшөөрөхгүй линктэй имэйл нээлээ.");
+      toast.success("Хөрөнгө хуваарилалт амжилттай.");
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Хүсэлт илгээхэд алдаа гарлаа.";
+        error instanceof Error
+          ? error.message
+          : "Хүсэлт илгээхэд алдаа гарлаа.";
       console.error(error);
       setErrorMessage(message);
       toast.error(message);
@@ -219,8 +146,8 @@ export function AssetAllocationContent() {
         <div className="flex flex-wrap items-center gap-2">
           <Button
             className="bg-muted text-foreground hover:bg-muted/80"
-            onClick={loadRows}
-            disabled={listLoading}
+            onClick={() => refetchAssignments()}
+            disabled={assignmentsLoading}
           >
             Жагсаалт шинэчлэх
           </Button>
@@ -332,7 +259,7 @@ export function AssetAllocationContent() {
               </TableBody>
             </Table>
           </div>
-          {listLoading && (
+          {assignmentsLoading && (
             <div className="py-4 text-sm text-muted-foreground">
               Ачаалж байна...
             </div>
@@ -359,35 +286,35 @@ export function AssetAllocationContent() {
                 onValueChange={setSelectedEmployee}
               >
                 <SelectTrigger className="w-full bg-muted/40">
-                  <SelectValue placeholder="Сонгох" />
-                </SelectTrigger>
-                <SelectContent>
-                  {employees.map((employee) => (
-                    <SelectItem key={employee.email} value={employee.email}>
-                      {employee.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                <SelectValue placeholder="Сонгох" />
+              </SelectTrigger>
+              <SelectContent>
+                {(employeesData?.employees ?? []).map((employee) => (
+                  <SelectItem key={employee.id} value={employee.id}>
+                    {employee.firstName} {employee.lastName} ({employee.email})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
             <div className="space-y-2">
               <p className="text-sm font-medium text-foreground">
                 Хөрөнгө сонгох
               </p>
               <Select value={selectedAsset} onValueChange={setSelectedAsset}>
-                <SelectTrigger className="w-full bg-muted/40">
-                  <SelectValue placeholder="Сонгох" />
-                </SelectTrigger>
-                <SelectContent>
-                  {assets.map((asset) => (
-                    <SelectItem key={asset.id} value={asset.id}>
-                      {asset.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <SelectTrigger className="w-full bg-muted/40">
+                <SelectValue placeholder="Сонгох" />
+              </SelectTrigger>
+              <SelectContent>
+                {(assetsData?.assets ?? []).map((asset) => (
+                  <SelectItem key={asset.id} value={asset.id}>
+                    {asset.assetTag} - {asset.category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
             <Button
               className="w-full bg-foreground text-background hover:bg-foreground/90"
