@@ -1,0 +1,120 @@
+query Employees {
+  employees {
+    id
+    entraId
+    firstName
+    lastName
+    firstNameEng
+    lastNameEng
+    email
+    imageUrl
+    hireDate
+    terminationDate
+    status
+    numberOfVacationDays
+    github
+    department
+    branch
+    employeeCode
+    level
+    isKpi
+    isSalaryCompany
+    birthDayAndMonth
+    birthdayPoster
+    createdAt
+    updatedAt
+    deletedAt
+  }
+}
+
+query Employee($id: ID!) {
+  employee(id: $id) {
+    id
+    entraId
+    firstName
+    lastName
+    firstNameEng
+    lastNameEng
+    email
+    imageUrl
+    hireDate
+    terminationDate
+    status
+    numberOfVacationDays
+    github
+    department
+    branch
+    employeeCode
+    level
+    isKpi
+    isSalaryCompany
+    birthDayAndMonth
+    birthdayPoster
+    createdAt
+    updatedAt
+    deletedAt
+  }
+}
+
+mutation CreateEmployee($input: EmployeeCreateInput!) {
+  createEmployee(input: $input) {
+    id
+    entraId
+    firstName
+    lastName
+    firstNameEng
+    lastNameEng
+    email
+    imageUrl
+    hireDate
+    terminationDate
+    status
+    numberOfVacationDays
+    github
+    department
+    branch
+    employeeCode
+    level
+    isKpi
+    isSalaryCompany
+    birthDayAndMonth
+    birthdayPoster
+    createdAt
+    updatedAt
+    deletedAt
+  }
+}
+
+mutation UpdateEmployee($id: ID!, $input: EmployeeUpdateInput!) {
+  updateEmployee(id: $id, input: $input) {
+    id
+    entraId
+    firstName
+    lastName
+    firstNameEng
+    lastNameEng
+    email
+    imageUrl
+    hireDate
+    terminationDate
+    status
+    numberOfVacationDays
+    github
+    department
+    branch
+    employeeCode
+    level
+    isKpi
+    isSalaryCompany
+    birthDayAndMonth
+    birthdayPoster
+    createdAt
+    updatedAt
+    deletedAt
+  }
+}
+
+mutation DeleteEmployee($id: ID!) {
+  deleteEmployee(id: $id)
+}
+

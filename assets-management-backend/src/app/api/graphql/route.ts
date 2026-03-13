@@ -4,7 +4,6 @@ import { typeDefs } from "@/graphql-gql/schema";
 import { resolvers } from "@/graphql-gql/resolvers";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-
 // export const runtime = "nodejs";
 
 const schema = makeExecutableSchema({
@@ -21,6 +20,16 @@ const { handleRequest } = Yoga.createYoga({
 type RouteContext = { params: Promise<{}> };
 
 export function GET(request: NextRequest, _context: RouteContext) {
+  const hasQuery =
+    request.nextUrl.searchParams.has("query") ||
+    request.nextUrl.searchParams.has("operationName") ||
+    request.nextUrl.searchParams.has("variables") ||
+    request.nextUrl.searchParams.has("extensions");
+
+  if (hasQuery) {
+    return handleRequest(request, _context as unknown as never);
+  }
+
   const explorer = new URL("https://studio.apollographql.com/sandbox/explorer");
   explorer.searchParams.set(
     "endpoint",

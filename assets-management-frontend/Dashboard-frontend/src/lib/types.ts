@@ -53,6 +53,7 @@ export interface Asset {
   assignedEmployeeName?: string;
   departmentId?: string;
   departmentName?: string;
+  imageUrl?: string;
   createdAt: string;
   updatedAt: string;
 }

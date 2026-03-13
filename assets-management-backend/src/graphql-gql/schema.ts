@@ -133,5 +133,12 @@ export const typeDefs = /* GraphQL */ `
 		createAsset(input: AssetCreateInput!): Asset!
 		updateAsset(id: ID!, input: AssetUpdateInput!): Asset
 		deleteAsset(id: ID!): Boolean!
+		assignAsset(
+			assetId: ID!
+			employeeId: ID!
+			conditionAtAssign: String
+			accessoriesJson: String
+		): Asset
+		returnAsset(assetId: ID!, conditionAtReturn: String): Asset
 	}
 `;

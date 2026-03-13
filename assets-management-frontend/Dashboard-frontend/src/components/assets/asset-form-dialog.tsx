@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { useMutation, useQuery } from "@apollo/client";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,6 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AssignAssetDocument,
+  CreateAssetDocument,
+  EmployeesDocument,
+  ReturnAssetDocument,
+  UpdateAssetDocument,
+} from "@/gql/graphql";
 import type { Asset, AssetCategory } from "@/lib/types";
 import {
   CATEGORY_LABELS,
@@ -29,16 +38,24 @@ import {
   getRoomTypeLabel,
 } from "./constants";
 
+type AssetDialogMode = "create" | "edit";
+
 type AssetFormDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAddAssets: (assets: Asset[]) => void;
+  onUpdateAsset?: (asset: Asset) => void;
+  mode?: AssetDialogMode;
+  initialAsset?: Asset | null;
 };
 
 export function AssetFormDialog({
   open,
   onOpenChange,
   onAddAssets,
+  onUpdateAsset,
+  mode = "create",
+  initialAsset = null,
 }: AssetFormDialogProps) {
   const [assetId, setAssetId] = useState("");
   const [assetCategory, setAssetCategory] = useState<AssetCategory | "">("");
@@ -59,9 +76,23 @@ export function AssetFormDialog({
   const [assetImagePreview, setAssetImagePreview] = useState<string | null>(
     null,
   );
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageUploadStatus, setImageUploadStatus] = useState<
+    "idle" | "uploading" | "success" | "error"
+  >("idle");
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [assetIdAuto, setAssetIdAuto] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [assignedEmployeeId, setAssignedEmployeeId] = useState<string>("");
   const usedAssetIdsRef = useRef(new Set<string>());
   const lastIdSeedRef = useRef("");
+  const [createAssetMutation] = useMutation(CreateAssetDocument);
+  const [updateAssetMutation] = useMutation(UpdateAssetDocument);
+  const [assignAssetMutation] = useMutation(AssignAssetDocument);
+  const [returnAssetMutation] = useMutation(ReturnAssetDocument);
+  const { data: employeesData } = useQuery(EmployeesDocument, {
+    skip: mode !== "edit",
+  });
 
   const roomTypeLabel = getRoomTypeLabel(roomType);
   const locationDisplay = roomNumber
@@ -79,6 +110,32 @@ export function AssetFormDialog({
   const categoryEntries = Object.entries(CATEGORY_LABELS) as Array<
     [AssetCategory, string]
   >;
+
+  const resolvedInitialLocation = useMemo(() => {
+    if (!initialAsset?.location) return null;
+    const parts = initialAsset.location.split(" / ").map((part) => part.trim());
+    if (parts.length === 1) {
+      return { location: parts[0], roomType: "", roomNumber: "" };
+    }
+    if (parts.length === 2) {
+      const match = ROOM_TYPE_OPTIONS.find(
+        (option) => option.label === parts[1] || option.value === parts[1],
+      );
+      return {
+        location: parts[0],
+        roomType: match?.value ?? parts[1],
+        roomNumber: "",
+      };
+    }
+    const match = ROOM_TYPE_OPTIONS.find(
+      (option) => option.label === parts[1] || option.value === parts[1],
+    );
+    return {
+      location: parts[0],
+      roomType: match?.value ?? parts[1],
+      roomNumber: parts[2],
+    };
+  }, [initialAsset?.location]);
 
   const createUniqueCode = (prefix: string, usedSet: Set<string>) => {
     let nextCode = "";
@@ -99,13 +156,6 @@ export function AssetFormDialog({
     return nextCode;
   };
 
-  const createLocalId = () => {
-    if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-      return crypto.randomUUID();
-    }
-    return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  };
-
   const getUniqueAssetId = (base: string) => {
     const trimmed = base.trim().toUpperCase();
     if (!trimmed) {
@@ -117,6 +167,45 @@ export function AssetFormDialog({
     }
     return createUniqueCode(trimmed, usedAssetIdsRef.current);
   };
+
+  const mapGraphqlAssetToLocal = (asset: {
+    id: string;
+    assetTag: string;
+    category: string;
+    serialNumber: string;
+    status: string;
+    purchaseDate?: number | null;
+    purchaseCost?: number | null;
+    currentBookValue?: number | null;
+    locationId?: string | null;
+    assignedTo?: string | null;
+    imageUrl?: string | null;
+    createdAt: number;
+    updatedAt: number;
+  }): Asset => ({
+    imageUrl:
+      asset.imageUrl ??
+      process.env.NEXT_PUBLIC_ASSET_FALLBACK_IMAGE_URL ??
+      undefined,
+    id: asset.id,
+    assetId: asset.assetTag,
+    category: asset.category as AssetCategory,
+    mainCategory: undefined,
+    location: asset.locationId ?? undefined,
+    serialNumber: asset.serialNumber,
+    purchaseCost: asset.purchaseCost ?? 0,
+    residualValue: 0,
+    usefulLife: 0,
+    purchaseDate: asset.purchaseDate
+      ? new Date(asset.purchaseDate).toISOString()
+      : new Date().toISOString(),
+    currentBookValue: asset.currentBookValue ?? asset.purchaseCost ?? 0,
+    status: asset.status as Asset["status"],
+    assignedEmployeeId: asset.assignedTo ?? undefined,
+    assignedEmployeeName: undefined,
+    createdAt: new Date(asset.createdAt).toISOString(),
+    updatedAt: new Date(asset.updatedAt).toISOString(),
+  });
 
   const resetForm = () => {
     setAssetId("");
@@ -134,7 +223,31 @@ export function AssetFormDialog({
     setPurchasePrice("");
     setAssetImage(null);
     setAssetImagePreview(null);
+    setImageUrl(null);
+    setImageUploadStatus("idle");
+    setImageUploadError(null);
     setAssetIdAuto(true);
+    setAssignedEmployeeId("");
+  };
+
+  const fillDemoData = () => {
+    const today = new Date();
+    const yyyy = String(today.getFullYear());
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+
+    setAssetCategory("MONITOR");
+    setMainCategory("shiree");
+    setAssetIdAuto(true);
+    setSerialItems(["SN-DEMO-001", "SN-DEMO-002"]);
+    setSerialNumber("");
+    setPurchaseDate(`${yyyy}-${mm}-${dd}`);
+    setPurchasePrice("1200");
+    setLocation("Гурван гол");
+    setRoomType("office");
+    setRoomNumber("3 давхрын заал");
+    setLocationStep("roomNumber");
+    setNote("Demo asset");
   };
 
   const handleAddSerial = () => {
@@ -147,14 +260,14 @@ export function AssetFormDialog({
   };
 
   const handleAddAsset = () => {
-    if (!assetId || !assetCategory || !purchaseDate) return;
+    if (!assetId || !assetCategory || !purchaseDate || isSaving) return;
+    if (imageUploadStatus === "uploading") return;
 
-    const serialList =
-      serialItems.length > 0
-        ? serialItems
-        : serialNumber.trim()
-          ? [serialNumber.trim()]
-          : [];
+    const serialList = [...serialItems];
+    const pendingSerial = serialNumber.trim();
+    if (pendingSerial && !serialList.includes(pendingSerial)) {
+      serialList.push(pendingSerial);
+    }
 
     if (serialList.length === 0) return;
 
@@ -166,34 +279,125 @@ export function AssetFormDialog({
       .filter(Boolean)
       .join(" / ");
 
-    const nextAssets: Asset[] = serialList.map((serial, index) => {
-      const candidateId =
-        serialList.length === 1
-          ? baseId
-          : `${baseId}-${String(index + 1).padStart(2, "0")}`;
-      const uniqueAssetId = getUniqueAssetId(candidateId);
+    const purchaseTimestamp = Number.isNaN(Date.parse(purchaseDate))
+      ? undefined
+      : Date.parse(purchaseDate);
 
-      return {
-        id: createLocalId(),
-        assetId: uniqueAssetId,
-        category: assetCategory,
-        mainCategory: mainCategory || undefined,
-        location: resolvedLocation || undefined,
-        serialNumber: serial,
-        purchaseCost,
-        residualValue: 0,
-        usefulLife: 0,
-        purchaseDate,
-        currentBookValue: purchaseCost,
-        status: "AVAILABLE",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    const fallbackImageUrl =
+      process.env.NEXT_PUBLIC_ASSET_FALLBACK_IMAGE_URL ?? undefined;
 
-    onAddAssets(nextAssets);
-    onOpenChange(false);
-    resetForm();
+    setIsSaving(true);
+    (async () => {
+      try {
+        const uploadedUrl = await uploadImageIfNeeded();
+
+        if (mode === "edit" && initialAsset) {
+          const updateInput = {
+            assetTag: assetId,
+            category: assetCategory,
+            serialNumber: serialList[0],
+            status: initialAsset.status,
+            purchaseDate: purchaseTimestamp,
+            purchaseCost,
+            currentBookValue: purchaseCost,
+            locationId: resolvedLocation || undefined,
+            imageUrl:
+              uploadedUrl ??
+              (serialList.length > 1 ? fallbackImageUrl : undefined),
+          };
+
+          const result = await updateAssetMutation({
+            variables: { id: initialAsset.id, input: updateInput },
+          });
+
+          let updated = result.data?.updateAsset;
+          if (!updated) throw new Error("Empty updateAsset response");
+          let mapped = mapGraphqlAssetToLocal(updated);
+
+          if (
+            assignedEmployeeId &&
+            assignedEmployeeId !== initialAsset.assignedEmployeeId
+          ) {
+            const assignResult = await assignAssetMutation({
+              variables: {
+                assetId: initialAsset.id,
+                employeeId: assignedEmployeeId,
+              },
+            });
+            const assigned = assignResult.data?.assignAsset;
+            if (assigned) {
+              updated = assigned;
+              mapped = mapGraphqlAssetToLocal(assigned);
+            }
+          } else if (
+            !assignedEmployeeId &&
+            initialAsset.assignedEmployeeId
+          ) {
+            const returnResult = await returnAssetMutation({
+              variables: { assetId: initialAsset.id },
+            });
+            const returned = returnResult.data?.returnAsset;
+            if (returned) {
+              updated = returned;
+              mapped = mapGraphqlAssetToLocal(returned);
+            }
+          }
+
+          onUpdateAsset?.(mapped);
+          onOpenChange(false);
+          resetForm();
+          return;
+        }
+
+        const inputs = serialList.map((serial, index) => {
+          const candidateId =
+            serialList.length === 1
+              ? baseId
+              : `${baseId}-${String(index + 1).padStart(2, "0")}`;
+          const uniqueAssetId = getUniqueAssetId(candidateId);
+
+          return {
+            assetTag: uniqueAssetId,
+            category: assetCategory,
+            serialNumber: serial,
+            status: "AVAILABLE",
+            purchaseDate: purchaseTimestamp,
+            purchaseCost,
+            currentBookValue: purchaseCost,
+            locationId: resolvedLocation || undefined,
+            imageUrl:
+              uploadedUrl ??
+              (serialList.length > 1 ? fallbackImageUrl : undefined),
+          };
+        });
+
+        const createdAssets = await Promise.all(
+          inputs.map((input) =>
+            createAssetMutation({ variables: { input } }).then((result) => {
+              const created = result.data?.createAsset;
+              if (!created) {
+                throw new Error("Empty createAsset response");
+              }
+              return mapGraphqlAssetToLocal(created);
+            }),
+          ),
+        );
+
+        onAddAssets(createdAssets);
+        onOpenChange(false);
+        resetForm();
+      } catch (error) {
+        console.error("Failed to save asset:", error);
+        setImageUploadStatus("error");
+        setImageUploadError(
+          error instanceof Error ? error.message : "Upload failed",
+        );
+        toast.error("Upload failed");
+      } finally {
+        setIsSaving(false);
+      }
+    })();
+    return;
   };
 
   useEffect(() => {
@@ -206,6 +410,41 @@ export function AssetFormDialog({
       setPurchaseDate(`${yyyy}-${mm}-${dd}`);
     }
   }, [open, purchaseDate]);
+
+  useEffect(() => {
+    if (!open || mode !== "edit" || !initialAsset) return;
+
+    setAssetId(initialAsset.assetId);
+    setAssetCategory(initialAsset.category);
+    setMainCategory(initialAsset.mainCategory ?? "");
+    setSerialNumber(initialAsset.serialNumber);
+    setSerialItems([]);
+    setPurchasePrice(String(initialAsset.purchaseCost ?? 0));
+    setPurchaseDate(initialAsset.purchaseDate.slice(0, 10));
+    setImageUrl(initialAsset.imageUrl ?? null);
+    setAssetImage(null);
+    setAssetImagePreview(null);
+    setAssetIdAuto(false);
+    setAssignedEmployeeId(initialAsset.assignedEmployeeId ?? "");
+
+    if (resolvedInitialLocation) {
+      setLocation(resolvedInitialLocation.location);
+      setRoomType(resolvedInitialLocation.roomType);
+      setRoomNumber(resolvedInitialLocation.roomNumber);
+      setLocationStep(
+        resolvedInitialLocation.roomNumber
+          ? "roomNumber"
+          : resolvedInitialLocation.roomType
+            ? "roomType"
+            : "location",
+      );
+    } else {
+      setLocation("");
+      setRoomType("");
+      setRoomNumber("");
+      setLocationStep("location");
+    }
+  }, [initialAsset, mode, open, resolvedInitialLocation]);
 
   useEffect(() => {
     if (!assetCategory || !purchaseDate || !assetIdAuto) return;
@@ -227,15 +466,68 @@ export function AssetFormDialog({
     return () => URL.revokeObjectURL(nextUrl);
   }, [assetImage]);
 
+  const uploadImageIfNeeded = async () => {
+    if (!assetImage) return imageUrl;
+
+    const bucketName = process.env.NEXT_PUBLIC_R2_BUCKET_NAME;
+    const publicUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
+    const graphqlUrl = process.env.NEXT_PUBLIC_GRAPHQL_URL;
+    const presignUrl =
+      process.env.NEXT_PUBLIC_R2_PRESIGN_URL ??
+      (graphqlUrl
+        ? graphqlUrl.replace(/\/api\/graphql$/, "/api/r2/presign")
+        : "/api/r2/presign");
+
+    if (!bucketName || !publicUrl) {
+      throw new Error("Missing R2 environment variables.");
+    }
+
+    setImageUploadStatus("uploading");
+    setImageUploadError(null);
+
+    const safeName = assetImage.name.replace(/\s+/g, "-");
+    const key = `assets/${crypto.randomUUID()}-${safeName}`;
+
+    const presignRes = await fetch(presignUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        key,
+        contentType: assetImage.type,
+        bucketName,
+      }),
+    });
+
+    if (!presignRes.ok) {
+      throw new Error("Failed to get presigned URL");
+    }
+
+    const { url } = (await presignRes.json()) as { url: string };
+
+    await fetch(url, {
+      method: "PUT",
+      body: assetImage,
+      headers: { "Content-Type": assetImage.type },
+    });
+
+    const nextUrl = `${publicUrl}/${key}`;
+    setImageUrl(nextUrl);
+    setImageUploadStatus("success");
+    toast.success("Upload succeeded");
+    return nextUrl;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-white sm:max-w-[760px] rounded-3xl p-8 shadow-xl mb-6 max-h-[85vh] overflow-y-auto">
         <DialogHeader className="mb-6">
           <DialogTitle className="text-[24px] font-semibold">
-            Шинэ хөрөнгө нэмэх
+            {mode === "edit" ? "Хөрөнгө засах" : "Шинэ хөрөнгө нэмэх"}
           </DialogTitle>
           <DialogDescription className="text-[16px]">
-            Системд шинэ хөрөнгө бүртгэх
+            {mode === "edit"
+              ? "Хөрөнгийн мэдээлэл засах"
+              : "Системд шинэ хөрөнгө бүртгэх"}
           </DialogDescription>
         </DialogHeader>
 
@@ -371,6 +663,32 @@ export function AssetFormDialog({
             </div>
           </div>
 
+          {mode === "edit" && (
+            <div className="space-y-2">
+              <p className="text-lg font-semibold text-foreground">
+                Хуваарилсан ажилтан
+              </p>
+              <Select
+                value={assignedEmployeeId || "none"}
+                onValueChange={(value) =>
+                  setAssignedEmployeeId(value === "none" ? "" : value)
+                }
+              >
+                <SelectTrigger className="rounded-2xl border-0 bg-gray-100 text-base shadow-none focus:ring-0 w-full p-6">
+                  <SelectValue placeholder="Ажилтан сонгох" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Хуваарилаагүй</SelectItem>
+                  {(employeesData?.employees ?? []).map((employee) => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      {employee.firstName} {employee.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-2">
             <p className="text-lg font-semibold text-foreground">
               Серийн дугаар
@@ -478,10 +796,16 @@ export function AssetFormDialog({
                 className="h-12 rounded-2xl border-0 bg-gray-100 text-base shadow-none focus:ring-0"
               />
             </div>
-            {assetImagePreview ? (
+            {imageUploadStatus === "uploading" && (
+              <p className="text-xs text-muted-foreground">Зураг ачаалж байна...</p>
+            )}
+            {imageUploadStatus === "error" && (
+              <p className="text-xs text-destructive">{imageUploadError}</p>
+            )}
+            {assetImagePreview || imageUrl ? (
               <div className="overflow-hidden rounded-2xl border border-border bg-muted/20">
                 <img
-                  src={assetImagePreview}
+                  src={assetImagePreview ?? imageUrl ?? ""}
                   alt="Хөрөнгийн зураг"
                   className="h-44 w-full object-cover"
                 />
@@ -498,16 +822,33 @@ export function AssetFormDialog({
           <Button
             variant="outline"
             className="h-12 rounded-2xl px-6 text-lg"
+            onClick={fillDemoData}
+          >
+            Demo
+          </Button>
+          <Button
+            variant="outline"
+            className="h-12 rounded-2xl px-6 text-lg"
             onClick={() => onOpenChange(false)}
           >
             Цуцлах
           </Button>
           <Button
             onClick={handleAddAsset}
-            disabled={!assetId || !assetCategory || !purchaseDate}
+            disabled={
+              !assetId ||
+              !assetCategory ||
+              !purchaseDate ||
+              isSaving ||
+              imageUploadStatus === "uploading"
+            }
             className="h-12 rounded-2xl px-6 text-lg"
           >
-            Хөрөнгө нэмэх
+            {isSaving
+              ? "Хадгалж байна..."
+              : mode === "edit"
+                ? "Хадгалах"
+                : "Хөрөнгө нэмэх"}
           </Button>
         </DialogFooter>
       </DialogContent>
