@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { employees, assignments, assets, auditLogs, censusEvents, censusTasks, disposalRecords, maintenanceTickets, purchaseOrders, transfers } from "./schema";
+import { employees, assignments, assets, auditLogs, censusEvents, disposalRecords, maintenanceTickets, purchaseOrders, transfers, censusTasks } from "./schema";
 
 export const assignmentsRelations = relations(assignments, ({one}) => ({
 	employee: one(employees, {
@@ -16,7 +16,6 @@ export const employeesRelations = relations(employees, ({many}) => ({
 	assignments: many(assignments),
 	auditLogs: many(auditLogs),
 	censusEvents: many(censusEvents),
-	censusTasks: many(censusTasks),
 	disposalRecords: many(disposalRecords),
 	maintenanceTickets: many(maintenanceTickets),
 	purchaseOrders_approvedBy: many(purchaseOrders, {
@@ -34,14 +33,15 @@ export const employeesRelations = relations(employees, ({many}) => ({
 	transfers_fromEmployeeId: many(transfers, {
 		relationName: "transfers_fromEmployeeId_employees_id"
 	}),
+	censusTasks: many(censusTasks),
 }));
 
 export const assetsRelations = relations(assets, ({many}) => ({
 	assignments: many(assignments),
-	censusTasks: many(censusTasks),
 	disposalRecords: many(disposalRecords),
 	maintenanceTickets: many(maintenanceTickets),
 	transfers: many(transfers),
+	censusTasks: many(censusTasks),
 }));
 
 export const auditLogsRelations = relations(auditLogs, ({one}) => ({
@@ -57,21 +57,6 @@ export const censusEventsRelations = relations(censusEvents, ({one, many}) => ({
 		references: [employees.id]
 	}),
 	censusTasks: many(censusTasks),
-}));
-
-export const censusTasksRelations = relations(censusTasks, ({one}) => ({
-	employee: one(employees, {
-		fields: [censusTasks.verifierId],
-		references: [employees.id]
-	}),
-	asset: one(assets, {
-		fields: [censusTasks.assetId],
-		references: [assets.id]
-	}),
-	censusEvent: one(censusEvents, {
-		fields: [censusTasks.censusId],
-		references: [censusEvents.id]
-	}),
 }));
 
 export const disposalRecordsRelations = relations(disposalRecords, ({one}) => ({
@@ -128,5 +113,20 @@ export const transfersRelations = relations(transfers, ({one}) => ({
 	asset: one(assets, {
 		fields: [transfers.assetId],
 		references: [assets.id]
+	}),
+}));
+
+export const censusTasksRelations = relations(censusTasks, ({one}) => ({
+	employee: one(employees, {
+		fields: [censusTasks.verifierId],
+		references: [employees.id]
+	}),
+	asset: one(assets, {
+		fields: [censusTasks.assetId],
+		references: [assets.id]
+	}),
+	censusEvent: one(censusEvents, {
+		fields: [censusTasks.censusId],
+		references: [censusEvents.id]
 	}),
 }));
