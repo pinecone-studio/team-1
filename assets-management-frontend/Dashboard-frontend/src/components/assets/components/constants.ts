@@ -22,7 +22,7 @@ export const MAIN_CATEGORY_OPTIONS = [
 export const LOCATION_OPTIONS = ["Гурван гол", "Gallery", "Tokyo", "Sednay"];
 
 export const ROOM_TYPE_OPTIONS = [
-  { value: "office", label: "Office" },
+  { value: "office", label: "Оффис" },
   { value: "aguu", label: "Агуулах" },
   { value: "angi", label: "Анги" },
 ];
@@ -31,12 +31,12 @@ export const ROOM_OPTIONS_BY_TYPE: Record<string, string[]> = {
   office: [
     "Ариун цэврийн өрөө",
     "3 давхрын заал",
-    "4-н давхрын заал",
+    "4 давхрын заал",
     "Гал тогоо",
     "Хурлын өрөө",
   ],
   aguu: ["3-н давхар", "4-н давхар"],
-  angi: ["301", "302", "303", "304", "305", "306"],
+  angi: ["301", "302", "303", "304"],
 };
 
 export const getRoomTypeLabel = (value: string) =>
