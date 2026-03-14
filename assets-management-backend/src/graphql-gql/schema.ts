@@ -42,8 +42,8 @@ export const typeDefs = /* GraphQL */ `
 		serialNumber: String!
 		status: String!
 		purchaseDate: Float
-		purchaseCost: Int
-		currentBookValue: Int
+		purchaseCost: Float
+		currentBookValue: Float
 		locationId: String
 		assignedTo: String
 		imageUrl: String
@@ -68,6 +68,11 @@ export const typeDefs = /* GraphQL */ `
 		conditionAtAssign: String!
 		conditionAtReturn: String
 		status: String!
+		assignedValue: Float
+		paymentPlanMonths: Int
+		interestRate: Float
+		monthlyPayment: Float
+		totalPayment: Float
 		employee: Employee
 		asset: Asset
 	}
@@ -78,8 +83,8 @@ export const typeDefs = /* GraphQL */ `
 		serialNumber: String!
 		status: String
 		purchaseDate: Float
-		purchaseCost: Int
-		currentBookValue: Int
+		purchaseCost: Float
+		currentBookValue: Float
 		locationId: String
 		assignedTo: String
 		imageUrl: String
@@ -92,8 +97,8 @@ export const typeDefs = /* GraphQL */ `
 		serialNumber: String
 		status: String
 		purchaseDate: Float
-		purchaseCost: Int
-		currentBookValue: Int
+		purchaseCost: Float
+		currentBookValue: Float
 		locationId: String
 		assignedTo: String
 		imageUrl: String
@@ -163,7 +168,7 @@ export const typeDefs = /* GraphQL */ `
 		assetTag: String!
 		category: String!
 		serialNumber: String!
-		purchaseCost: Int
+		purchaseCost: Float
 		purchaseDate: Float
 	}
 
@@ -172,7 +177,7 @@ export const typeDefs = /* GraphQL */ `
 		assetTag: String!
 		category: String!
 		serialNumber: String!
-		purchaseCost: Int
+		purchaseCost: Float
 		purchaseDate: Float
 		requesterEmployeeId: ID!
 		requesterEmail: String!
@@ -391,7 +396,7 @@ export const typeDefs = /* GraphQL */ `
 		severity: String!
 		status: String!
 		vendorId: ID
-		repairCost: Int
+		repairCost: Float
 		resolvedAt: Float
 		createdAt: Float!
 		updatedAt: Float!
@@ -403,7 +408,7 @@ export const typeDefs = /* GraphQL */ `
 		requestedBy: ID!
 		approvedBy: ID
 		lineItemsJson: String!
-		totalCost: Int!
+		totalCost: Float!
 		status: String!
 		deliveredAt: Float
 		createdAt: Float!
@@ -445,7 +450,11 @@ export const typeDefs = /* GraphQL */ `
 			employeeId: ID!
 			conditionAtAssign: String
 			accessoriesJson: String
+			assignedValue: Float
+			paymentPlanMonths: Int
+			interestRate: Float
 		): Asset
+		updateAssetCategory(assetId: ID!, categoryId: ID!): Asset
 		returnAsset(assetId: ID!, conditionAtReturn: String): Asset
 		createPurchaseRequest(
 			assetTag: String!

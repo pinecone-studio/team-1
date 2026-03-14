@@ -49,18 +49,24 @@ fragment LocationFields on Location {
 }
 
 # Queries
+query GetAssets($office: String, $categoryIds: [ID!], $subCategoryIds: [ID!]) {
+  assets(office: $office, categoryIds: $categoryIds, subCategoryIds: $subCategoryIds) {
+    ...AssetFields
+  }
+}
+
+query GetAsset($id: ID!) {
+  asset(id: $id) {
+    ...AssetFields
+  }
+}
+
 query SearchAssets($filter: AssetSearchInput!, $pagination: PaginationInput, $sort: AssetSortInput) {
   searchAssets(filter: $filter, pagination: $pagination, sort: $sort) {
     total
     items {
       ...AssetFields
     }
-  }
-}
-
-query Assets($office: String, $categoryIds: [ID!], $subCategoryIds: [ID!]) {
-  assets(office: $office, categoryIds: $categoryIds, subCategoryIds: $subCategoryIds) {
-    ...AssetFields
   }
 }
 
@@ -75,8 +81,6 @@ query GetAssetHistory($assetId: ID!) {
     }
   }
 }
-
-
 
 query GetVendors {
   vendors {
@@ -99,9 +103,81 @@ query GetLocations {
   }
 }
 
+query GetActiveDisposals {
+  disposalRequests(status: "PENDING") {
+    id
+    assetId
+    method
+    status
+    createdAt
+  }
+}
+
+query GetActiveOffboarding($employeeId: ID!) {
+  offboardingEvent(employeeId: $employeeId) {
+    id
+    status
+    totalAssets
+    returnedAssets
+    createdAt
+  }
+}
+
+query GetEligibleCategoryUpdateAssets {
+  searchAssets(filter: { status: AVAILABLE }) {
+    items {
+      ...AssetFields
+    }
+  }
+}
+
 # Mutations
-mutation AssignAsset($assetId: ID!, $employeeId: ID!, $conditionAtAssign: String) {
-  assignAsset(assetId: $assetId, employeeId: $employeeId, conditionAtAssign: $conditionAtAssign) {
+mutation CreateAsset($input: AssetCreateInput!) {
+  createAsset(input: $input) {
+    ...AssetFields
+  }
+}
+
+mutation UpdateAsset($id: ID!, $input: AssetUpdateInput!) {
+  updateAsset(id: $id, input: $input) {
+    ...AssetFields
+  }
+}
+
+mutation DeleteAsset($id: ID!) {
+  deleteAsset(id: $id)
+}
+
+mutation AssignAsset(
+  $assetId: ID!
+  $employeeId: ID!
+  $conditionAtAssign: String
+  $accessoriesJson: String
+  $assignedValue: Int
+  $paymentPlanMonths: Int
+  $interestRate: Float
+) {
+  assignAsset(
+    assetId: $assetId
+    employeeId: $employeeId
+    conditionAtAssign: $conditionAtAssign
+    accessoriesJson: $accessoriesJson
+    assignedValue: $assignedValue
+    paymentPlanMonths: $paymentPlanMonths
+    interestRate: $interestRate
+  ) {
+    ...AssetFields
+  }
+}
+
+mutation ReturnAsset($assetId: ID!, $conditionAtReturn: String) {
+  returnAsset(assetId: $assetId, conditionAtReturn: $conditionAtReturn) {
+    ...AssetFields
+  }
+}
+
+mutation UpdateAssetCategory($assetId: ID!, $categoryId: ID!) {
+  updateAssetCategory(assetId: $assetId, categoryId: $categoryId) {
     ...AssetFields
   }
 }
@@ -114,12 +190,6 @@ mutation TransferAsset($assetId: ID!, $fromEmployeeId: ID!, $toEmployeeId: ID!, 
     toEmployeeId
     reason
     transferredAt
-  }
-}
-
-mutation UpdateAsset($id: ID!, $input: AssetUpdateInput!) {
-  updateAsset(id: $id, input: $input) {
-    ...AssetFields
   }
 }
 
@@ -153,19 +223,4 @@ mutation RejectDisposal($id: ID!, $rejectedBy: ID!, $reason: String) {
     id
     status
   }
-}
-mutation CreateAsset($input: AssetCreateInput!) {
-  createAsset(input: $input) {
-    ...AssetFields
-  }
-}
-
-mutation ReturnAsset($assetId: ID!, $conditionAtReturn: String) {
-  returnAsset(assetId: $assetId, conditionAtReturn: $conditionAtReturn) {
-    ...AssetFields
-  }
-}
-
-mutation DeleteAsset($id: ID!) {
-  deleteAsset(id: $id)
 }

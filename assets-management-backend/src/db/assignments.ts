@@ -23,9 +23,23 @@ export async function assignAssetToEmployee(
   employeeId: string,
   conditionAtAssign = "GOOD",
   accessoriesJson?: string,
+  financials?: {
+    assignedValue?: number;
+    paymentPlanMonths?: number;
+    interestRate?: number;
+  },
 ) {
   const db = await getDb();
   const now = Date.now();
+
+  let monthlyPayment: number | undefined;
+  let totalPayment: number | undefined;
+
+  if (financials?.assignedValue && financials?.paymentPlanMonths) {
+    const interest = financials.interestRate ?? 0;
+    totalPayment = Math.round(financials.assignedValue * (1 + interest / 100));
+    monthlyPayment = Math.round(totalPayment / financials.paymentPlanMonths);
+  }
 
   await db.insert(assignments).values({
     id: crypto.randomUUID(),
@@ -35,6 +49,11 @@ export async function assignAssetToEmployee(
     conditionAtAssign,
     status: "ACTIVE",
     accessoriesJson,
+    assignedValue: financials?.assignedValue,
+    paymentPlanMonths: financials?.paymentPlanMonths,
+    interestRate: financials?.interestRate?.toString(),
+    monthlyPayment,
+    totalPayment,
     createdAt: now,
     updatedAt: now,
   });
