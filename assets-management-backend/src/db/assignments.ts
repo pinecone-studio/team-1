@@ -33,7 +33,7 @@ export async function assignAssetToEmployee(
     employeeId,
     assignedAt: now,
     conditionAtAssign,
-    status: "ACTIVE",
+    status: "PENDING",
     accessoriesJson,
     createdAt: now,
     updatedAt: now,
@@ -41,7 +41,7 @@ export async function assignAssetToEmployee(
 
   await db
     .update(assets)
-    .set({ assignedTo: employeeId, status: "ASSIGNED", updatedAt: now })
+    .set({ assignedTo: employeeId, status: "PENDING_APPROVAL", updatedAt: now })
     .where(eq(assets.id, assetId));
 
   const asset = await getAssetById(assetId);
@@ -50,7 +50,7 @@ export async function assignAssetToEmployee(
       employeeId,
       title: "New Asset Assigned",
       message: `A new asset ${asset.assetTag} (${asset.serialNumber}) has been assigned to you.`,
-      type: "INFO",
+      type: "WARNING",
       link: `/my-assets/${assetId}`,
     });
   }
@@ -68,14 +68,21 @@ export async function returnAssetFromEmployee(
   const openAssignment = await db
     .select({ id: assignments.id })
     .from(assignments)
-    .where(and(eq(assignments.assetId, assetId), isNull(assignments.returnedAt)))
+    .where(
+      and(eq(assignments.assetId, assetId), isNull(assignments.returnedAt)),
+    )
     .orderBy(desc(assignments.assignedAt))
     .get();
 
   if (openAssignment?.id) {
     await db
       .update(assignments)
-      .set({ returnedAt: now, conditionAtReturn, status: "RETURNED", updatedAt: now })
+      .set({
+        returnedAt: now,
+        conditionAtReturn,
+        status: "RETURNED",
+        updatedAt: now,
+      })
       .where(eq(assignments.id, openAssignment.id));
   }
 
@@ -103,7 +110,7 @@ export async function transferAsset(
   fromEmployeeId: string,
   toEmployeeId: string,
   reason?: string,
-  conditionNoted = "GOOD"
+  conditionNoted = "GOOD",
 ) {
   const db = await getDb();
   const now = Date.now();
@@ -123,12 +130,20 @@ export async function transferAsset(
   const openAssignment = await db
     .select({ id: assignments.id })
     .from(assignments)
-    .where(and(eq(assignments.assetId, assetId), isNull(assignments.returnedAt)))
+    .where(
+      and(eq(assignments.assetId, assetId), isNull(assignments.returnedAt)),
+    )
     .get();
 
   if (openAssignment) {
-    await db.update(assignments)
-      .set({ returnedAt: now, conditionAtReturn: conditionNoted, status: "RETURNED", updatedAt: now })
+    await db
+      .update(assignments)
+      .set({
+        returnedAt: now,
+        conditionAtReturn: conditionNoted,
+        status: "RETURNED",
+        updatedAt: now,
+      })
       .where(eq(assignments.id, openAssignment.id));
   }
 
@@ -143,7 +158,8 @@ export async function transferAsset(
     updatedAt: now,
   });
 
-  await db.update(assets)
+  await db
+    .update(assets)
     .set({ assignedTo: toEmployeeId, status: "ASSIGNED", updatedAt: now })
     .where(eq(assets.id, assetId));
 
