@@ -44,6 +44,7 @@ export function AssetFormDialog({
   const [assetCategory, setAssetCategory] = useState<AssetCategory | "">("");
   const [mainCategory, setMainCategory] = useState("");
   const [location, setLocation] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
   const [roomType, setRoomType] = useState("");
   const [roomNumber, setRoomNumber] = useState("");
   const [locationStep, setLocationStep] = useState<
@@ -79,6 +80,9 @@ export function AssetFormDialog({
   const categoryEntries = Object.entries(CATEGORY_LABELS) as Array<
     [AssetCategory, string]
   >;
+  const filteredLocations = LOCATION_OPTIONS.filter((item) =>
+    item.toLowerCase().includes(locationFilter.trim().toLowerCase()),
+  );
 
   const createUniqueCode = (prefix: string, usedSet: Set<string>) => {
     let nextCode = "";
@@ -123,6 +127,7 @@ export function AssetFormDialog({
     setAssetCategory("");
     setMainCategory("");
     setLocation("");
+    setLocationFilter("");
     setRoomType("");
     setRoomNumber("");
     setLocationStep("location");
@@ -300,12 +305,21 @@ export function AssetFormDialog({
                   <div className="absolute z-50 mt-2 w-full rounded-2xl border border-border bg-white p-2 shadow-lg">
                     {locationStep === "location" && (
                       <>
-                        {LOCATION_OPTIONS.map((item) => (
+                        <Input
+                          value={locationFilter}
+                          onChange={(event) =>
+                            setLocationFilter(event.target.value)
+                          }
+                          placeholder="Байршил хайх..."
+                          className="mb-2 h-9 rounded-xl border border-border bg-muted/30 text-sm shadow-none focus:ring-0"
+                        />
+                        {filteredLocations.map((item) => (
                           <button
                             key={item}
                             type="button"
                             onClick={() => {
                               setLocation(item);
+                              setLocationFilter("");
                               setRoomType("");
                               setRoomNumber("");
                               setLocationStep("roomType");
@@ -315,6 +329,11 @@ export function AssetFormDialog({
                             {item}
                           </button>
                         ))}
+                        {filteredLocations.length === 0 && (
+                          <div className="px-3 py-2 text-sm text-muted-foreground">
+                            Байршил олдсонгүй
+                          </div>
+                        )}
                       </>
                     )}
                     {locationStep === "roomType" && (

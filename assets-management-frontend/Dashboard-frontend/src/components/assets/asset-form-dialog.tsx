@@ -65,6 +65,8 @@ export function AssetFormDialog({
   const [location, setLocation] = useState("");
   const [roomType, setRoomType] = useState("");
   const [roomNumber, setRoomNumber] = useState("");
+  const [hoveredLocation, setHoveredLocation] = useState<string | null>(null);
+  const [hoveredRoomType, setHoveredRoomType] = useState<string | null>(null);
   const [locationStep, setLocationStep] = useState<
     "location" | "roomType" | "roomNumber"
   >("location");
@@ -583,61 +585,87 @@ export function AssetFormDialog({
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 </button>
                 {locationOpen && (
-                  <div className="absolute z-50 mt-2 w-full rounded-2xl border border-border bg-white p-2 shadow-lg">
-                    {locationStep === "location" && (
-                      <>
+                  <div
+                    className="absolute z-50 mt-2 w-full rounded-2xl border border-border bg-white p-2 shadow-lg"
+                    onMouseLeave={() => {
+                      setHoveredLocation(null);
+                      setHoveredRoomType(null);
+                    }}
+                  >
+                    <div className="flex gap-2">
+                      <div className="w-full space-y-1 rounded-xl bg-white p-1">
                         {LOCATION_OPTIONS.map((item) => (
                           <button
                             key={item}
                             type="button"
+                            onMouseEnter={() => {
+                              setHoveredLocation(item);
+                              setHoveredRoomType(null);
+                            }}
                             onClick={() => {
                               setLocation(item);
                               setRoomType("");
                               setRoomNumber("");
                               setLocationStep("roomType");
                             }}
-                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-base hover:bg-muted/50"
+                            className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-base hover:bg-muted/50"
                           >
                             {item}
+                            <span className="text-xs text-muted-foreground">
+                              →
+                            </span>
                           </button>
                         ))}
-                      </>
-                    )}
-                    {locationStep === "roomType" && (
-                      <>
-                        {ROOM_TYPE_OPTIONS.map((item) => (
-                          <button
-                            key={item.value}
-                            type="button"
-                            onClick={() => {
-                              setRoomType(item.value);
-                              setRoomNumber("");
-                              setLocationStep("roomNumber");
-                            }}
-                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-base hover:bg-muted/50"
-                          >
-                            {item.label}
-                          </button>
-                        ))}
-                      </>
-                    )}
-                    {locationStep === "roomNumber" && (
-                      <>
-                        {(ROOM_OPTIONS_BY_TYPE[roomType] ?? []).map((room) => (
-                          <button
-                            key={room}
-                            type="button"
-                            onClick={() => {
-                              setRoomNumber(room);
-                              setLocationOpen(false);
-                            }}
-                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-base hover:bg-muted/50"
-                          >
-                            {room}
-                          </button>
-                        ))}
-                      </>
-                    )}
+                      </div>
+
+                      {hoveredLocation && (
+                        <div className="w-full space-y-1 rounded-xl bg-white p-1">
+                          {ROOM_TYPE_OPTIONS.map((item) => (
+                            <button
+                              key={item.value}
+                              type="button"
+                              onMouseEnter={() =>
+                                setHoveredRoomType(item.value)
+                              }
+                              onClick={() => {
+                                setLocation(hoveredLocation);
+                                setRoomType(item.value);
+                                setRoomNumber("");
+                                setLocationStep("roomNumber");
+                              }}
+                              className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-base hover:bg-muted/50"
+                            >
+                              {item.label}
+                              <span className="text-xs text-muted-foreground">
+                                →
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {hoveredLocation && hoveredRoomType && (
+                        <div className="w-full space-y-1 rounded-xl bg-white p-1">
+                          {(ROOM_OPTIONS_BY_TYPE[hoveredRoomType] ?? []).map(
+                            (room) => (
+                              <button
+                                key={room}
+                                type="button"
+                                onClick={() => {
+                                  setLocation(hoveredLocation);
+                                  setRoomType(hoveredRoomType);
+                                  setRoomNumber(room);
+                                  setLocationOpen(false);
+                                }}
+                                className="flex w-full items-center rounded-xl px-3 py-2 text-left text-base hover:bg-muted/50"
+                              >
+                                {room}
+                              </button>
+                            ),
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
