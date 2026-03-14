@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { Check, X, Bell } from "lucide-react"; // Шинэ icon-ууд
+import React, { useState } from "react";
+import { Check, X, Bell, Eye, ClipboardCheck } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,48 +14,52 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { toast } from "sonner"; // Мэдэгдэл харуулахад
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 
-interface DemoEmployeeContentProps {
-  title?: string;
-}
+export function DemoEmployeeContent({ title = "Миний хөрөнгө" }: { title?: string }) {
+  // Шалгасан эсэхийг хянах state
+  const [isChecked, setIsChecked] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-export function DemoEmployeeContent({
-  title = "Миний хөрөнгө",
-}: DemoEmployeeContentProps) {
-  // Хөрөнгө хүлээн авах функц
   const handleApprove = (assetId: string) => {
-    toast.success(`${assetId} дугаартай хөрөнгийг хүлээн авлаа.`);
-    // Энд backend mutation дуудна
+    toast.success(`${assetId} хөрөнгийг хүлээн авлаа. PDF гэрээ үүсэж байна...`);
   };
 
-  // Татгалзах функц
   const handleReject = (assetId: string) => {
-    toast.error(`${assetId} дугаартай хөрөнгөөс татгалзлаа.`);
-    // Энд backend mutation дуудна
+    toast.error(`${assetId} хөрөнгөөс татгалзлаа.`);
+  };
+
+  const handleVerify = () => {
+    setIsChecked(true);
+    setIsDialogOpen(false);
+    toast.info("Хөрөнгийн нөхцөлийг шалгаж дууслаа. Одоо баталгаажуулах боломжтой.");
   };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-auto p-6">
-      {/* 1. Header хэсэг - Мэдэгдлийн хэсэгтэй */}
+      {/* 1. Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
-          <p className="text-sm text-muted-foreground">
-            Танд ирсэн хөрөнгө болон хүсэлтүүд
-          </p>
+          {/* <p className="text-sm text-muted-foreground">Танд ирсэн хөрөнгө болон хүсэлтүүд</p> */}
         </div>
         <div className="relative">
           <Button variant="outline" size="icon" className="rounded-full">
             <Bell className="h-5 w-5" />
-            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] text-white">
-              1
-            </span>
+            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] text-white">1</span>
           </Button>
         </div>
       </div>
 
-      {/* 2. Хүлээгдэж буй хүсэлтийн карт (Анхаарал татах хэсэг) */}
+      {/* 2. Pending Request Card */}
       <Card className="mt-6 border-amber-200 bg-amber-50/50">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-medium text-amber-800">
@@ -63,26 +67,41 @@ export function DemoEmployeeContent({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col justify-between gap-4 rounded-lg border border-amber-200 bg-white p-4 sm:flex-row sm:items-center">
+          <div className="flex flex-col justify-between gap-4 rounded-lg border border-amber-200 bg-white p-4 sm:flex-row sm:items-center shadow-sm">
             <div className="space-y-1">
-              <p className="font-semibold text-foreground">
-                MacBook Pro 14" (M3 Max)
-              </p>
-              <p className="text-sm text-muted-foreground">
-                ID: #ASSET-9921 | Огноо: 2026.03.14
-              </p>
+              <p className="font-semibold text-foreground italic">MacBook Pro 14" (M3 Max)</p>
+              <p className="text-sm text-muted-foreground">ID: #ASSET-9921 | 2026.03.14</p>
             </div>
-            <div className="flex items-center gap-2">
+
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Нөхцөл шалгах товч */}
+              {!isChecked ? (
+                <Button 
+                  onClick={() => setIsDialogOpen(true)}
+                  className="gap-2 bg-amber-500 hover:bg-amber-600 text-white"
+                >
+                  <Eye className="h-4 w-4" /> Нөхцөл шалгах
+                </Button>
+              ) : (
+                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 py-2 px-3 gap-1">
+                  <ClipboardCheck className="h-4 w-4" /> Шалгасан
+                </Badge>
+              )}
+
+              {/* Зөвшөөрөх, Татгалзах - isChecked үнэн үед л идэвхжнэ */}
               <Button
                 onClick={() => handleApprove("ASSET-9921")}
                 variant="outline"
-                className="gap-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                disabled={!isChecked}
+                className="gap-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 disabled:opacity-30"
               >
                 <Check className="h-4 w-4" /> Хүлээн авах
               </Button>
               <Button
                 onClick={() => handleReject("ASSET-9921")}
                 variant="destructive"
+                disabled={!isChecked}
+                className="disabled:opacity-30"
               >
                 <X className="h-4 w-4" /> Татгалзах
               </Button>
@@ -91,46 +110,65 @@ export function DemoEmployeeContent({
         </CardContent>
       </Card>
 
-      {/* 3. Миний эзэмшиж буй хөрөнгийн жагсаалт */}
+      {/* 3. My Assets Table (Хэвээрээ) */}
       <Card className="mt-6 border-border bg-card">
         <CardHeader>
-          <CardTitle className="text-base font-semibold text-foreground">
-            Миний эзэмшиж буй хөрөнгө
-          </CardTitle>
+          <CardTitle className="text-base font-semibold">Миний эзэмшиж буй хөрөнгө</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border">
-                  <TableHead className="w-[120px]">Хөрөнгийн ID</TableHead>
-                  <TableHead>Төрөл / Нэр</TableHead>
-                  <TableHead>Хүлээн авсан</TableHead>
-                  <TableHead>Төлөв</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow className="border-border">
-                  <TableCell className="font-medium text-foreground">
-                    #DEV-202
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    Dell 27" Monitor
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    2025.12.01
-                  </TableCell>
-                  <TableCell>
-                    <Badge className="rounded-full bg-emerald-100 text-emerald-700">
-                      Баталгаажсан
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Хөрөнгийн ID</TableHead>
+                <TableHead>Нэр</TableHead>
+                <TableHead>Төлөв</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell>#DEV-202</TableCell>
+                <TableCell>Dell 27" Monitor</TableCell>
+                <TableCell><Badge variant="secondary">Баталгаажсан</Badge></TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
+
+      {/* 4. Нөхцөл шалгах Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Хөрөнгийн нөхцөл шалгах</DialogTitle>
+            <DialogDescription>
+              #ASSET-9921 дугаартай хөрөнгийн одоогийн байдал
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="text-muted-foreground">Төхөөрөмжийн төлөв:</div>
+              <div className="font-medium text-emerald-600">Шинэ (New)</div>
+              <div className="text-muted-foreground">Дагалдах хэрэгсэл:</div>
+              <div className="font-medium">Цэнэглэгч, Хайрцаг, Mouse</div>
+              <div className="text-muted-foreground">Тэмдэглэл:</div>
+              <div className="font-medium">Дэлгэц дээр хамгаалалтын наалттай.</div>
+            </div>
+            <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
+              * Та "Шалгасан" товчийг дарснаар хөрөнгийн физик нөхцөлийг хүлээн зөвшөөрч байгааг анхаарна уу.
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>
+              Болих
+            </Button>
+            <Button className="bg-foreground text-background" onClick={handleVerify}>
+              Шалгасан
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
