@@ -15,6 +15,7 @@ const { handleRequest } = Yoga.createYoga({
   schema,
   graphqlEndpoint: "/api/graphql",
   fetchAPI: { Response, Request },
+  maskedErrors: false,
 });
 
 type RouteContext = { params: Promise<{}> };

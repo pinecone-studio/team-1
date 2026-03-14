@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  AssetsDocument,
+  GetAssetsDocument,
   CategoriesDocument,
   DeleteAssetDocument,
   AssetFieldsFragment,
@@ -63,7 +63,7 @@ export function AssetsContent() {
     category: new Set(),
     subCategory: new Set(),
   });
-  const { data, loading, error, refetch } = useQuery(AssetsDocument, {
+  const { data, loading, error, refetch } = useQuery(GetAssetsDocument, {
     variables: {
       office: Array.from(filterState.location)[0] ?? "Гурван гол",
       categoryIds: Array.from(filterState.category),

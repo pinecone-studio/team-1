@@ -4,21 +4,24 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AssetsDocument } from "@/gql/graphql";
+import { GetAssetsDocument, AssetFieldsFragmentDoc } from "@/gql/graphql";
+import { useFragment } from "@/gql/fragment-masking";
 
 const COLORS = ["#475569", "#0891B2", "#16A34A", "#E11D48", "#fb923c", "#FECDD3"];
 const OTHER_LABEL = "Бусад";
 
 export function AssetDistributionChart() {
-  const { data: assetsData, loading } = useQuery(AssetsDocument);
+  const { data: assetsData, loading } = useQuery(GetAssetsDocument);
 
   const chartData = useMemo(() => {
     const assets = assetsData?.assets ?? [];
     const counts = new Map<string, number>();
 
-    assets.forEach((asset) => {
-      const key = asset.category || OTHER_LABEL;
-      counts.set(key, (counts.get(key) ?? 0) + 1);
+    assets.forEach((a) => {
+      const asset = useFragment(AssetFieldsFragmentDoc, a);
+      const category = asset.category || OTHER_LABEL;
+      const currentCount = counts.get(category) ?? 0;
+      counts.set(category, currentCount + 1);
     });
 
     const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);

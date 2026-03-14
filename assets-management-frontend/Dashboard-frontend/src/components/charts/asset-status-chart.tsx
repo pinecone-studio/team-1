@@ -12,18 +12,20 @@ import {
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AssetsDocument } from "@/gql/graphql";
+import { GetAssetsDocument, AssetFieldsFragmentDoc } from "@/gql/graphql";
+import { useFragment } from "@/gql/fragment-masking";
 
 const UNKNOWN_LOCATION = "Тодорхойгүй";
 
 export function AssetStatusChart() {
-  const { data: assetsData, loading } = useQuery(AssetsDocument);
+  const { data: assetsData, loading } = useQuery(GetAssetsDocument);
 
   const chartData = useMemo(() => {
     const assets = assetsData?.assets ?? [];
     const buckets = new Map<string, { main: number; accent: number }>();
 
-    assets.forEach((asset) => {
+    assets.forEach((a) => {
+      const asset = useFragment(AssetFieldsFragmentDoc, a);
       const location = asset.locationId ?? UNKNOWN_LOCATION;
       const entry = buckets.get(location) ?? { main: 0, accent: 0 };
 

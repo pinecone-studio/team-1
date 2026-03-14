@@ -4,7 +4,8 @@ import { Package, UserCheck, UserX, DollarSign } from "lucide-react";
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { AssetsDocument } from "@/gql/graphql";
+import { GetAssetsDocument, EmployeesDocument, CategoriesDocument, AssetFieldsFragmentDoc } from "@/gql/graphql";
+import { useFragment } from "@/gql/fragment-masking";
 
 const formatMoney = (value: number) =>
   new Intl.NumberFormat("mn-MN", {
@@ -16,81 +17,120 @@ const formatMoney = (value: number) =>
 const formatCount = (value: number) => `${value}ш`;
 
 export function KPICards() {
-  const { data, loading } = useQuery(AssetsDocument);
+  const { data: assetsData, loading: assetsLoading } = useQuery(GetAssetsDocument);
 
   const kpiData = useMemo(() => {
-    const assets = data?.assets ?? [];
+    const assets = assetsData?.assets ?? [];
 
     const sumValue = (items: typeof assets) =>
-      items.reduce((acc, asset) => {
-        const value = asset.currentBookValue ?? asset.purchaseCost ?? 0;
-        return acc + value;
+      items.reduce((acc, a) => {
+        const asset = useFragment(AssetFieldsFragmentDoc, a);
+        return acc + (asset.currentBookValue ?? asset.purchaseCost ?? 0);
       }, 0);
 
-    const assigned = assets.filter((asset) => Boolean(asset.assignedTo));
-    const unassigned = assets.filter((asset) => !asset.assignedTo);
-    const sellable = assets.filter((asset) => asset.status === "AVAILABLE");
+    const totalAssets = assets.length;
+    const totalValue = sumValue(assets);
+    const assignedAssets = assets.filter((a) => {
+      const asset = useFragment(AssetFieldsFragmentDoc, a);
+      return !!asset.assignedTo;
+    });
+    const unassignedAssets = assets.filter((a) => {
+      const asset = useFragment(AssetFieldsFragmentDoc, a);
+      return !asset.assignedTo;
+    });
+    const sellableAssets = assets.filter((a) => {
+      const asset = useFragment(AssetFieldsFragmentDoc, a);
+      return asset.status === "AVAILABLE";
+    });
 
     return [
       {
         title: "Нийт хөрөнгө",
-        value: formatMoney(sumValue(assets)),
-        subtitle: formatCount(assets.length),
+        value: formatMoney(totalValue),
+        subtitle: formatCount(totalAssets),
         icon: Package,
         iconBg: "bg-[#475569]",
         iconColor: "text-white",
       },
       {
         title: "Эзэмшигчтэй",
-        value: formatMoney(sumValue(assigned)),
-        subtitle: formatCount(assigned.length),
+        value: formatMoney(sumValue(assignedAssets)),
+        subtitle: formatCount(assignedAssets.length),
         icon: UserCheck,
         iconBg: "bg-[#0891B2]",
         iconColor: "text-white",
       },
       {
         title: "Эзэмшигчгүй",
-        value: formatMoney(sumValue(unassigned)),
-        subtitle: formatCount(unassigned.length),
+        value: formatMoney(sumValue(unassignedAssets)),
+        subtitle: formatCount(unassignedAssets.length),
         icon: UserX,
         iconBg: "bg-[#16A34A]",
         iconColor: "text-white",
       },
       {
         title: "Зарж болох",
-        value: formatMoney(sumValue(sellable)),
-        subtitle: formatCount(sellable.length),
+        value: formatMoney(sumValue(sellableAssets)),
+        subtitle: formatCount(sellableAssets.length),
         icon: DollarSign,
         iconBg: "bg-[#F59E0B]",
         iconColor: "text-white",
       },
     ];
-  }, [data?.assets]);
+  }, [assetsData?.assets]);
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {kpiData.map((kpi) => (
-        <Card key={kpi.title} className="relative overflow-hidden">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{kpi.title}</p>
-                <p className="text-2xl font-bold tracking-tight text-foreground pt-[24px]">
-                  {loading ? "—" : kpi.value}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {loading ? "" : kpi.subtitle}
-                </p>
-              </div>
-              <div
-                className={`flex h-10 w-10 items-center justify-center rounded-lg ${kpi.iconBg}`}
-              >
-                <kpi.icon className={`h-5 w-5 ${kpi.iconColor}`} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {kpiData.map((kpi, idx) => (
+        <KPICard
+          key={kpi.title}
+          {...kpi}
+          loading={assetsLoading}
+          delay={idx * 100}
+        />
       ))}
     </div>
+  );
+}
+
+interface KPICardProps {
+  title: string;
+  value: string;
+  subtitle: string;
+  icon: any;
+  iconBg: string;
+  iconColor: string;
+  loading?: boolean;
+  delay?: number;
+}
+
+function KPICard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  iconBg,
+  iconColor,
+  loading,
+}: KPICardProps) {
+  return (
+    <Card className="relative overflow-hidden">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">{title}</p>
+            <p className="text-2xl font-bold tracking-tight text-foreground pt-[24px]">
+              {loading ? "—" : value}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {loading ? "" : subtitle}
+            </p>
+          </div>
+          <div className={`rounded-xl p-2 ${iconBg}`}>
+            <Icon className={`h-5 w-5 ${iconColor}`} />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

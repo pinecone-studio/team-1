@@ -32,10 +32,13 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AssignAssetDocument,
-  AssetsDocument,
-  AssignmentsDocument,
-  EmployeesDocument,
+  AssignmentFieldsFragmentDoc,
   AssetFieldsFragmentDoc,
+  GetAssetsDocument,
+  CreateAssetDocument,
+  CreateCategoryDocument,
+  EmployeesDocument,
+  AssignmentsDocument,
 } from "@/gql/graphql";
 import { useFragment } from "@/gql";
 
@@ -74,18 +77,20 @@ export function AssetAllocationContent() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const { data: employeesData } = useQuery(EmployeesDocument);
-  const { data: assetsData } = useQuery(AssetsDocument);
+  const { data: assetsData, loading: assetsLoading, error: assetsError } = useQuery(GetAssetsDocument);
   const { data: assignmentsData, loading: assignmentsLoading, refetch: refetchAssignments } =
     useQuery(AssignmentsDocument);
   const [assignAssetMutation] = useMutation(AssignAssetDocument);
   const rows = useMemo<AllocationRow[]>(() => {
     const assignments = assignmentsData?.assignments ?? [];
-    return assignments.map((assignment) => {
+    return assignments.map((a) => {
+      const assignment = useFragment(AssignmentFieldsFragmentDoc, a);
       const statusKey = assignment.status as keyof typeof STATUS_LABELS;
       return {
         id: assignment.id,
         assetTag: assignment.asset?.assetTag ?? assignment.assetId,
         employeeEmail: assignment.employee?.email ?? assignment.employeeId,
+        assignedAt: assignment.assignedAt, // Keep raw for sorting if needed, or format here
         assignedDate: new Date(assignment.assignedAt).toLocaleDateString(),
         status: STATUS_LABELS[statusKey] || statusKey,
         statusKey: statusKey as any,
@@ -96,7 +101,7 @@ export function AssetAllocationContent() {
         emailStatusKey: "disabled",
       };
     });
-  }, [assignmentsData?.assignments]);
+  }, [assignmentsData]);
 
   const visibleRows = useMemo(() => {
     if (statusTab === "all") return rows;
@@ -294,7 +299,7 @@ export function AssetAllocationContent() {
                   <SelectValue placeholder="Сонгох" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(employeesData?.employees ?? []).map((employee) => (
+                  {(employeesData?.employees ?? []).map((employee: any) => (
                     <SelectItem key={employee.id} value={employee.id}>
                       {employee.firstName} {employee.lastName} ({employee.email})
                     </SelectItem>

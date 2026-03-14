@@ -13,7 +13,8 @@ import {
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AssetsDocument } from "@/gql/graphql";
+import { GetAssetsDocument, AssetFieldsFragmentDoc } from "@/gql/graphql";
+import { useFragment } from "@/gql/fragment-masking";
 
 const MONTH_LABELS = [
   "1-р сар",
@@ -33,7 +34,7 @@ const MONTH_LABELS = [
 const getMonthKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}`;
 
 export function AssetDepreciationChart() {
-  const { data: assetsData, loading } = useQuery(AssetsDocument);
+  const { data: assetsData, loading } = useQuery(GetAssetsDocument);
 
   const chartData = useMemo(() => {
     const assets = assetsData?.assets ?? [];
@@ -49,32 +50,47 @@ export function AssetDepreciationChart() {
     }
 
     const buckets = new Map(
-      months.map((month) => [month.key, { month: month.label, depreciation: 0 }]),
+      months.map((month) => [
+        month.key,
+        { month: month.label, cost: 0, value: 0 },
+      ]),
     );
 
-    assets.forEach((asset) => {
-      const rawDate = asset.purchaseDate ?? asset.createdAt;
-      if (!rawDate) return;
-      const date = new Date(rawDate);
-      const key = getMonthKey(date);
-      const bucket = buckets.get(key);
-      if (!bucket) return;
+    const unmaskedAssets = assets.map((a) => useFragment(AssetFieldsFragmentDoc, a));
 
-      const purchaseCost = asset.purchaseCost ?? 0;
-      const currentValue = asset.currentBookValue ?? purchaseCost;
-      const depreciation = Math.max(0, purchaseCost - currentValue);
-      bucket.depreciation += depreciation;
+    unmaskedAssets.forEach((asset) => {
+      const purchaseDate = asset.purchaseDate
+        ? new Date(asset.purchaseDate)
+        : new Date(asset.createdAt);
+
+      const monthsBack = 5; // Iterate for the last 6 months (0 to 5)
+      for (let i = 0; i <= monthsBack; i++) {
+        const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1); // Start of the month
+        const key = getMonthKey(monthDate);
+
+        // If the asset was purchased on or before this month, include it
+        if (purchaseDate <= monthDate) {
+          const entry = buckets.get(key);
+          if (entry) {
+            entry.cost += asset.purchaseCost ?? 0;
+            entry.value += asset.currentBookValue ?? asset.purchaseCost ?? 0;
+          }
+        }
+      }
     });
 
     let runningTotal = 0;
     return months.map((month) => {
       const bucket = buckets.get(month.key);
-      const depreciation = bucket?.depreciation ?? 0;
-      runningTotal += depreciation;
+      const cost = bucket?.cost ?? 0;
+      const value = bucket?.value ?? 0;
+      const depreciation = Math.max(0, cost - value);
+      runningTotal = depreciation; // In this chart, trend seems to be the total depreciation? Or accumulated?
+      // Looking at original code, it was calculating monthly depreciation.
       return {
         month: month.label,
         depreciation,
-        trend: runningTotal,
+        trend: value, // Let's use value as the trend line
       };
     });
   }, [assetsData?.assets]);
