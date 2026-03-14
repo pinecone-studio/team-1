@@ -75,8 +75,11 @@ export function AssetAllocationContent() {
   const [errorMessage, setErrorMessage] = useState("");
   const { data: employeesData } = useQuery(EmployeesDocument);
   const { data: assetsData } = useQuery(AssetsDocument);
-  const { data: assignmentsData, loading: assignmentsLoading, refetch: refetchAssignments } =
-    useQuery(AssignmentsDocument);
+  const {
+    data: assignmentsData,
+    loading: assignmentsLoading,
+    refetch: refetchAssignments,
+  } = useQuery(AssignmentsDocument);
   const [assignAssetMutation] = useMutation(AssignAssetDocument);
   const rows = useMemo<AllocationRow[]>(() => {
     const assignments = assignmentsData?.assignments ?? [];
@@ -296,7 +299,8 @@ export function AssetAllocationContent() {
                 <SelectContent>
                   {(employeesData?.employees ?? []).map((employee) => (
                     <SelectItem key={employee.id} value={employee.id}>
-                      {employee.firstName} {employee.lastName} ({employee.email})
+                      {employee.firstName} {employee.lastName} ({employee.email}
+                      )
                     </SelectItem>
                   ))}
                 </SelectContent>
