@@ -1,0 +1,79 @@
+# Procurement Definitions
+
+fragment PurchaseRequestFields on PurchaseRequest {
+  id
+  assetTag
+  category
+  serialNumber
+  purchaseCost
+  purchaseDate
+  requesterEmployeeId
+  requesterEmail
+  status
+  decidedAt
+  decidedBy
+  createdAt
+  updatedAt
+}
+
+# Queries
+query GetPurchaseRequests($status: PurchaseRequestStatus) {
+  purchaseRequests(status: $status) {
+    ...PurchaseRequestFields
+  }
+}
+
+query GetPurchaseRequest($id: ID!) {
+  purchaseRequest(id: $id) {
+    ...PurchaseRequestFields
+  }
+}
+
+# Mutations
+mutation CreatePurchaseRequest(
+  $assetTag: String!,
+  $category: String!,
+  $serialNumber: String!,
+  $purchaseCost: Int,
+  $purchaseDate: Float,
+  $requesterEmployeeId: ID!,
+  $requesterEmail: String!
+) {
+  createPurchaseRequest(
+    assetTag: $assetTag,
+    category: $category,
+    serialNumber: $serialNumber,
+    purchaseCost: $purchaseCost,
+    purchaseDate: $purchaseDate,
+    requesterEmployeeId: $requesterEmployeeId,
+    requesterEmail: $requesterEmail
+  ) {
+    ...PurchaseRequestFields
+  }
+}
+
+mutation CreatePurchaseRequestBatch(
+  $items: [PurchaseRequestItemInput!]!,
+  $requesterEmployeeId: ID!,
+  $requesterEmail: String!
+) {
+  createPurchaseRequestBatch(
+    items: $items,
+    requesterEmployeeId: $requesterEmployeeId,
+    requesterEmail: $requesterEmail
+  ) {
+    ...PurchaseRequestFields
+  }
+}
+
+mutation ApprovePurchaseRequest($token: String!, $approverEmail: String!) {
+  approvePurchaseRequest(token: $token, approverEmail: $approverEmail) {
+    ...PurchaseRequestFields
+  }
+}
+
+mutation DeclinePurchaseRequest($token: String!, $approverEmail: String!) {
+  declinePurchaseRequest(token: $token, approverEmail: $approverEmail) {
+    ...PurchaseRequestFields
+  }
+}

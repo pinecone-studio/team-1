@@ -1,4 +1,12 @@
 export const typeDefs = /* GraphQL */ `
+	type AssetTimelineEvent {
+		id: ID!
+		eventType: String!
+		description: String!
+		actor: Employee
+		timestamp: String!
+	}
+
 	type Employee {
 		id: ID!
 		entraId: String!
@@ -7,6 +15,7 @@ export const typeDefs = /* GraphQL */ `
 		firstNameEng: String!
 		lastNameEng: String!
 		email: String!
+		role: String!
 		imageUrl: String
 		hireDate: Float!
 		terminationDate: Float
@@ -58,6 +67,7 @@ export const typeDefs = /* GraphQL */ `
 		returnedAt: Float
 		conditionAtAssign: String!
 		conditionAtReturn: String
+		status: String!
 		employee: Employee
 		asset: Asset
 	}
@@ -95,6 +105,59 @@ export const typeDefs = /* GraphQL */ `
 		APPROVED
 		DECLINED
 	}
+
+	enum AssignmentStatus {
+		PENDING
+		ACTIVE
+		RETURNED
+		CANCELLED
+	}
+
+	enum AssetStatus {
+		AVAILABLE
+		ASSIGNED
+		IN_MAINTENANCE
+		RETURNED
+		DISPOSAL_REQUESTED
+		DISPOSED
+	}
+
+	enum SortDirection {
+		ASC
+		DESC
+	}
+
+	enum AssetSortField {
+		createdAt
+		purchaseDate
+		assetTag
+	}
+
+	input AssetSearchInput {
+		status: AssetStatus
+		categoryId: ID
+		locationId: ID
+		employeeId: ID
+		searchText: String
+		startDate: Float
+		endDate: Float
+	}
+
+	input PaginationInput {
+		limit: Int
+		offset: Int
+	}
+
+	input AssetSortInput {
+		field: AssetSortField!
+		direction: SortDirection!
+	}
+
+	type AssetSearchResult {
+		total: Int!
+		items: [Asset!]!
+	}
+
 
 	input PurchaseRequestItemInput {
 		assetTag: String!
@@ -168,6 +231,97 @@ export const typeDefs = /* GraphQL */ `
 		deletedAt: Float
 	}
 
+	# ─── Disposal workflow ─────────────────────────────────────────────────────
+
+	type DisposalRequest {
+		id: ID!
+		assetId: ID!
+		requestedBy: Employee
+		method: String!
+		reason: String
+		status: String!
+		itApprovedBy: Employee
+		itApprovedAt: Float
+		financeApprovedBy: Employee
+		financeApprovedAt: Float
+		dataWipeCertKey: String
+		rejectedBy: Employee
+		rejectedAt: Float
+		rejectionReason: String
+		createdAt: Float!
+		updatedAt: Float!
+	}
+
+	# ─── Offboarding workflow ───────────────────────────────────────────────────
+
+	type OffboardingEvent {
+		id: ID!
+		employee: Employee
+		initiatedBy: Employee
+		status: String!
+		totalAssets: Int!
+		returnedAssets: Int!
+		completedAt: Float
+		createdAt: Float!
+		updatedAt: Float!
+	}
+
+	type Notification {
+		id: ID!
+		employeeId: ID
+		role: String
+		title: String!
+		message: String!
+		type: String!
+		link: String
+		isRead: Int!
+		createdAt: Float!
+	}
+
+	enum UserRole {
+		SUPER_ADMIN
+		IT_ADMIN
+		EMPLOYEE
+		FINANCE
+	}
+
+	type ITDashboardView {
+		recentAssets: [Asset!]!
+		openTickets: [MaintenanceTicket!]!
+		pendingTransfers: [Transfer!]!
+		notifications: [Notification!]!
+	}
+
+	type EmployeeDashboardView {
+		myAssets: [Asset!]!
+		myAssignments: [Assignment!]!
+		notifications: [Notification!]!
+	}
+
+	type FinanceDashboardView {
+		pendingPurchaseRequests: [PurchaseRequest!]!
+		recentOrders: [PurchaseOrder!]!
+		pendingDisposals: [DisposalRequest!]!
+		notifications: [Notification!]!
+	}
+
+	type DashboardSearchResult {
+		itView: ITDashboardView
+		employeeView: EmployeeDashboardView
+		financeView: FinanceDashboardView
+	}
+
+	type AuditLog {
+		id: ID!
+		tableName: String!
+		recordId: String!
+		action: String!
+		oldValueJson: String
+		newValueJson: String
+		actorId: ID!
+		createdAt: Float!
+	}
+
 	type Query {
 		employees: [Employee!]!
 		employee(id: ID!): Employee
@@ -178,6 +332,105 @@ export const typeDefs = /* GraphQL */ `
 		purchaseRequests(status: PurchaseRequestStatus): [PurchaseRequest!]!
 		purchaseRequest(id: ID!): PurchaseRequest
 		categories: [Category!]!
+		assetHistory(assetId: ID!): [AssetTimelineEvent!]!
+		disposalRequest(id: ID!): DisposalRequest
+		disposalRequests(status: String): [DisposalRequest!]!
+		offboardingEvent(employeeId: ID!): OffboardingEvent
+		searchAssets(
+			filter: AssetSearchInput!
+			pagination: PaginationInput
+			sort: AssetSortInput
+		): AssetSearchResult!
+		dashboard(role: UserRole!, employeeId: ID): DashboardSearchResult!
+
+		# ── Central Command Visibility ───────────────────────────────────
+		vendors: [Vendor!]!
+		locations: [Location!]!
+		auditLogs(tableName: String, recordId: String): [AuditLog!]!
+		maintenanceTickets(status: String): [MaintenanceTicket!]!
+	}
+
+
+
+
+	type Vendor {
+		id: ID!
+		name: String!
+		contactName: String
+		email: String
+		phone: String
+		address: String
+		createdAt: Float!
+	}
+
+	type Location {
+		id: ID!
+		name: String!
+		parentId: ID
+		type: String!
+		createdAt: Float!
+	}
+
+	type Transfer {
+		id: ID!
+		assetId: ID!
+		fromEmployeeId: ID!
+		toEmployeeId: ID!
+		reason: String
+		approvedBy: ID
+		transferredAt: Float!
+		conditionNoted: String
+		createdAt: Float!
+	}
+
+	type MaintenanceTicket {
+		id: ID!
+		assetId: ID!
+		reporterId: ID!
+		description: String!
+		severity: String!
+		status: String!
+		vendorId: ID
+		repairCost: Int
+		resolvedAt: Float
+		createdAt: Float!
+		updatedAt: Float!
+	}
+
+	type PurchaseOrder {
+		id: ID!
+		vendorId: ID!
+		requestedBy: ID!
+		approvedBy: ID
+		lineItemsJson: String!
+		totalCost: Int!
+		status: String!
+		deliveredAt: Float
+		createdAt: Float!
+		updatedAt: Float!
+	}
+
+	input VendorInput {
+		name: String!
+		contactName: String
+		email: String
+		phone: String
+		address: String
+	}
+
+	input LocationInput {
+		name: String!
+		parentId: ID
+		type: String!
+	}
+
+	input NotificationInput {
+		employeeId: ID
+		role: UserRole
+		title: String!
+		message: String!
+		type: String
+		link: String
 	}
 
 	type Mutation {
@@ -210,5 +463,78 @@ export const typeDefs = /* GraphQL */ `
 		): [PurchaseRequest!]!
 		approvePurchaseRequest(token: String!, approverEmail: String!): PurchaseRequest!
 		declinePurchaseRequest(token: String!, approverEmail: String!): PurchaseRequest!
+
+		# ── Disposal mutations ───────────────────────────────────────────────
+		requestDisposal(
+			assetId: ID!
+			requestedBy: ID!
+			method: String!
+			reason: String
+		): DisposalRequest!
+		approveDisposal(id: ID!, approvedBy: ID!, stage: String!): DisposalRequest!
+		rejectDisposal(id: ID!, rejectedBy: ID!, reason: String): DisposalRequest!
+		uploadDataWipeCertificate(id: ID!, fileKey: String!, uploadedBy: ID!): DisposalRequest!
+		completeDisposal(
+			id: ID!
+			certifiedBy: ID!
+			writeOffValue: Int
+			recipient: String
+		): DisposalRequest!
+
+		# ── Offboarding mutations ────────────────────────────────────────────
+		startOffboarding(employeeId: ID!, initiatedBy: ID!): OffboardingEvent!
+		completeAssetReturn(
+			assetId: ID!
+			employeeId: ID!
+			condition: String!
+			inspectedBy: ID!
+		): Asset!
+
+		# ── Maintenance mutations ───────────────────────────────────────────
+		createMaintenanceTicket(
+			assetId: ID!
+			reporterId: ID!
+			description: String!
+			severity: String!
+			vendorId: ID
+			repairCost: Int
+		): MaintenanceTicket!
+		updateMaintenanceTicket(
+			id: ID!
+			status: String!
+			repairCost: Int
+			resolvedAt: Float
+		): MaintenanceTicket!
+
+		# ── Asset Management overrides ─────────────────────────────────────
+		transferAsset(
+			assetId: ID!
+			fromEmployeeId: ID!
+			toEmployeeId: ID!
+			reason: String
+			conditionNoted: String
+		): Transfer!
+
+		# ── Super Admin Central Command ──────────────────────────────────────
+		createVendor(input: VendorInput!): Vendor!
+
+		updateVendor(id: ID!, input: VendorInput!): Vendor
+		deleteVendor(id: ID!): Boolean!
+
+		createLocation(input: LocationInput!): Location!
+		updateLocation(id: ID!, input: LocationInput!): Location
+		deleteLocation(id: ID!): Boolean!
+
+		createCategory(name: String!, parentId: ID): Category!
+		updateCategory(id: ID!, name: String, parentId: ID): Category
+		deleteCategory(id: ID!): Boolean!
+
+		sendNotification(input: NotificationInput!): Notification!
+		markNotificationAsRead(id: ID!): Boolean!
+
+		adminOverrideDisposal(id: ID!, status: String!): DisposalRequest!
+		adminOverridePurchase(token: String!, status: String!): [PurchaseRequest!]!
+		adminOverrideOffboarding(id: ID!, status: String!): OffboardingEvent!
 	}
+
 `;

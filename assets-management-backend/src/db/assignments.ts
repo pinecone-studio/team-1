@@ -1,7 +1,8 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { assignments, assets } from "../../drizzle/schema";
+import { assignments, assets, transfers } from "../../drizzle/schema";
 import { getDb } from "./client";
 import { getAssetById } from "./assets/queries";
+import { createNotification } from "./notifications";
 
 export async function getAssignments() {
   const db = await getDb();
@@ -32,6 +33,7 @@ export async function assignAssetToEmployee(
     employeeId,
     assignedAt: now,
     conditionAtAssign,
+    status: "ACTIVE",
     accessoriesJson,
     createdAt: now,
     updatedAt: now,
@@ -42,7 +44,18 @@ export async function assignAssetToEmployee(
     .set({ assignedTo: employeeId, status: "ASSIGNED", updatedAt: now })
     .where(eq(assets.id, assetId));
 
-  return getAssetById(assetId);
+  const asset = await getAssetById(assetId);
+  if (asset) {
+    await createNotification({
+      employeeId,
+      title: "New Asset Assigned",
+      message: `A new asset ${asset.assetTag} (${asset.serialNumber}) has been assigned to you.`,
+      type: "INFO",
+      link: `/my-assets/${assetId}`,
+    });
+  }
+
+  return asset;
 }
 
 export async function returnAssetFromEmployee(
@@ -62,7 +75,7 @@ export async function returnAssetFromEmployee(
   if (openAssignment?.id) {
     await db
       .update(assignments)
-      .set({ returnedAt: now, conditionAtReturn, updatedAt: now })
+      .set({ returnedAt: now, conditionAtReturn, status: "RETURNED", updatedAt: now })
       .where(eq(assignments.id, openAssignment.id));
   }
 
@@ -71,5 +84,86 @@ export async function returnAssetFromEmployee(
     .set({ assignedTo: null, status: "AVAILABLE", updatedAt: now })
     .where(eq(assets.id, assetId));
 
-  return getAssetById(assetId);
+  const asset = await getAssetById(assetId);
+  if (asset) {
+    await createNotification({
+      role: "IT_ADMIN",
+      title: "Asset Returned",
+      message: `Asset ${asset.assetTag} has been returned and is now AVAILABLE.`,
+      type: "INFO",
+      link: `/assets/${assetId}`,
+    });
+  }
+
+  return asset;
+}
+
+export async function transferAsset(
+  assetId: string,
+  fromEmployeeId: string,
+  toEmployeeId: string,
+  reason?: string,
+  conditionNoted = "GOOD"
+) {
+  const db = await getDb();
+  const now = Date.now();
+
+  const transferId = crypto.randomUUID();
+  await db.insert(transfers).values({
+    id: transferId,
+    assetId,
+    fromEmployeeId,
+    toEmployeeId,
+    reason: reason ?? null,
+    transferredAt: now,
+    conditionNoted,
+    createdAt: now,
+  });
+
+  const openAssignment = await db
+    .select({ id: assignments.id })
+    .from(assignments)
+    .where(and(eq(assignments.assetId, assetId), isNull(assignments.returnedAt)))
+    .get();
+
+  if (openAssignment) {
+    await db.update(assignments)
+      .set({ returnedAt: now, conditionAtReturn: conditionNoted, status: "RETURNED", updatedAt: now })
+      .where(eq(assignments.id, openAssignment.id));
+  }
+
+  await db.insert(assignments).values({
+    id: crypto.randomUUID(),
+    assetId,
+    employeeId: toEmployeeId,
+    assignedAt: now,
+    conditionAtAssign: conditionNoted,
+    status: "ACTIVE",
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  await db.update(assets)
+    .set({ assignedTo: toEmployeeId, status: "ASSIGNED", updatedAt: now })
+    .where(eq(assets.id, assetId));
+
+  const asset = await getAssetById(assetId);
+  if (asset) {
+    await createNotification({
+      employeeId: toEmployeeId,
+      title: "Asset Transferred to You",
+      message: `Asset ${asset.assetTag} has been transferred to you from ${fromEmployeeId}.`,
+      type: "INFO",
+      link: `/my-assets/${assetId}`,
+    });
+    await createNotification({
+      employeeId: fromEmployeeId,
+      title: "Asset Transfer Complete",
+      message: `Asset ${asset.assetTag} has been successfully transferred to ${toEmployeeId}.`,
+      type: "INFO",
+      link: `/history/${assetId}`,
+    });
+  }
+
+  return db.select().from(transfers).where(eq(transfers.id, transferId)).get();
 }

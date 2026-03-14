@@ -33,11 +33,13 @@ import {
   AssetsDocument,
   CategoriesDocument,
   DeleteAssetDocument,
+  AssetFieldsFragment,
+  AssetFieldsFragmentDoc
 } from "@/gql/graphql";
 import type { Asset, AssetCategory } from "@/lib/types";
 import { AssetFormDialog } from "./asset-form-dialog";
 import { CATEGORY_LABELS } from "./constants";
-
+import { useFragment } from "@/gql/fragment-masking";
 const FILTERS = {
   location: ["Гурван гол", "Gallery", "Tokyo", "Sednay"],
   roomType: ["Анги", "Оффис", "Агуулах"],
@@ -75,21 +77,7 @@ export function AssetsContent() {
     [AssetCategory, string]
   >;
 
-  const mapGraphqlAssetToLocal = (asset: {
-    id: string;
-    assetTag: string;
-    category: string;
-    serialNumber: string;
-    status: string;
-    purchaseDate?: number | null;
-    purchaseCost?: number | null;
-    currentBookValue?: number | null;
-    locationId?: string | null;
-    assignedTo?: string | null;
-    imageUrl?: string | null;
-    createdAt: number;
-    updatedAt: number;
-  }): Asset => ({
+  const mapGraphqlAssetToLocal = (asset: AssetFieldsFragment): Asset => ({
     imageUrl:
       asset.imageUrl ??
       process.env.NEXT_PUBLIC_ASSET_FALLBACK_IMAGE_URL ??
@@ -114,11 +102,24 @@ export function AssetsContent() {
     updatedAt: new Date(asset.updatedAt).toISOString(),
   });
 
-  const remoteAssets = useMemo(() => {
-    const assets = data?.assets ?? [];
-    return assets.map(mapGraphqlAssetToLocal);
-  }, [data?.assets]);
+  const processedAssets = useMemo(() => {
+    if (!data?.assets) return [];
 
+    return data.assets.map((a) => {
+      // This "unmasks" the fragment and provides the full object with id, serialNumber, etc.
+      const unmaskedAsset = useFragment(AssetFieldsFragmentDoc, a);
+      return mapGraphqlAssetToLocal(unmaskedAsset);
+    });
+  }, [data]);
+
+  const remoteAssets = useMemo(() => {
+    if (!data?.assets) return [];
+
+    return data.assets.map((a) => {
+      const unmaskedAsset = useFragment(AssetFieldsFragmentDoc, a);
+      return mapGraphqlAssetToLocal(unmaskedAsset);
+    });
+  }, [data?.assets]);
   const mergedAssets = useMemo(() => {
     if (assetItems.length === 0) return remoteAssets;
     const seen = new Set(remoteAssets.map((asset) => asset.id));
@@ -470,7 +471,7 @@ export function AssetsContent() {
           onOpenChange={(open) => {
             if (!open) setEditAsset(null);
           }}
-          onAddAssets={() => {}}
+          onAddAssets={() => { }}
           onUpdateAsset={(asset) => {
             setAssetItems((prev) =>
               prev.map((item) => (item.id === asset.id ? asset : item)),
