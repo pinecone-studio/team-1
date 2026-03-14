@@ -1,0 +1,40 @@
+# Employee Offboarding Workflows
+
+# Queries
+query GetOffboardingEvent($employeeId: ID!) {
+  offboardingEvent(employeeId: $employeeId) {
+    id
+    status
+    totalAssets
+    returnedAssets
+    completedAt
+    createdAt
+    employee {
+      id
+      firstName
+      lastName
+      email
+    }
+    initiatedBy {
+      id
+      firstName
+      lastName
+    }
+  }
+}
+
+# Mutations
+mutation StartOffboarding($employeeId: ID!, $initiatedBy: ID!) {
+  startOffboarding(employeeId: $employeeId, initiatedBy: $initiatedBy) {
+    id
+    status
+  }
+}
+
+mutation CompleteAssetReturn($assetId: ID!, $employeeId: ID!, $condition: String!, $inspectedBy: ID!) {
+  completeAssetReturn(assetId: $assetId, employeeId: $employeeId, condition: $condition, inspectedBy: $inspectedBy) {
+    id
+    assetTag
+    status
+  }
+}

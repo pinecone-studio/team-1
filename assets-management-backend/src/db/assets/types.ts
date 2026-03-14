@@ -1,4 +1,4 @@
-import { assets } from "../../../drizzle/schema";
+import { assets } from "@/schema";
 
 export type Asset = typeof assets.$inferSelect;
 

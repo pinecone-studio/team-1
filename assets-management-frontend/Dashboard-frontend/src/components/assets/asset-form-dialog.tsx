@@ -27,7 +27,9 @@ import {
   EmployeesDocument,
   ReturnAssetDocument,
   UpdateAssetDocument,
+  AssetFieldsFragmentDoc,
 } from "@/gql/graphql";
+import { useFragment } from "@/gql";
 import type { Asset, AssetCategory } from "@/lib/types";
 import {
   CATEGORY_LABELS,
@@ -170,44 +172,36 @@ export function AssetFormDialog({
     return createUniqueCode(trimmed, usedAssetIdsRef.current);
   };
 
-  const mapGraphqlAssetToLocal = (asset: {
-    id: string;
-    assetTag: string;
-    category: string;
-    serialNumber: string;
-    status: string;
-    purchaseDate?: number | null;
-    purchaseCost?: number | null;
-    currentBookValue?: number | null;
-    locationId?: string | null;
-    assignedTo?: string | null;
-    imageUrl?: string | null;
-    createdAt: number;
-    updatedAt: number;
-  }): Asset => ({
-    imageUrl:
-      asset.imageUrl ??
-      process.env.NEXT_PUBLIC_ASSET_FALLBACK_IMAGE_URL ??
-      undefined,
-    id: asset.id,
-    assetId: asset.assetTag,
-    category: asset.category as AssetCategory,
-    mainCategory: undefined,
-    location: asset.locationId ?? undefined,
-    serialNumber: asset.serialNumber,
-    purchaseCost: asset.purchaseCost ?? 0,
-    residualValue: 0,
-    usefulLife: 0,
-    purchaseDate: asset.purchaseDate
-      ? new Date(asset.purchaseDate).toISOString()
-      : new Date().toISOString(),
-    currentBookValue: asset.currentBookValue ?? asset.purchaseCost ?? 0,
-    status: asset.status as Asset["status"],
-    assignedEmployeeId: asset.assignedTo ?? undefined,
-    assignedEmployeeName: undefined,
-    createdAt: new Date(asset.createdAt).toISOString(),
-    updatedAt: new Date(asset.updatedAt).toISOString(),
-  });
+  const mapGraphqlAssetToLocal = (asset: any): Asset => {
+    const data = useFragment(AssetFieldsFragmentDoc, asset);
+    if (!data) {
+      throw new Error("Asset data is missing");
+    }
+    return {
+      imageUrl:
+        data.imageUrl ??
+        process.env.NEXT_PUBLIC_ASSET_FALLBACK_IMAGE_URL ??
+        undefined,
+      id: data.id,
+      assetId: data.assetTag,
+      category: data.category as AssetCategory,
+      mainCategory: undefined,
+      location: data.locationId ?? undefined,
+      serialNumber: data.serialNumber,
+      purchaseCost: data.purchaseCost ?? 0,
+      residualValue: 0,
+      usefulLife: 0,
+      purchaseDate: data.purchaseDate
+        ? new Date(data.purchaseDate).toISOString()
+        : new Date().toISOString(),
+      currentBookValue: data.currentBookValue ?? data.purchaseCost ?? 0,
+      status: data.status as Asset["status"],
+      assignedEmployeeId: data.assignedTo ?? undefined,
+      assignedEmployeeName: undefined,
+      createdAt: new Date(data.createdAt).toISOString(),
+      updatedAt: new Date(data.updatedAt).toISOString(),
+    };
+  };
 
   const resetForm = () => {
     setAssetId("");

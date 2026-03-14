@@ -1,31 +1,3 @@
-export type AssetStatus =
-  | "AVAILABLE"
-  | "ASSIGNED"
-  | "IN_REPAIR"
-  | "PENDING_DISPOSAL"
-  | "DISPOSED";
-
-export type AssetCategory =
-  | "LAPTOP"
-  | "DESKTOP"
-  | "MONITOR"
-  | "PHONE"
-  | "TABLET"
-  | "PRINTER"
-  | "NETWORK"
-  | "OTHER";
-
-export type AssetCondition = "Good" | "Fair" | "Damaged";
-
-export type UserRole =
-  | "admin"
-  | "it_admin"
-  | "it_manager"
-  | "hr_manager"
-  | "finance"
-  | "finance_manager"
-  | "employee";
-
 export interface DashboardMetrics {
   totalAssets: number;
   assignedAssets: number;

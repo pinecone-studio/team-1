@@ -9,6 +9,10 @@ import { AssetsContent } from "@/components/assets/assets-content";
 import { AssetAllocationContent } from "@/components/asset-allocations/asset-allocation-content";
 import { AssetTransferContent } from "@/components/asset-transfers/asset-transfer-content";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { DemoEmployeeContent } from "@/components/demo-employee/demo-employee";
+import { DemoITContent } from "@/components/demo-it/demo-it";
+import { DemoHRContent } from "@/components/demo-hr/demo-hr";
+
 
 export default function DashboardPage() {
   const [activeTitle, setActiveTitle] = useState("Хянах самбар");
@@ -42,7 +46,7 @@ export default function DashboardPage() {
             </div>
           ) : null}
         </SidebarInset>
-      </SidebarProvider>
+      </SidebarProvider> 
     </div>
   );
 }

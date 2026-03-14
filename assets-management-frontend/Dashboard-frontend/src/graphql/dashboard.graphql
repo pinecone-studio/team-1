@@ -1,0 +1,80 @@
+# Dashboard Queries
+query GetDashboard($role: UserRole!, $employeeId: ID) {
+  dashboard(role: $role, employeeId: $employeeId) {
+    itView {
+      recentAssets {
+        id
+        assetTag
+        status
+        serialNumber
+      }
+      openTickets {
+        id
+        description
+        severity
+        status
+      }
+      pendingTransfers {
+        id
+        assetId
+        fromEmployeeId
+        toEmployeeId
+        transferredAt
+      }
+      notifications {
+        ...NotificationFields
+      }
+    }
+    employeeView {
+      myAssets {
+        id
+        assetTag
+        serialNumber
+        status
+      }
+      myAssignments {
+        id
+        assetId
+        assignedAt
+        returnedAt
+      }
+      notifications {
+        ...NotificationFields
+      }
+    }
+    financeView {
+      pendingPurchaseRequests {
+        id
+        assetTag
+        requesterEmail
+        purchaseCost
+        status
+      }
+      recentOrders {
+        id
+        totalCost
+        status
+        createdAt
+      }
+      pendingDisposals {
+        id
+        assetId
+        method
+        status
+      }
+      notifications {
+        ...NotificationFields
+      }
+    }
+  }
+}
+
+fragment NotificationFields on Notification {
+  id
+  title
+  message
+  type
+  link
+  isRead
+  createdAt
+}

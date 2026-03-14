@@ -1,6 +1,7 @@
 import { eq, or } from "drizzle-orm";
-import { categories } from "../../../../drizzle/schema";
+
 import { getDb } from "../../client";
+import { categories } from "@/schema";
 
 export async function ensureCategoryId(category: string): Promise<string> {
   const db = await getDb();

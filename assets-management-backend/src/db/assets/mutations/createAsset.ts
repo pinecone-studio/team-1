@@ -1,7 +1,7 @@
-import { assets } from "../../../../drizzle/schema";
 import { getDb } from "../../client";
 import type { Asset, AssetCreate } from "../types";
 import { getAssetById } from "../queries";
+import { assets } from "@/schema";
 
 function buildAssetRow(input: AssetCreate, now: number) {
   const fallbackImageUrl = process.env.DEFAULT_ASSET_IMAGE_URL;

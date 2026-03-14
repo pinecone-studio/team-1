@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
-
+import { useMutation, useQuery } from "@apollo/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,37 +30,35 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AssignAssetDocument,
+  AssignmentFieldsFragmentDoc,
+  AssetFieldsFragmentDoc,
+  GetAssetsDocument,
+  CreateAssetDocument,
+  CreateCategoryDocument,
+  EmployeesDocument,
+  AssignmentsDocument,
+} from "@/gql/graphql";
+import { useFragment } from "@/gql";
 
 type AllocationRow = {
-  id: string;
+  id: string; // Assignment ID
+  assetTag: string; // Asset Tag for display
   employeeEmail: string;
   assignedDate: string;
   status: string;
-  statusKey: "pending" | "approved" | "rejected";
+  statusKey: "PENDING" | "ACTIVE" | "RETURNED" | "CANCELLED";
   confirmedDate: string;
   emailStatus: string;
   emailStatusKey: "sent" | "failed" | "pending" | "disabled" | "unknown";
 };
 
-const employees = [
-  { name: "Sarah Johnson", email: "sarah.johnson@company.com" },
-  { name: "Michael Chen", email: "michael.chen@company.com" },
-  { name: "Emily Davis", email: "emily.davis@company.com" },
-  { name: "Lisa Anderson", email: "lisa.anderson@company.com" },
-  { name: "Батцоо Жаргал", email: "battsooj1010@gmail.com" },
-];
-
-const assets = [
-  { id: "LAP-2024-001", label: "Laptop - LAP-2024-001" },
-  { id: "MON-2024-003", label: "Monitor - MON-2024-003" },
-  { id: "KEY-2024-006", label: "Keyboard - KEY-2024-006" },
-  { id: "TAB-2024-009", label: "Tablet - TAB-2024-009" },
-];
-
-const STATUS_LABELS: Record<AllocationRow["statusKey"], string> = {
-  pending: "Хүлээгдэж буй",
-  approved: "Зөвшөөрсөн",
-  rejected: "Буцаасан",
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: "Хүлээгдэж буй",
+  ACTIVE: "Идэвхтэй",
+  RETURNED: "Буцаасан",
+  CANCELLED: "Цуцлагдсан",
 };
 
 const EMAIL_STATUS_LABELS: Record<AllocationRow["emailStatusKey"], string> = {
@@ -73,83 +71,37 @@ const EMAIL_STATUS_LABELS: Record<AllocationRow["emailStatusKey"], string> = {
 
 export function AssetAllocationContent() {
   const [statusTab, setStatusTab] = useState("all");
-  const [rows, setRows] = useState<AllocationRow[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState("");
   const [selectedAsset, setSelectedAsset] = useState("");
-  const [listLoading, setListLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-
-  const loadRows = async () => {
-    setListLoading(true);
-    setErrorMessage("");
-    try {
-      const res = await fetch(`/api/allocation-requests`, {
-        cache: "no-store",
-      });
-      if (!res.ok) {
-        const message = await res.text();
-        throw new Error(message || "List fetch failed");
-      }
-      const data = (await res.json()) as Array<{
-        id: string;
-        assetId: string;
-        employeeEmail: string;
-        status: "PENDING" | "APPROVED" | "REJECTED";
-        emailStatus?: "SENT" | "FAILED" | "PENDING" | "DISABLED" | "UNKNOWN";
-        requestedAt: number;
-        respondedAt: number | null;
-      }>;
-
-      if (!Array.isArray(data)) {
-        throw new Error("Жагсаалтын өгөгдөл буруу форматтай байна.");
-      }
-
-      const mapped: AllocationRow[] = data.map((item) => {
-        const statusKey: AllocationRow["statusKey"] =
-          item.status === "APPROVED"
-            ? "approved"
-            : item.status === "REJECTED"
-              ? "rejected"
-              : "pending";
-
-        const emailStatusKey: AllocationRow["emailStatusKey"] =
-          item.emailStatus === "SENT"
-            ? "sent"
-            : item.emailStatus === "FAILED"
-              ? "failed"
-              : item.emailStatus === "DISABLED"
-                ? "disabled"
-              : item.emailStatus === "PENDING"
-                ? "pending"
-                : "unknown";
-
-        return {
-          id: item.assetId,
-          employeeEmail: item.employeeEmail,
-          assignedDate: new Date(item.requestedAt).toLocaleDateString(),
-          statusKey,
-          status: STATUS_LABELS[statusKey],
-          emailStatusKey,
-          emailStatus: EMAIL_STATUS_LABELS[emailStatusKey],
-          confirmedDate: item.respondedAt
-            ? new Date(item.respondedAt).toLocaleDateString()
-            : "-",
-        };
-      });
-
-      setRows(mapped);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Жагсаалт ачаалж чадсангүй.";
-      console.error(error);
-      setErrorMessage(message);
-      toast.error(message);
-    } finally {
-      setListLoading(false);
-    }
-  };
+  const { data: employeesData } = useQuery(EmployeesDocument);
+  const { data: assetsData, loading: assetsLoading, error: assetsError } = useQuery(GetAssetsDocument);
+  const { data: assignmentsData, loading: assignmentsLoading, refetch: refetchAssignments } =
+    useQuery(AssignmentsDocument);
+  const [assignAssetMutation] = useMutation(AssignAssetDocument);
+  const rows = useMemo<AllocationRow[]>(() => {
+    const assignments = assignmentsData?.assignments ?? [];
+    return assignments.map((a) => {
+      const assignment = useFragment(AssignmentFieldsFragmentDoc, a);
+      const statusKey = assignment.status as keyof typeof STATUS_LABELS;
+      return {
+        id: assignment.id,
+        assetTag: assignment.asset?.assetTag ?? assignment.assetId,
+        employeeEmail: assignment.employee?.email ?? assignment.employeeId,
+        assignedAt: assignment.assignedAt, // Keep raw for sorting if needed, or format here
+        assignedDate: new Date(assignment.assignedAt).toLocaleDateString(),
+        status: STATUS_LABELS[statusKey] || statusKey,
+        statusKey: statusKey as any,
+        confirmedDate: assignment.returnedAt
+          ? new Date(assignment.returnedAt).toLocaleDateString()
+          : "—",
+        emailStatus: EMAIL_STATUS_LABELS.disabled,
+        emailStatusKey: "disabled",
+      };
+    });
+  }, [assignmentsData]);
 
   const visibleRows = useMemo(() => {
     if (statusTab === "all") return rows;
@@ -159,49 +111,34 @@ export function AssetAllocationContent() {
   const handleSendRequest = async () => {
     if (!selectedEmployee || !selectedAsset) return;
 
-    const asset = assets.find((item) => item.id === selectedAsset);
+    const assetData = (assetsData?.assets ?? []).find((a) => {
+      const asset = useFragment(AssetFieldsFragmentDoc, a);
+      return asset?.id === selectedAsset;
+    });
+    const asset = useFragment(AssetFieldsFragmentDoc, assetData);
     if (!asset) return;
 
     setSubmitLoading(true);
     setErrorMessage("");
     try {
-      const res = await fetch(`/api/allocation-requests`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          employeeEmail: selectedEmployee,
+      await assignAssetMutation({
+        variables: {
           assetId: asset.id,
-        }),
+          employeeId: selectedEmployee,
+          conditionAtAssign: "GOOD",
+        },
       });
-      if (!res.ok) {
-        const message = await res.text();
-        throw new Error(message || "Create request failed");
-      }
-      const data = (await res.json()) as {
-        token: string;
-      };
 
-      const approveUrl = `${window.location.origin}/api/allocation-requests?token=${data.token}&action=approve`;
-      const rejectUrl = `${window.location.origin}/api/allocation-requests?token=${data.token}&action=reject`;
-      const subject = encodeURIComponent("Хөрөнгө хуваарилалтын баталгаажуулалт");
-      const body = encodeURIComponent(
-        `Сайн байна уу,\n\n` +
-          `Хөрөнгө хуваарилалтын хүсэлт үүсгэлээ.\n` +
-          `Хөрөнгө: ${asset.id}\n` +
-          `Ажилтан: ${selectedEmployee}\n\n` +
-          `Зөвшөөрөх: ${approveUrl}\n` +
-          `Зөвшөөрөхгүй: ${rejectUrl}`,
-      );
-
-      window.location.href = `mailto:${selectedEmployee}?subject=${subject}&body=${body}`;
-      await loadRows();
+      await refetchAssignments();
       setDialogOpen(false);
       setSelectedEmployee("");
       setSelectedAsset("");
-      toast.success("Зөвшөөрөх/зөвшөөрөхгүй линктэй имэйл нээлээ.");
+      toast.success("Хөрөнгө хуваарилалт амжилттай.");
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Хүсэлт илгээхэд алдаа гарлаа.";
+        error instanceof Error
+          ? error.message
+          : "Хүсэлт илгээхэд алдаа гарлаа.";
       console.error(error);
       setErrorMessage(message);
       toast.error(message);
@@ -219,8 +156,8 @@ export function AssetAllocationContent() {
         <div className="flex flex-wrap items-center gap-2">
           <Button
             className="bg-muted text-foreground hover:bg-muted/80"
-            onClick={loadRows}
-            disabled={listLoading}
+            onClick={() => refetchAssignments()}
+            disabled={assignmentsLoading}
           >
             Жагсаалт шинэчлэх
           </Button>
@@ -240,14 +177,14 @@ export function AssetAllocationContent() {
             <TabsTrigger value="all" className="rounded-full px-3">
               Бүх хуваарилалт
             </TabsTrigger>
-            <TabsTrigger value="pending" className="rounded-full px-3">
-              Хүлээгдэж буй
+            <TabsTrigger value="ACTIVE" className="rounded-full px-3">
+              Идэвхтэй
             </TabsTrigger>
-            <TabsTrigger value="approved" className="rounded-full px-3">
-              Зөвшөөрсөн
-            </TabsTrigger>
-            <TabsTrigger value="rejected" className="rounded-full px-3">
+            <TabsTrigger value="RETURNED" className="rounded-full px-3">
               Буцаасан
+            </TabsTrigger>
+            <TabsTrigger value="PENDING" className="rounded-full px-3">
+              Хүлээгдэж буй
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -288,7 +225,7 @@ export function AssetAllocationContent() {
                 {visibleRows.map((row) => (
                   <TableRow key={row.id} className="border-border">
                     <TableCell className="font-medium text-foreground">
-                      {row.id}
+                      {row.assetTag}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {row.employeeEmail}
@@ -299,10 +236,10 @@ export function AssetAllocationContent() {
                     <TableCell>
                       <Badge
                         className={
-                          row.statusKey === "approved"
+                          row.statusKey === "ACTIVE"
                             ? "rounded-full bg-emerald-100 text-emerald-700"
-                            : row.statusKey === "rejected"
-                              ? "rounded-full bg-rose-100 text-rose-700"
+                            : row.statusKey === "RETURNED"
+                              ? "rounded-full bg-slate-100 text-slate-700"
                               : "rounded-full bg-amber-100 text-amber-700"
                         }
                       >
@@ -332,7 +269,7 @@ export function AssetAllocationContent() {
               </TableBody>
             </Table>
           </div>
-          {listLoading && (
+          {assignmentsLoading && (
             <div className="py-4 text-sm text-muted-foreground">
               Ачаалж байна...
             </div>
@@ -362,9 +299,9 @@ export function AssetAllocationContent() {
                   <SelectValue placeholder="Сонгох" />
                 </SelectTrigger>
                 <SelectContent>
-                  {employees.map((employee) => (
-                    <SelectItem key={employee.email} value={employee.email}>
-                      {employee.email}
+                  {(employeesData?.employees ?? []).map((employee: any) => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      {employee.firstName} {employee.lastName} ({employee.email})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -380,11 +317,15 @@ export function AssetAllocationContent() {
                   <SelectValue placeholder="Сонгох" />
                 </SelectTrigger>
                 <SelectContent>
-                  {assets.map((asset) => (
-                    <SelectItem key={asset.id} value={asset.id}>
-                      {asset.label}
-                    </SelectItem>
-                  ))}
+                  {(assetsData?.assets ?? []).map((a) => {
+                    const asset = useFragment(AssetFieldsFragmentDoc, a);
+                    if (!asset) return null;
+                    return (
+                      <SelectItem key={asset.id} value={asset.id}>
+                        {asset.assetTag} - {asset.category}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>

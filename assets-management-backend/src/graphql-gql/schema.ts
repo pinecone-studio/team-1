@@ -1,4 +1,12 @@
 export const typeDefs = /* GraphQL */ `
+	type AssetTimelineEvent {
+		id: ID!
+		eventType: String!
+		description: String!
+		actor: Employee
+		timestamp: String!
+	}
+
 	type Employee {
 		id: ID!
 		entraId: String!
@@ -7,6 +15,7 @@ export const typeDefs = /* GraphQL */ `
 		firstNameEng: String!
 		lastNameEng: String!
 		email: String!
+		role: String!
 		imageUrl: String
 		hireDate: Float!
 		terminationDate: Float
@@ -33,8 +42,8 @@ export const typeDefs = /* GraphQL */ `
 		serialNumber: String!
 		status: String!
 		purchaseDate: Float
-		purchaseCost: Int
-		currentBookValue: Int
+		purchaseCost: Float
+		currentBookValue: Float
 		locationId: String
 		assignedTo: String
 		imageUrl: String
@@ -43,14 +52,69 @@ export const typeDefs = /* GraphQL */ `
 		deletedAt: Float
 	}
 
+	type Category {
+		id: ID!
+		name: String!
+		parentId: ID
+		subcategories: [Category!]!
+	}
+
+	type Assignment {
+		id: ID!
+		assetId: ID!
+		employeeId: ID!
+		assignedAt: Float!
+		returnedAt: Float
+		conditionAtAssign: String!
+		conditionAtReturn: String
+		status: String!
+		employee: Employee
+		asset: Asset
+		buyoutPolicy: AssignmentBuyoutPolicy
+		financing: AssignmentFinancing
+	}
+
+	type AssignmentBuyoutPolicy {
+		id: ID!
+		name: String!
+		minEmploymentMonths: Int!
+		paymentPercent: Float!
+		isFree: Int!
+		category: Category
+		createdAt: Float!
+	}
+
+	type AssignmentFinancing {
+		id: ID!
+		assignmentId: ID!
+		assignedValue: Float
+		paymentPlanMonths: Int
+		interestRate: Float
+		monthlyPayment: Float
+		totalPayment: Float
+		payments: [AssignmentPayment!]!
+		createdAt: Float!
+		updatedAt: Float!
+	}
+
+	type AssignmentPayment {
+		id: ID!
+		financingId: ID!
+		amount: Int!
+		dueDate: Float!
+		paidAt: Float
+		status: String!
+		createdAt: Float!
+	}
+
 	input AssetCreateInput {
 		assetTag: String!
 		category: String!
 		serialNumber: String!
 		status: String
 		purchaseDate: Float
-		purchaseCost: Int
-		currentBookValue: Int
+		purchaseCost: Float
+		currentBookValue: Float
 		locationId: String
 		assignedTo: String
 		imageUrl: String
@@ -63,12 +127,95 @@ export const typeDefs = /* GraphQL */ `
 		serialNumber: String
 		status: String
 		purchaseDate: Float
-		purchaseCost: Int
-		currentBookValue: Int
+		purchaseCost: Float
+		currentBookValue: Float
 		locationId: String
 		assignedTo: String
 		imageUrl: String
 		deletedAt: Float
+	}
+
+	enum PurchaseRequestStatus {
+		PENDING
+		APPROVED
+		DECLINED
+	}
+
+	enum AssignmentStatus {
+		PENDING
+		ACTIVE
+		RETURNED
+		CANCELLED
+	}
+
+	enum AssetStatus {
+		AVAILABLE
+		ASSIGNED
+		IN_MAINTENANCE
+		RETURNED
+		DISPOSAL_REQUESTED
+		DISPOSED
+	}
+
+	enum SortDirection {
+		ASC
+		DESC
+	}
+
+	enum AssetSortField {
+		createdAt
+		purchaseDate
+		assetTag
+	}
+
+	input AssetSearchInput {
+		status: AssetStatus
+		categoryId: ID
+		locationId: ID
+		employeeId: ID
+		searchText: String
+		startDate: Float
+		endDate: Float
+	}
+
+	input PaginationInput {
+		limit: Int
+		offset: Int
+	}
+
+	input AssetSortInput {
+		field: AssetSortField!
+		direction: SortDirection!
+	}
+
+	type AssetSearchResult {
+		total: Int!
+		items: [Asset!]!
+	}
+
+
+	input PurchaseRequestItemInput {
+		assetTag: String!
+		category: String!
+		serialNumber: String!
+		purchaseCost: Float
+		purchaseDate: Float
+	}
+
+	type PurchaseRequest {
+		id: ID!
+		assetTag: String!
+		category: String!
+		serialNumber: String!
+		purchaseCost: Float
+		purchaseDate: Float
+		requesterEmployeeId: ID!
+		requesterEmail: String!
+		status: PurchaseRequestStatus!
+		decidedAt: Float
+		decidedBy: String
+		createdAt: Float!
+		updatedAt: Float!
 	}
 
 	input EmployeeCreateInput {
@@ -119,11 +266,206 @@ export const typeDefs = /* GraphQL */ `
 		deletedAt: Float
 	}
 
+	# ─── Disposal workflow ─────────────────────────────────────────────────────
+
+	type DisposalRequest {
+		id: ID!
+		assetId: ID!
+		requestedBy: Employee
+		method: String!
+		reason: String
+		status: String!
+		itApprovedBy: Employee
+		itApprovedAt: Float
+		financeApprovedBy: Employee
+		financeApprovedAt: Float
+		dataWipeCertKey: String
+		rejectedBy: Employee
+		rejectedAt: Float
+		rejectionReason: String
+		createdAt: Float!
+		updatedAt: Float!
+	}
+
+	# ─── Offboarding workflow ───────────────────────────────────────────────────
+
+	type OffboardingEvent {
+		id: ID!
+		employee: Employee
+		initiatedBy: Employee
+		status: String!
+		totalAssets: Int!
+		returnedAssets: Int!
+		completedAt: Float
+		createdAt: Float!
+		updatedAt: Float!
+	}
+
+	type Notification {
+		id: ID!
+		employeeId: ID
+		role: String
+		title: String!
+		message: String!
+		type: String!
+		link: String
+		isRead: Int!
+		createdAt: Float!
+	}
+
+	enum UserRole {
+		SUPER_ADMIN
+		IT_ADMIN
+		EMPLOYEE
+		FINANCE
+	}
+
+	type ITDashboardView {
+		recentAssets: [Asset!]!
+		openTickets: [MaintenanceTicket!]!
+		pendingTransfers: [Transfer!]!
+		notifications: [Notification!]!
+	}
+
+	type EmployeeDashboardView {
+		myAssets: [Asset!]!
+		myAssignments: [Assignment!]!
+		notifications: [Notification!]!
+	}
+
+	type FinanceDashboardView {
+		pendingPurchaseRequests: [PurchaseRequest!]!
+		recentOrders: [PurchaseOrder!]!
+		pendingDisposals: [DisposalRequest!]!
+		notifications: [Notification!]!
+	}
+
+	type DashboardSearchResult {
+		itView: ITDashboardView
+		employeeView: EmployeeDashboardView
+		financeView: FinanceDashboardView
+	}
+
+	type AuditLog {
+		id: ID!
+		tableName: String!
+		recordId: String!
+		action: String!
+		oldValueJson: String
+		newValueJson: String
+		actorId: ID!
+		createdAt: Float!
+	}
+
 	type Query {
 		employees: [Employee!]!
 		employee(id: ID!): Employee
-		assets: [Asset!]!
+		assets(office: String, categoryIds: [ID!], subCategoryIds: [ID!]): [Asset!]!
 		asset(id: ID!): Asset
+		assignments: [Assignment!]!
+		employeeAssignments(employeeId: ID!): [Assignment!]!
+		purchaseRequests(status: PurchaseRequestStatus): [PurchaseRequest!]!
+		purchaseRequest(id: ID!): PurchaseRequest
+		categories: [Category!]!
+		assetHistory(assetId: ID!): [AssetTimelineEvent!]!
+		disposalRequest(id: ID!): DisposalRequest
+		disposalRequests(status: String): [DisposalRequest!]!
+		offboardingEvent(employeeId: ID!): OffboardingEvent
+		searchAssets(
+			filter: AssetSearchInput!
+			pagination: PaginationInput
+			sort: AssetSortInput
+		): AssetSearchResult!
+		dashboard(role: UserRole!, employeeId: ID): DashboardSearchResult!
+
+		# ── Central Command Visibility ───────────────────────────────────
+		vendors: [Vendor!]!
+		locations: [Location!]!
+		auditLogs(tableName: String, recordId: String): [AuditLog!]!
+		maintenanceTickets(status: String): [MaintenanceTicket!]!
+	}
+
+
+
+
+	type Vendor {
+		id: ID!
+		name: String!
+		contactName: String
+		email: String
+		phone: String
+		address: String
+		createdAt: Float!
+	}
+
+	type Location {
+		id: ID!
+		name: String!
+		parentId: ID
+		type: String!
+		createdAt: Float!
+	}
+
+	type Transfer {
+		id: ID!
+		assetId: ID!
+		fromEmployeeId: ID!
+		toEmployeeId: ID!
+		reason: String
+		approvedBy: ID
+		transferredAt: Float!
+		conditionNoted: String
+		createdAt: Float!
+	}
+
+	type MaintenanceTicket {
+		id: ID!
+		assetId: ID!
+		reporterId: ID!
+		description: String!
+		severity: String!
+		status: String!
+		vendorId: ID
+		repairCost: Float
+		resolvedAt: Float
+		createdAt: Float!
+		updatedAt: Float!
+	}
+
+	type PurchaseOrder {
+		id: ID!
+		vendorId: ID!
+		requestedBy: ID!
+		approvedBy: ID
+		lineItemsJson: String!
+		totalCost: Float!
+		status: String!
+		deliveredAt: Float
+		createdAt: Float!
+		updatedAt: Float!
+	}
+
+	input VendorInput {
+		name: String!
+		contactName: String
+		email: String
+		phone: String
+		address: String
+	}
+
+	input LocationInput {
+		name: String!
+		parentId: ID
+		type: String!
+	}
+
+	input NotificationInput {
+		employeeId: ID
+		role: UserRole
+		title: String!
+		message: String!
+		type: String
+		link: String
 	}
 
 	type Mutation {
@@ -138,7 +480,101 @@ export const typeDefs = /* GraphQL */ `
 			employeeId: ID!
 			conditionAtAssign: String
 			accessoriesJson: String
+			buyoutPolicyId: ID
+			assignedValue: Float
+			paymentPlanMonths: Int
+			interestRate: Float
 		): Asset
+		updateAssetCategory(assetId: ID!, categoryId: ID!): Asset
 		returnAsset(assetId: ID!, conditionAtReturn: String): Asset
+		createPurchaseRequest(
+			assetTag: String!
+			category: String!
+			serialNumber: String!
+			purchaseCost: Int
+			purchaseDate: Float
+			requesterEmployeeId: ID!
+			requesterEmail: String!
+		): PurchaseRequest!
+		createPurchaseRequestBatch(
+			items: [PurchaseRequestItemInput!]!
+			requesterEmployeeId: ID!
+			requesterEmail: String!
+		): [PurchaseRequest!]!
+		approvePurchaseRequest(token: String!, approverEmail: String!): PurchaseRequest!
+		declinePurchaseRequest(token: String!, approverEmail: String!): PurchaseRequest!
+
+		# ── Disposal mutations ───────────────────────────────────────────────
+		requestDisposal(
+			assetId: ID!
+			requestedBy: ID!
+			method: String!
+			reason: String
+		): DisposalRequest!
+		approveDisposal(id: ID!, approvedBy: ID!, stage: String!): DisposalRequest!
+		rejectDisposal(id: ID!, rejectedBy: ID!, reason: String): DisposalRequest!
+		uploadDataWipeCertificate(id: ID!, fileKey: String!, uploadedBy: ID!): DisposalRequest!
+		completeDisposal(
+			id: ID!
+			certifiedBy: ID!
+			writeOffValue: Int
+			recipient: String
+		): DisposalRequest!
+
+		# ── Offboarding mutations ────────────────────────────────────────────
+		startOffboarding(employeeId: ID!, initiatedBy: ID!): OffboardingEvent!
+		completeAssetReturn(
+			assetId: ID!
+			employeeId: ID!
+			condition: String!
+			inspectedBy: ID!
+		): Asset!
+
+		# ── Maintenance mutations ───────────────────────────────────────────
+		createMaintenanceTicket(
+			assetId: ID!
+			reporterId: ID!
+			description: String!
+			severity: String!
+			vendorId: ID
+			repairCost: Int
+		): MaintenanceTicket!
+		updateMaintenanceTicket(
+			id: ID!
+			status: String!
+			repairCost: Int
+			resolvedAt: Float
+		): MaintenanceTicket!
+
+		# ── Asset Management overrides ─────────────────────────────────────
+		transferAsset(
+			assetId: ID!
+			fromEmployeeId: ID!
+			toEmployeeId: ID!
+			reason: String
+			conditionNoted: String
+		): Transfer!
+
+		# ── Super Admin Central Command ──────────────────────────────────────
+		createVendor(input: VendorInput!): Vendor!
+
+		updateVendor(id: ID!, input: VendorInput!): Vendor
+		deleteVendor(id: ID!): Boolean!
+
+		createLocation(input: LocationInput!): Location!
+		updateLocation(id: ID!, input: LocationInput!): Location
+		deleteLocation(id: ID!): Boolean!
+
+		createCategory(name: String!, parentId: ID): Category!
+		updateCategory(id: ID!, name: String, parentId: ID): Category
+		deleteCategory(id: ID!): Boolean!
+
+		sendNotification(input: NotificationInput!): Notification!
+		markNotificationAsRead(id: ID!): Boolean!
+
+		adminOverrideDisposal(id: ID!, status: String!): DisposalRequest!
+		adminOverridePurchase(token: String!, status: String!): [PurchaseRequest!]!
+		adminOverrideOffboarding(id: ID!, status: String!): OffboardingEvent!
 	}
+
 `;
