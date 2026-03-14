@@ -493,6 +493,7 @@ export function AssetFormDialog({
         bucketName,
       }),
     });
+console.log({presignRes})
 
     if (!presignRes.ok) {
       throw new Error("Failed to get presigned URL");

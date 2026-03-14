@@ -83,14 +83,20 @@ export function AssetAllocationContent() {
   const [assignAssetMutation] = useMutation(AssignAssetDocument);
   const rows = useMemo<AllocationRow[]>(() => {
     const assignments = assignmentsData?.assignments ?? [];
-    return assignments.map((a) => {
+
+  return assignments.map((a) => {
       const assignment = useFragment(AssignmentFieldsFragmentDoc, a);
+      const asset = assignment.asset
+        ? useFragment(AssetFieldsFragmentDoc, assignment.asset)
+        : null;
+ 
       const statusKey = assignment.status as keyof typeof STATUS_LABELS;
+ 
       return {
         id: assignment.id,
-        assetTag: assignment.asset?.assetTag ?? assignment.assetId,
+        assetTag: asset?.assetTag ?? assignment.assetId,
         employeeEmail: assignment.employee?.email ?? assignment.employeeId,
-        assignedAt: assignment.assignedAt, // Keep raw for sorting if needed, or format here
+        assignedAt: assignment.assignedAt,
         assignedDate: new Date(assignment.assignedAt).toLocaleDateString(),
         status: STATUS_LABELS[statusKey] || statusKey,
         statusKey: statusKey as any,

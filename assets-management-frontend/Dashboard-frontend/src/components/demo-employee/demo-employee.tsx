@@ -23,14 +23,34 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { GetEmployeeAssignmentsDocument } from "@/gql/graphql";
+import { useQuery } from "@apollo/client";
 
-export function DemoEmployeeContent({ title = "Миний хөрөнгө" }: { title?: string }) {
+export function DemoEmployeeContent({
+  title = "Миний хөрөнгө",
+}: {
+  title?: string;
+}) {
   // Шалгасан эсэхийг хянах state
   const [isChecked, setIsChecked] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const currentEmployeeId = "f2b2c3d4-e5f6-7890-1234-567890abcdef"; 
+
+  const { data: assignmentsData, loading, error } = useQuery(GetEmployeeAssignmentsDocument, {
+    variables: {
+      employeeId: currentEmployeeId, // Энд заавал ID-г нь дамжуулна
+    },
+    skip: !currentEmployeeId, // Хэрэв ID байхгүй бол query-г ажиллуулахгүй
+  });
+  const assignments = assignmentsData?.employeeAssignments || [];
+  const pendingAsset = assignments.find((a) => a.status === "PENDING"); 
+  const activeAssets = assignments.filter((a) => a.status !== "PENDING");
+  console.log(pendingAsset, "a;lkdsfj");
 
   const handleApprove = (assetId: string) => {
-    toast.success(`${assetId} хөрөнгийг хүлээн авлаа. PDF гэрээ үүсэж байна...`);
+    toast.success(
+      `${assetId} хөрөнгийг хүлээн авлаа. PDF гэрээ үүсэж байна...`,
+    );
   };
 
   const handleReject = (assetId: string) => {
@@ -40,7 +60,9 @@ export function DemoEmployeeContent({ title = "Миний хөрөнгө" }: { t
   const handleVerify = () => {
     setIsChecked(true);
     setIsDialogOpen(false);
-    toast.info("Хөрөнгийн нөхцөлийг шалгаж дууслаа. Одоо баталгаажуулах боломжтой.");
+    toast.info(
+      "Хөрөнгийн нөхцөлийг шалгаж дууслаа. Одоо баталгаажуулах боломжтой.",
+    );
   };
 
   return (
@@ -54,7 +76,9 @@ export function DemoEmployeeContent({ title = "Миний хөрөнгө" }: { t
         <div className="relative">
           <Button variant="outline" size="icon" className="rounded-full">
             <Bell className="h-5 w-5" />
-            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] text-white">1</span>
+            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] text-white">
+              1
+            </span>
           </Button>
         </div>
       </div>
@@ -69,14 +93,18 @@ export function DemoEmployeeContent({ title = "Миний хөрөнгө" }: { t
         <CardContent>
           <div className="flex flex-col justify-between gap-4 rounded-lg border border-amber-200 bg-white p-4 sm:flex-row sm:items-center shadow-sm">
             <div className="space-y-1">
-              <p className="font-semibold text-foreground italic">MacBook Pro 14" (M3 Max)</p>
-              <p className="text-sm text-muted-foreground">ID: #ASSET-9921 | 2026.03.14</p>
+              <p className="font-semibold text-foreground italic">
+                MacBook Pro 14" (M3 Max)
+              </p>
+              <p className="text-sm text-muted-foreground">
+                ID: #ASSET-9921 | 2026.03.14
+              </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               {/* Нөхцөл шалгах товч */}
               {!isChecked ? (
-                <Button 
+                <Button
                   onClick={() => setIsDialogOpen(true)}
                   className="gap-2 bg-amber-500 hover:bg-amber-600 text-white"
                 >
@@ -113,7 +141,9 @@ export function DemoEmployeeContent({ title = "Миний хөрөнгө" }: { t
       {/* 3. My Assets Table (Хэвээрээ) */}
       <Card className="mt-6 border-border bg-card">
         <CardHeader>
-          <CardTitle className="text-base font-semibold">Миний эзэмшиж буй хөрөнгө</CardTitle>
+          <CardTitle className="text-base font-semibold">
+            Миний эзэмшиж буй хөрөнгө
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -128,7 +158,9 @@ export function DemoEmployeeContent({ title = "Миний хөрөнгө" }: { t
               <TableRow>
                 <TableCell>#DEV-202</TableCell>
                 <TableCell>Dell 27" Monitor</TableCell>
-                <TableCell><Badge variant="secondary">Баталгаажсан</Badge></TableCell>
+                <TableCell>
+                  <Badge variant="secondary">Баталгаажсан</Badge>
+                </TableCell>
               </TableRow>
             </TableBody>
           </Table>
@@ -144,7 +176,7 @@ export function DemoEmployeeContent({ title = "Миний хөрөнгө" }: { t
               #ASSET-9921 дугаартай хөрөнгийн одоогийн байдал
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="text-muted-foreground">Төхөөрөмжийн төлөв:</div>
@@ -152,10 +184,13 @@ export function DemoEmployeeContent({ title = "Миний хөрөнгө" }: { t
               <div className="text-muted-foreground">Дагалдах хэрэгсэл:</div>
               <div className="font-medium">Цэнэглэгч, Хайрцаг, Mouse</div>
               <div className="text-muted-foreground">Тэмдэглэл:</div>
-              <div className="font-medium">Дэлгэц дээр хамгаалалтын наалттай.</div>
+              <div className="font-medium">
+                Дэлгэц дээр хамгаалалтын наалттай.
+              </div>
             </div>
             <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-              * Та "Шалгасан" товчийг дарснаар хөрөнгийн физик нөхцөлийг хүлээн зөвшөөрч байгааг анхаарна уу.
+              * Та "Шалгасан" товчийг дарснаар хөрөнгийн физик нөхцөлийг хүлээн
+              зөвшөөрч байгааг анхаарна уу.
             </div>
           </div>
 
@@ -163,7 +198,10 @@ export function DemoEmployeeContent({ title = "Миний хөрөнгө" }: { t
             <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>
               Болих
             </Button>
-            <Button className="bg-foreground text-background" onClick={handleVerify}>
+            <Button
+              className="bg-foreground text-background"
+              onClick={handleVerify}
+            >
               Шалгасан
             </Button>
           </DialogFooter>
