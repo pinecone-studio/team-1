@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
-import { assets } from "../../../../drizzle/schema";
+
 import { getDb } from "../../client";
+import { assets } from "@/schema";
 
 export async function deleteAssetById(id: string): Promise<boolean> {
   const db = await getDb();

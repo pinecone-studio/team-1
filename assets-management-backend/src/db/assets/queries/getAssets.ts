@@ -1,7 +1,8 @@
 import { and, inArray, like } from "drizzle-orm";
-import { assets } from "../../../../drizzle/schema";
+
 import { getDb } from "../../client";
 import type { Asset } from "../types";
+import { assets } from "@/schema";
 
 export async function getAssets(
   office?: string,
@@ -22,5 +23,9 @@ export async function getAssets(
   if (conditions.length === 0) {
     return db.select().from(assets).all();
   }
-  return db.select().from(assets).where(and(...conditions)).all();
+  return db
+    .select()
+    .from(assets)
+    .where(and(...conditions))
+    .all();
 }

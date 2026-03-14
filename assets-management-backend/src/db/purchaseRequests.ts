@@ -1,8 +1,8 @@
 import { and, desc, eq } from "drizzle-orm";
-import { purchaseRequests } from "../../drizzle/schema";
+
 import { getDb } from "./client";
 import { createNotification } from "./notifications";
-
+import { purchaseRequests } from "@/schema";
 
 export type PurchaseRequestStatus = "PENDING" | "APPROVED" | "DECLINED";
 
@@ -76,13 +76,16 @@ export async function createPurchaseRequestsBatch(
   });
 
   return getPurchaseRequestsByToken(inputs[0].token);
-
 }
 
 export async function getPurchaseRequests(status?: PurchaseRequestStatus) {
   const db = await getDb();
   if (!status) {
-    return db.select().from(purchaseRequests).orderBy(desc(purchaseRequests.createdAt)).all();
+    return db
+      .select()
+      .from(purchaseRequests)
+      .orderBy(desc(purchaseRequests.createdAt))
+      .all();
   }
   return db
     .select()
@@ -94,7 +97,11 @@ export async function getPurchaseRequests(status?: PurchaseRequestStatus) {
 
 export async function getPurchaseRequestById(id: string) {
   const db = await getDb();
-  return db.select().from(purchaseRequests).where(eq(purchaseRequests.id, id)).get();
+  return db
+    .select()
+    .from(purchaseRequests)
+    .where(eq(purchaseRequests.id, id))
+    .get();
 }
 
 export async function getPurchaseRequestByToken(token: string) {
@@ -152,7 +159,12 @@ export async function decidePurchaseRequestsByToken(
       decidedBy,
       updatedAt: now,
     })
-    .where(and(eq(purchaseRequests.token, token), eq(purchaseRequests.status, "PENDING")));
+    .where(
+      and(
+        eq(purchaseRequests.token, token),
+        eq(purchaseRequests.status, "PENDING"),
+      ),
+    );
 
   const updatedRequests = await getPurchaseRequestsByToken(token);
   if (updatedRequests.length > 0) {
@@ -167,5 +179,4 @@ export async function decidePurchaseRequestsByToken(
   }
 
   return updatedRequests;
-
 }

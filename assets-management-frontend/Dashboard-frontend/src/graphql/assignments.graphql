@@ -13,11 +13,13 @@ fragment AssignmentFields on Assignment {
   conditionAtAssign
   conditionAtReturn
   status
-  assignedValue
-  paymentPlanMonths
-  interestRate
-  monthlyPayment
-  totalPayment
+  financing {
+    assignedValue
+    paymentPlanMonths
+    interestRate
+    monthlyPayment
+    totalPayment
+  }
   asset {
     ...AssetFields
   }

@@ -1,8 +1,16 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { assignments, assets, transfers } from "../../drizzle/schema";
+
 import { getDb } from "./client";
 import { getAssetById } from "./assets/queries";
 import { createNotification } from "./notifications";
+import {
+  assets,
+  assignmentBuyoutPolicies,
+  assignmentFinancing,
+  assignmentPayments,
+  assignments,
+  transfers,
+} from "@/schema";
 
 export async function getAssignments() {
   const db = await getDb();
@@ -23,6 +31,7 @@ export async function assignAssetToEmployee(
   employeeId: string,
   conditionAtAssign = "GOOD",
   accessoriesJson?: string,
+  buyoutPolicyId?: string,
   financials?: {
     assignedValue?: number;
     paymentPlanMonths?: number;
@@ -31,32 +40,42 @@ export async function assignAssetToEmployee(
 ) {
   const db = await getDb();
   const now = Date.now();
-
-  let monthlyPayment: number | undefined;
-  let totalPayment: number | undefined;
-
-  if (financials?.assignedValue && financials?.paymentPlanMonths) {
-    const interest = financials.interestRate ?? 0;
-    totalPayment = Math.round(financials.assignedValue * (1 + interest / 100));
-    monthlyPayment = Math.round(totalPayment / financials.paymentPlanMonths);
-  }
+  const assignmentId = crypto.randomUUID();
 
   await db.insert(assignments).values({
-    id: crypto.randomUUID(),
+    id: assignmentId,
     assetId,
     employeeId,
     assignedAt: now,
     conditionAtAssign,
     status: "ACTIVE",
     accessoriesJson,
-    assignedValue: financials?.assignedValue,
-    paymentPlanMonths: financials?.paymentPlanMonths,
-    interestRate: financials?.interestRate?.toString(),
-    monthlyPayment,
-    totalPayment,
+    buyoutPolicyId,
     createdAt: now,
     updatedAt: now,
   });
+
+  if (financials?.assignedValue && financials?.paymentPlanMonths) {
+    const interest = financials.interestRate ?? 0;
+    const totalPayment = Math.round(
+      financials.assignedValue * (1 + interest / 100),
+    );
+    const monthlyPayment = Math.round(
+      totalPayment / financials.paymentPlanMonths,
+    );
+
+    await db.insert(assignmentFinancing).values({
+      id: crypto.randomUUID(),
+      assignmentId,
+      assignedValue: financials.assignedValue,
+      paymentPlanMonths: financials.paymentPlanMonths,
+      interestRate: financials.interestRate?.toString(),
+      monthlyPayment,
+      totalPayment,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
 
   await db
     .update(assets)
@@ -77,6 +96,33 @@ export async function assignAssetToEmployee(
   return asset;
 }
 
+export async function getFinancingByAssignment(assignmentId: string) {
+  const db = await getDb();
+  return db
+    .select()
+    .from(assignmentFinancing)
+    .where(eq(assignmentFinancing.assignmentId, assignmentId))
+    .get();
+}
+
+export async function getPaymentsByFinancing(financingId: string) {
+  const db = await getDb();
+  return db
+    .select()
+    .from(assignmentPayments)
+    .where(eq(assignmentPayments.financingId, financingId))
+    .all();
+}
+
+export async function getBuyoutPolicyById(id: string) {
+  const db = await getDb();
+  return db
+    .select()
+    .from(assignmentBuyoutPolicies)
+    .where(eq(assignmentBuyoutPolicies.id, id))
+    .get();
+}
+
 export async function returnAssetFromEmployee(
   assetId: string,
   conditionAtReturn = "OK",
@@ -87,14 +133,21 @@ export async function returnAssetFromEmployee(
   const openAssignment = await db
     .select({ id: assignments.id })
     .from(assignments)
-    .where(and(eq(assignments.assetId, assetId), isNull(assignments.returnedAt)))
+    .where(
+      and(eq(assignments.assetId, assetId), isNull(assignments.returnedAt)),
+    )
     .orderBy(desc(assignments.assignedAt))
     .get();
 
   if (openAssignment?.id) {
     await db
       .update(assignments)
-      .set({ returnedAt: now, conditionAtReturn, status: "RETURNED", updatedAt: now })
+      .set({
+        returnedAt: now,
+        conditionAtReturn,
+        status: "RETURNED",
+        updatedAt: now,
+      })
       .where(eq(assignments.id, openAssignment.id));
   }
 
@@ -122,7 +175,7 @@ export async function transferAsset(
   fromEmployeeId: string,
   toEmployeeId: string,
   reason?: string,
-  conditionNoted = "GOOD"
+  conditionNoted = "GOOD",
 ) {
   const db = await getDb();
   const now = Date.now();
@@ -142,12 +195,20 @@ export async function transferAsset(
   const openAssignment = await db
     .select({ id: assignments.id })
     .from(assignments)
-    .where(and(eq(assignments.assetId, assetId), isNull(assignments.returnedAt)))
+    .where(
+      and(eq(assignments.assetId, assetId), isNull(assignments.returnedAt)),
+    )
     .get();
 
   if (openAssignment) {
-    await db.update(assignments)
-      .set({ returnedAt: now, conditionAtReturn: conditionNoted, status: "RETURNED", updatedAt: now })
+    await db
+      .update(assignments)
+      .set({
+        returnedAt: now,
+        conditionAtReturn: conditionNoted,
+        status: "RETURNED",
+        updatedAt: now,
+      })
       .where(eq(assignments.id, openAssignment.id));
   }
 
@@ -162,7 +223,8 @@ export async function transferAsset(
     updatedAt: now,
   });
 
-  await db.update(assets)
+  await db
+    .update(assets)
     .set({ assignedTo: toEmployeeId, status: "ASSIGNED", updatedAt: now })
     .where(eq(assets.id, assetId));
 
