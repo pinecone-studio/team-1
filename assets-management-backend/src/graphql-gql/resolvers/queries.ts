@@ -13,32 +13,33 @@ import { searchAssetsDB } from "@/db/assets/queries/searchAssets";
 import {
   getITDashboardData,
   getEmployeeDashboardData,
-  getFinanceDashboardData
+  getFinanceDashboardData,
 } from "@/db/dashboard";
 import { getVendors } from "@/db/vendors";
 import { getLocations } from "@/db/locations";
 import { getDb } from "@/db/client";
-import { auditLogs, maintenanceTickets } from "../../../drizzle/schema";
+
 import { eq, desc } from "drizzle-orm";
-
-
-
+import { auditLogs, maintenanceTickets } from "@/schema";
 
 export const Query = {
-
   employees: () => getEmployees(),
   employee: (_: unknown, args: { id: string }) => getEmployeeById(args.id),
   assets: (
     _: unknown,
-    args: { office?: string; categoryIds?: string[]; subCategoryIds?: string[] },
+    args: {
+      office?: string;
+      categoryIds?: string[];
+      subCategoryIds?: string[];
+    },
   ) => {
     const rawOffice = args.office?.trim();
     const defaultOffice = "Гурван гол";
     const normalizedOffice = rawOffice
       ? rawOffice
-        .replace(/^(Gurwan Gol|Gurvan Gol)/i, "Гурван гол")
-        .replace(/\s+\d+$/, "")
-        .trim()
+          .replace(/^(Gurwan Gol|Gurvan Gol)/i, "Гурван гол")
+          .replace(/\s+\d+$/, "")
+          .trim()
       : defaultOffice;
     return getAssets(normalizedOffice, args.categoryIds, args.subCategoryIds);
   },
@@ -46,21 +47,29 @@ export const Query = {
   assignments: () => getAssignments(),
   employeeAssignments: (_: unknown, args: { employeeId: string }) =>
     getAssignmentsByEmployee(args.employeeId),
-  purchaseRequests: (_: unknown, args: { status?: "PENDING" | "APPROVED" | "DECLINED" }) =>
-    getPurchaseRequests(args.status),
+  purchaseRequests: (
+    _: unknown,
+    args: { status?: "PENDING" | "APPROVED" | "DECLINED" },
+  ) => getPurchaseRequests(args.status),
   purchaseRequest: (_: unknown, args: { id: string }) =>
     getPurchaseRequestById(args.id),
   categories: () => getRootCategories(),
   assetHistory: (_: unknown, args: { assetId: string }) =>
     getAssetHistory(args.assetId),
-  disposalRequest: (_: unknown, args: { id: string }) => getDisposalRequest(args.id),
+  disposalRequest: (_: unknown, args: { id: string }) =>
+    getDisposalRequest(args.id),
   disposalRequests: (_: unknown, args: { status?: string }) =>
     getDisposalRequests(args.status),
   offboardingEvent: (_: unknown, args: { employeeId: string }) =>
     getOffboardingEventByEmployee(args.employeeId),
-  searchAssets: (_: unknown, args: { filter: any; pagination?: any; sort?: any }) =>
-    searchAssetsDB(args.filter, args.pagination, args.sort),
-  dashboard: async (_: unknown, args: { role: string; employeeId?: string }) => {
+  searchAssets: (
+    _: unknown,
+    args: { filter: any; pagination?: any; sort?: any },
+  ) => searchAssetsDB(args.filter, args.pagination, args.sort),
+  dashboard: async (
+    _: unknown,
+    args: { role: string; employeeId?: string },
+  ) => {
     const result: any = {};
 
     if (args.role === "IT_ADMIN" || args.role === "SUPER_ADMIN") {
@@ -68,7 +77,8 @@ export const Query = {
     }
 
     if (args.role === "EMPLOYEE") {
-      if (!args.employeeId) throw new Error("Employee ID required for employee view");
+      if (!args.employeeId)
+        throw new Error("Employee ID required for employee view");
       result.employeeView = await getEmployeeDashboardData(args.employeeId);
     }
 
@@ -85,7 +95,10 @@ export const Query = {
   },
   vendors: () => getVendors(),
   locations: () => getLocations(),
-  auditLogs: async (_: unknown, args: { tableName?: string; recordId?: string }) => {
+  auditLogs: async (
+    _: unknown,
+    args: { tableName?: string; recordId?: string },
+  ) => {
     const db = await getDb();
     let query = db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt));
     if (args.tableName) {
@@ -98,14 +111,13 @@ export const Query = {
   },
   maintenanceTickets: async (_: unknown, args: { status?: string }) => {
     const db = await getDb();
-    let query = db.select().from(maintenanceTickets).orderBy(desc(maintenanceTickets.createdAt));
+    let query = db
+      .select()
+      .from(maintenanceTickets)
+      .orderBy(desc(maintenanceTickets.createdAt));
     if (args.status) {
       query = query.where(eq(maintenanceTickets.status, args.status)) as any;
     }
     return query.all();
   },
 };
-
-
-
-

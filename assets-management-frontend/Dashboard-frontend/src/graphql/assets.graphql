@@ -153,7 +153,8 @@ mutation AssignAsset(
   $employeeId: ID!
   $conditionAtAssign: String
   $accessoriesJson: String
-  $assignedValue: Int
+  $buyoutPolicyId: ID
+  $assignedValue: Float
   $paymentPlanMonths: Int
   $interestRate: Float
 ) {
@@ -162,6 +163,7 @@ mutation AssignAsset(
     employeeId: $employeeId
     conditionAtAssign: $conditionAtAssign
     accessoriesJson: $accessoriesJson
+    buyoutPolicyId: $buyoutPolicyId
     assignedValue: $assignedValue
     paymentPlanMonths: $paymentPlanMonths
     interestRate: $interestRate

@@ -68,13 +68,43 @@ export const typeDefs = /* GraphQL */ `
 		conditionAtAssign: String!
 		conditionAtReturn: String
 		status: String!
+		employee: Employee
+		asset: Asset
+		buyoutPolicy: AssignmentBuyoutPolicy
+		financing: AssignmentFinancing
+	}
+
+	type AssignmentBuyoutPolicy {
+		id: ID!
+		name: String!
+		minEmploymentMonths: Int!
+		paymentPercent: Float!
+		isFree: Int!
+		category: Category
+		createdAt: Float!
+	}
+
+	type AssignmentFinancing {
+		id: ID!
+		assignmentId: ID!
 		assignedValue: Float
 		paymentPlanMonths: Int
 		interestRate: Float
 		monthlyPayment: Float
 		totalPayment: Float
-		employee: Employee
-		asset: Asset
+		payments: [AssignmentPayment!]!
+		createdAt: Float!
+		updatedAt: Float!
+	}
+
+	type AssignmentPayment {
+		id: ID!
+		financingId: ID!
+		amount: Int!
+		dueDate: Float!
+		paidAt: Float
+		status: String!
+		createdAt: Float!
 	}
 
 	input AssetCreateInput {
@@ -450,6 +480,7 @@ export const typeDefs = /* GraphQL */ `
 			employeeId: ID!
 			conditionAtAssign: String
 			accessoriesJson: String
+			buyoutPolicyId: ID
 			assignedValue: Float
 			paymentPlanMonths: Int
 			interestRate: Float

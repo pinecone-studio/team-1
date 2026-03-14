@@ -1,8 +1,9 @@
 import { eq } from "drizzle-orm";
-import { assets } from "../../../../drizzle/schema";
+
 import { getDb } from "../../client";
 import type { Asset, AssetUpdate } from "../types";
 import { getAssetById } from "../queries";
+import { assets } from "@/schema";
 
 export async function updateAssetById(
   id: string,
@@ -18,4 +19,3 @@ export async function updateAssetById(
 
   return getAssetById(id);
 }
-

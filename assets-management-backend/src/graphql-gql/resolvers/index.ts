@@ -6,7 +6,15 @@ import { getSubcategories } from "@/db/categories";
 import type { AssetTimelineEvent } from "@/db/assetHistory";
 import type { DisposalRequest } from "@/db/disposalRequests";
 import type { OffboardingEvent } from "@/db/offboarding";
+import {
+  getFinancingByAssignment,
+  getPaymentsByFinancing,
+  getBuyoutPolicyById,
+} from "@/db/assignments";
+
+import { eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
+import { categories } from "@/schema";
 
 const safeNumber = (val: any) => {
   if (val === null || val === undefined || val === "") return null;
@@ -20,13 +28,14 @@ const safeFloat = (val: any) => {
   return isNaN(num) ? null : num;
 };
 
-
 export const resolvers = {
   Query,
   Mutation,
   Asset: {
-    category: (asset: { subCategoryId?: string | null; categoryId?: string | null }) =>
-      asset.subCategoryId ?? asset.categoryId ?? "",
+    category: (asset: {
+      subCategoryId?: string | null;
+      categoryId?: string | null;
+    }) => asset.subCategoryId ?? asset.categoryId ?? "",
     purchaseCost: (asset: any) => safeNumber(asset.purchaseCost),
     currentBookValue: (asset: any) => safeNumber(asset.currentBookValue),
     purchaseDate: (asset: any) => safeNumber(asset.purchaseDate),
@@ -34,14 +43,41 @@ export const resolvers = {
   Assignment: {
     employee: (assignment: { employeeId: string }) =>
       getEmployeeById(assignment.employeeId),
-    asset: (assignment: { assetId: string }) => getAssetById(assignment.assetId),
+    asset: (assignment: { assetId: string }) =>
+      getAssetById(assignment.assetId),
     assignedAt: (assignment: any) => safeNumber(assignment.assignedAt),
     returnedAt: (assignment: any) => safeNumber(assignment.returnedAt),
-    assignedValue: (assignment: any) => safeNumber(assignment.assignedValue),
-    paymentPlanMonths: (assignment: any) => safeNumber(assignment.paymentPlanMonths),
-    interestRate: (assignment: any) => safeFloat(assignment.interestRate),
-    monthlyPayment: (assignment: any) => safeNumber(assignment.monthlyPayment),
-    totalPayment: (assignment: any) => safeNumber(assignment.totalPayment),
+    buyoutPolicy: (assignment: { buyoutPolicyId?: string }) =>
+      assignment.buyoutPolicyId
+        ? getBuyoutPolicyById(assignment.buyoutPolicyId)
+        : null,
+    financing: (assignment: { id: string }) =>
+      getFinancingByAssignment(assignment.id),
+  },
+  AssignmentBuyoutPolicy: {
+    category: async (policy: { categoryId?: string }) => {
+      if (!policy.categoryId) return null;
+      const db = await getDb();
+      return db
+        .select()
+        .from(categories)
+        .where(eq(categories.id, policy.categoryId))
+        .get();
+    },
+  },
+  AssignmentFinancing: {
+    assignedValue: (f: any) => safeNumber(f.assignedValue),
+    paymentPlanMonths: (f: any) => safeNumber(f.paymentPlanMonths),
+    interestRate: (f: any) => safeFloat(f.interestRate),
+    monthlyPayment: (f: any) => safeNumber(f.monthlyPayment),
+    totalPayment: (f: any) => safeNumber(f.totalPayment),
+    payments: (f: { id: string }) => getPaymentsByFinancing(f.id),
+  },
+  AssignmentPayment: {
+    amount: (p: any) => safeNumber(p.amount),
+    dueDate: (p: any) => safeNumber(p.dueDate),
+    paidAt: (p: any) => safeNumber(p.paidAt),
+    createdAt: (p: any) => safeNumber(p.createdAt),
   },
   Category: {
     subcategories: (category: { id: string }) => getSubcategories(category.id),
@@ -74,5 +110,3 @@ export const resolvers = {
     purchaseDate: (pr: any) => safeNumber(pr.purchaseDate),
   },
 };
-
-

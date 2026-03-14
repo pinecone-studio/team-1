@@ -1,6 +1,7 @@
 import { and, eq, isNull, or } from "drizzle-orm";
-import { categories } from "../../drizzle/schema";
+
 import { getDb } from "./client";
+import { categories } from "@/schema";
 
 export async function getCategories() {
   const db = await getDb();
@@ -24,17 +25,25 @@ export async function getSubcategories(parentId: string) {
 export async function createCategory(name: string, parentId?: string) {
   const db = await getDb();
   const id = crypto.randomUUID();
-  await db.insert(categories).values({
-    id,
-    name,
-    parentId: parentId ?? null,
-  }).execute();
+  await db
+    .insert(categories)
+    .values({
+      id,
+      name,
+      parentId: parentId ?? null,
+    })
+    .execute();
   return { id, name, parentId };
 }
 
-export async function updateCategory(id: string, name?: string, parentId?: string) {
+export async function updateCategory(
+  id: string,
+  name?: string,
+  parentId?: string,
+) {
   const db = await getDb();
-  await db.update(categories)
+  await db
+    .update(categories)
     .set({
       ...(name && { name }),
       ...(parentId !== undefined && { parentId: parentId ?? null }),

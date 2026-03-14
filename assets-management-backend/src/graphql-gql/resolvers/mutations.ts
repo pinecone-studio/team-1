@@ -166,6 +166,7 @@ export const Mutation = {
       employeeId: string;
       conditionAtAssign?: string | null;
       accessoriesJson?: string | null;
+      buyoutPolicyId?: string | null;
       assignedValue?: number | null;
       paymentPlanMonths?: number | null;
       interestRate?: number | null;
@@ -176,6 +177,7 @@ export const Mutation = {
       args.employeeId,
       args.conditionAtAssign ?? undefined,
       args.accessoriesJson ?? undefined,
+      args.buyoutPolicyId ?? undefined,
       {
         assignedValue: args.assignedValue ?? undefined,
         paymentPlanMonths: args.paymentPlanMonths ?? undefined,

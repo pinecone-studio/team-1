@@ -1,11 +1,7 @@
 import { eq } from "drizzle-orm";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getDb } from "@/db/client";
-import {
-  assets,
-  assignments,
-  maintenanceTickets,
-} from "../../../drizzle/schema";
+import { assets, assignments, maintenanceTickets } from "@/schema";
 
 // R2 Клиент (Environment хувьсагчдыг ашиглана)
 const r2Client = new S3Client({
