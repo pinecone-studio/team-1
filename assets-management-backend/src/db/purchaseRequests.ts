@@ -1,6 +1,8 @@
 import { and, desc, eq } from "drizzle-orm";
 import { purchaseRequests } from "../../drizzle/schema";
 import { getDb } from "./client";
+import { createNotification } from "./notifications";
+
 
 export type PurchaseRequestStatus = "PENDING" | "APPROVED" | "DECLINED";
 
@@ -65,7 +67,16 @@ export async function createPurchaseRequestsBatch(
 
   await db.insert(purchaseRequests).values(rows);
 
+  await createNotification({
+    role: "FINANCE",
+    title: "New Purchase Requests",
+    message: `${inputs.length} new purchase requests submitted by ${inputs[0].requesterEmail}.`,
+    type: "INFO",
+    link: `/purchase-requests?token=${inputs[0].token}`,
+  });
+
   return getPurchaseRequestsByToken(inputs[0].token);
+
 }
 
 export async function getPurchaseRequests(status?: PurchaseRequestStatus) {
@@ -143,5 +154,18 @@ export async function decidePurchaseRequestsByToken(
     })
     .where(and(eq(purchaseRequests.token, token), eq(purchaseRequests.status, "PENDING")));
 
-  return getPurchaseRequestsByToken(token);
+  const updatedRequests = await getPurchaseRequestsByToken(token);
+  if (updatedRequests.length > 0) {
+    const first = updatedRequests[0];
+    await createNotification({
+      employeeId: first.requesterEmployeeId,
+      title: `Purchase Request ${status}`,
+      message: `Your purchase request for ${first.assetTag} has been ${status.toLowerCase()} by ${decidedBy}.`,
+      type: status === "APPROVED" ? "INFO" : "WARNING",
+      link: "/my-requests",
+    });
+  }
+
+  return updatedRequests;
+
 }

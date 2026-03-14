@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "@apollo/client";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,23 +35,27 @@ import {
   AssetsDocument,
   AssignmentsDocument,
   EmployeesDocument,
+  AssetFieldsFragmentDoc,
 } from "@/gql/graphql";
+import { useFragment } from "@/gql";
 
 type AllocationRow = {
-  id: string;
+  id: string; // Assignment ID
+  assetTag: string; // Asset Tag for display
   employeeEmail: string;
   assignedDate: string;
   status: string;
-  statusKey: "pending" | "approved" | "rejected";
+  statusKey: "PENDING" | "ACTIVE" | "RETURNED" | "CANCELLED";
   confirmedDate: string;
   emailStatus: string;
   emailStatusKey: "sent" | "failed" | "pending" | "disabled" | "unknown";
 };
 
-const STATUS_LABELS: Record<AllocationRow["statusKey"], string> = {
-  pending: "Хүлээгдэж буй",
-  approved: "Зөвшөөрсөн",
-  rejected: "Буцаасан",
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: "Хүлээгдэж буй",
+  ACTIVE: "Идэвхтэй",
+  RETURNED: "Буцаасан",
+  CANCELLED: "Цуцлагдсан",
 };
 
 const EMAIL_STATUS_LABELS: Record<AllocationRow["emailStatusKey"], string> = {
@@ -78,14 +81,14 @@ export function AssetAllocationContent() {
   const rows = useMemo<AllocationRow[]>(() => {
     const assignments = assignmentsData?.assignments ?? [];
     return assignments.map((assignment) => {
-      const isReturned = Boolean(assignment.returnedAt);
-      const statusKey = isReturned ? "approved" : "pending";
+      const statusKey = assignment.status as keyof typeof STATUS_LABELS;
       return {
-        id: assignment.asset?.assetTag ?? assignment.assetId,
+        id: assignment.id,
+        assetTag: assignment.asset?.assetTag ?? assignment.assetId,
         employeeEmail: assignment.employee?.email ?? assignment.employeeId,
         assignedDate: new Date(assignment.assignedAt).toLocaleDateString(),
-        status: STATUS_LABELS[statusKey],
-        statusKey,
+        status: STATUS_LABELS[statusKey] || statusKey,
+        statusKey: statusKey as any,
         confirmedDate: assignment.returnedAt
           ? new Date(assignment.returnedAt).toLocaleDateString()
           : "—",
@@ -103,9 +106,11 @@ export function AssetAllocationContent() {
   const handleSendRequest = async () => {
     if (!selectedEmployee || !selectedAsset) return;
 
-    const asset = (assetsData?.assets ?? []).find(
-      (item) => item.id === selectedAsset,
-    );
+    const assetData = (assetsData?.assets ?? []).find((a) => {
+      const asset = useFragment(AssetFieldsFragmentDoc, a);
+      return asset?.id === selectedAsset;
+    });
+    const asset = useFragment(AssetFieldsFragmentDoc, assetData);
     if (!asset) return;
 
     setSubmitLoading(true);
@@ -167,14 +172,14 @@ export function AssetAllocationContent() {
             <TabsTrigger value="all" className="rounded-full px-3">
               Бүх хуваарилалт
             </TabsTrigger>
-            <TabsTrigger value="pending" className="rounded-full px-3">
-              Хүлээгдэж буй
+            <TabsTrigger value="ACTIVE" className="rounded-full px-3">
+              Идэвхтэй
             </TabsTrigger>
-            <TabsTrigger value="approved" className="rounded-full px-3">
-              Зөвшөөрсөн
-            </TabsTrigger>
-            <TabsTrigger value="rejected" className="rounded-full px-3">
+            <TabsTrigger value="RETURNED" className="rounded-full px-3">
               Буцаасан
+            </TabsTrigger>
+            <TabsTrigger value="PENDING" className="rounded-full px-3">
+              Хүлээгдэж буй
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -215,7 +220,7 @@ export function AssetAllocationContent() {
                 {visibleRows.map((row) => (
                   <TableRow key={row.id} className="border-border">
                     <TableCell className="font-medium text-foreground">
-                      {row.id}
+                      {row.assetTag}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {row.employeeEmail}
@@ -226,10 +231,10 @@ export function AssetAllocationContent() {
                     <TableCell>
                       <Badge
                         className={
-                          row.statusKey === "approved"
+                          row.statusKey === "ACTIVE"
                             ? "rounded-full bg-emerald-100 text-emerald-700"
-                            : row.statusKey === "rejected"
-                              ? "rounded-full bg-rose-100 text-rose-700"
+                            : row.statusKey === "RETURNED"
+                              ? "rounded-full bg-slate-100 text-slate-700"
                               : "rounded-full bg-amber-100 text-amber-700"
                         }
                       >
@@ -286,35 +291,39 @@ export function AssetAllocationContent() {
                 onValueChange={setSelectedEmployee}
               >
                 <SelectTrigger className="w-full bg-muted/40">
-                <SelectValue placeholder="Сонгох" />
-              </SelectTrigger>
-              <SelectContent>
-                {(employeesData?.employees ?? []).map((employee) => (
-                  <SelectItem key={employee.id} value={employee.id}>
-                    {employee.firstName} {employee.lastName} ({employee.email})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                  <SelectValue placeholder="Сонгох" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(employeesData?.employees ?? []).map((employee) => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      {employee.firstName} {employee.lastName} ({employee.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             <div className="space-y-2">
               <p className="text-sm font-medium text-foreground">
                 Хөрөнгө сонгох
               </p>
               <Select value={selectedAsset} onValueChange={setSelectedAsset}>
-              <SelectTrigger className="w-full bg-muted/40">
-                <SelectValue placeholder="Сонгох" />
-              </SelectTrigger>
-              <SelectContent>
-                {(assetsData?.assets ?? []).map((asset) => (
-                  <SelectItem key={asset.id} value={asset.id}>
-                    {asset.assetTag} - {asset.category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                <SelectTrigger className="w-full bg-muted/40">
+                  <SelectValue placeholder="Сонгох" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(assetsData?.assets ?? []).map((a) => {
+                    const asset = useFragment(AssetFieldsFragmentDoc, a);
+                    if (!asset) return null;
+                    return (
+                      <SelectItem key={asset.id} value={asset.id}>
+                        {asset.assetTag} - {asset.category}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
 
             <Button
               className="w-full bg-foreground text-background hover:bg-foreground/90"

@@ -1,0 +1,114 @@
+# Administrative and System Management
+
+# Queries
+query GetAuditLogs($tableName: String, $recordId: String) {
+  auditLogs(tableName: $tableName, recordId: $recordId) {
+    id
+    tableName
+    recordId
+    action
+    oldValueJson
+    newValueJson
+    actorId
+    createdAt
+  }
+}
+
+query GetMaintenanceTickets($status: String) {
+  maintenanceTickets(status: $status) {
+    id
+    assetId
+    reporterId
+    description
+    severity
+    status
+    vendorId
+    repairCost
+    resolvedAt
+    createdAt
+    updatedAt
+  }
+}
+
+# Administrative Overrides
+mutation AdminOverrideDisposal($id: ID!, $status: String!) {
+  adminOverrideDisposal(id: $id, status: $status) {
+    id
+    status
+    updatedAt
+  }
+}
+
+mutation AdminOverridePurchase($token: String!, $status: String!) {
+  adminOverridePurchase(token: $token, status: $status) {
+    id
+    status
+    updatedAt
+  }
+}
+
+mutation AdminOverrideOffboarding($id: ID!, $status: String!) {
+  adminOverrideOffboarding(id: $id, status: $status) {
+    id
+    status
+    updatedAt
+  }
+}
+
+
+# Core CRUD - Vendor
+mutation CreateVendor($input: VendorInput!) {
+  createVendor(input: $input) {
+    id
+    name
+  }
+}
+
+mutation UpdateVendor($id: ID!, $input: VendorInput!) {
+  updateVendor(id: $id, input: $input) {
+    id
+    name
+  }
+}
+
+mutation DeleteVendor($id: ID!) {
+  deleteVendor(id: $id)
+}
+
+# Core CRUD - Location
+mutation CreateLocation($input: LocationInput!) {
+  createLocation(input: $input) {
+    id
+    name
+  }
+}
+
+mutation UpdateLocation($id: ID!, $input: LocationInput!) {
+  updateLocation(id: $id, input: $input) {
+    id
+    name
+  }
+}
+
+mutation DeleteLocation($id: ID!) {
+  deleteLocation(id: $id)
+}
+
+# Core CRUD - Category
+mutation CreateCategory($name: String!, $parentId: ID) {
+  createCategory(name: $name, parentId: $parentId) {
+    id
+    name
+  }
+}
+
+mutation UpdateCategory($id: ID!, $name: String, $parentId: ID) {
+  updateCategory(id: $id, name: $name, parentId: $parentId) {
+    id
+    name
+  }
+}
+
+mutation DeleteCategory($id: ID!) {
+  deleteCategory(id: $id)
+}

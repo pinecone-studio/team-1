@@ -1,5 +1,5 @@
-import { sqliteTable, AnySQLiteColumn, integer, text, numeric, foreignKey, index } from "drizzle-orm/sqlite-core"
-  import { sql } from "drizzle-orm"
+import { sqliteTable, AnySQLiteColumn, integer, text, numeric, foreignKey, index, AnySQLiteTable, SQLiteColumn } from "drizzle-orm/sqlite-core"
+import { sql } from "drizzle-orm"
 
 export const d1Migrations = sqliteTable("d1_migrations", {
 	id: integer().primaryKey({ autoIncrement: true }),
@@ -54,11 +54,13 @@ export const vendors = sqliteTable("vendors", {
 });
 
 export const locations = sqliteTable("locations", {
-	id: text().primaryKey().notNull(),
-	name: text().notNull(),
-	parentId: text().references(() => locations.id),
-	type: text().notNull(),
-	createdAt: integer().default(sql`(unixepoch() * 1000)`).notNull(),
+	id: text("id").primaryKey().notNull(),
+	name: text("name").notNull(),
+	parentId: text("parent_id").references((): SQLiteColumn => locations.id),
+	type: text("type").notNull(),
+	createdAt: integer("created_at")
+		.default(sql`(unixepoch() * 1000)`)
+		.notNull(),
 });
 
 export const assets = sqliteTable(
@@ -92,8 +94,11 @@ export const assets = sqliteTable(
 		),
 		assetsCreatedAtIdx: index("assets_created_at_idx").on(table.createdAt),
 		assetsDeletedAtIdx: index("assets_deleted_at_idx").on(table.deletedAt),
+		assetsAssetTagIdx: index("assets_asset_tag_idx").on(table.assetTag),
+		assetsSerialNumberIdx: index("assets_serial_number_idx").on(table.serialNumber),
 	}),
 );
+
 
 export const assignments = sqliteTable(
 	"assignments",
@@ -105,6 +110,7 @@ export const assignments = sqliteTable(
 		returnedAt: integer(),
 		conditionAtAssign: text().notNull(),
 		conditionAtReturn: text(),
+		status: text().default("PENDING").notNull(),
 		signatureR2Key: text(),
 		accessoriesJson: text(),
 		createdAt: integer().default(sql`(strftime('%s', 'now') * 1000)`).notNull(),
@@ -305,5 +311,78 @@ export const auditLogs = sqliteTable(
 	(table) => ({
 		auditLogsTableIdx: index("audit_logs_table_idx").on(table.tableName),
 		auditLogsRecordIdx: index("audit_logs_record_idx").on(table.recordId),
+	}),
+);
+
+// ---------------------------------------------------------------------------
+// Disposal workflow
+// status: PENDING | IT_APPROVED | FINANCE_APPROVED | COMPLETED | REJECTED
+// ---------------------------------------------------------------------------
+export const disposalRequests = sqliteTable(
+	"disposal_requests",
+	{
+		id: text().primaryKey().notNull(),
+		assetId: text().notNull().references(() => assets.id),
+		requestedBy: text().notNull().references(() => employees.id),
+		method: text().notNull(), // e.g. DONATE | RECYCLE | SELL | DESTROY
+		reason: text(),
+		status: text().default("PENDING").notNull(),
+		itApprovedBy: text().references(() => employees.id),
+		itApprovedAt: integer(),
+		financeApprovedBy: text().references(() => employees.id),
+		financeApprovedAt: integer(),
+		dataWipeCertKey: text(), // R2 key for the wipe certificate file
+		rejectedBy: text().references(() => employees.id),
+		rejectedAt: integer(),
+		rejectionReason: text(),
+		createdAt: integer().default(sql`(unixepoch() * 1000)`).notNull(),
+		updatedAt: integer().default(sql`(unixepoch() * 1000)`).notNull(),
+	},
+	(table) => ({
+		disposalRequestsAssetIdx: index("disposal_requests_asset_idx").on(table.assetId),
+		disposalRequestsStatusIdx: index("disposal_requests_status_idx").on(table.status),
+	}),
+);
+
+// ---------------------------------------------------------------------------
+// Offboarding workflow
+// status: IN_PROGRESS | COMPLETED
+// ---------------------------------------------------------------------------
+export const offboardingEvents = sqliteTable(
+	"offboarding_events",
+	{
+		id: text().primaryKey().notNull(),
+		employeeId: text().notNull().references(() => employees.id),
+		initiatedBy: text().notNull().references(() => employees.id),
+		status: text().default("IN_PROGRESS").notNull(),
+		totalAssets: integer().default(0).notNull(),
+		returnedAssets: integer().default(0).notNull(),
+		completedAt: integer(),
+		createdAt: integer().default(sql`(unixepoch() * 1000)`).notNull(),
+		updatedAt: integer().default(sql`(unixepoch() * 1000)`).notNull(),
+	},
+	(table) => ({
+		offboardingEventsEmployeeIdx: index("offboarding_events_employee_idx").on(table.employeeId),
+		offboardingEventsStatusIdx: index("offboarding_events_status_idx").on(table.status),
+	}),
+);
+
+export const notifications = sqliteTable(
+	"notifications",
+	{
+		id: text().primaryKey().notNull(),
+		employeeId: text().references(() => employees.id), // null means system-wide or role-based if filtered
+		role: text(), // e.g. IT_ADMIN | FINANCE | EMPLOYEE
+		title: text().notNull(),
+		message: text().notNull(),
+		type: text().default("INFO").notNull(), // INFO | WARNING | URGENT
+		link: text(),
+		isRead: integer().default(0).notNull(),
+		createdAt: integer().default(sql`(unixepoch() * 1000)`).notNull(),
+	},
+	(table) => ({
+		notificationsEmployeeIdx: index("notifications_employee_idx").on(table.employeeId),
+		notificationsRoleIdx: index("notifications_role_idx").on(table.role),
+		notificationsReadIdx: index("notifications_read_idx").on(table.isRead),
 	}),
 );

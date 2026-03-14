@@ -1,0 +1,16 @@
+# System Notifications
+
+# Mutations
+mutation SendNotification($input: NotificationInput!) {
+  sendNotification(input: $input) {
+    id
+    title
+    message
+    type
+    createdAt
+  }
+}
+
+mutation MarkNotificationAsRead($id: ID!) {
+  markNotificationAsRead(id: $id)
+}

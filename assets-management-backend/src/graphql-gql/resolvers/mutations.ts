@@ -11,7 +11,15 @@ import {
   updateEmployeeById,
 } from "@/db/employees";
 import { getAssetById } from "@/db/assets/queries";
-import { assignAssetToEmployee, returnAssetFromEmployee } from "@/db/assignments";
+import {
+  assignAssetToEmployee,
+  returnAssetFromEmployee,
+  transferAsset
+} from "@/db/assignments";
+import {
+  createMaintenanceTicket,
+  updateMaintenanceTicket
+} from "@/db/maintenance";
 import {
   createPurchaseRequest,
   createPurchaseRequestsBatch,
@@ -25,6 +33,25 @@ import {
   buildPurchaseRequestEmail,
   buildPurchaseRequestSummaryEmail,
 } from "@/app/lib/email";
+import {
+  requestDisposal,
+  approveDisposalRequest,
+  rejectDisposalRequest,
+  uploadDataWipeCertificate,
+  completeDisposal,
+} from "@/db/disposalRequests";
+import { startOffboarding, completeAssetReturn } from "@/db/offboarding";
+import { createVendor, updateVendor, deleteVendor } from "@/db/vendors";
+import { createLocation, updateLocation, deleteLocation } from "@/db/locations";
+import { createCategory, updateCategory, deleteCategory } from "@/db/categories";
+import { createNotification, markNotificationAsRead } from "@/db/notifications";
+import {
+  adminOverrideDisposal,
+  adminOverridePurchase,
+  adminOverrideOffboarding
+} from "@/db/admin";
+
+
 
 type AssetCreateInput = {
   assetTag: string;
@@ -353,4 +380,101 @@ export const Mutation = {
 
     return updated[0];
   },
+
+  // ── Disposal Mutations ───────────────────────────────────────────────
+  requestDisposal: (
+    _: unknown,
+    args: { assetId: string; requestedBy: string; method: string; reason?: string | null },
+  ) =>
+    requestDisposal(
+      args.assetId,
+      args.requestedBy,
+      args.method,
+      args.reason ?? undefined,
+    ),
+  approveDisposal: (
+    _: unknown,
+    args: { id: string; approvedBy: string; stage: "IT_APPROVED" | "FINANCE_APPROVED" },
+  ) => approveDisposalRequest(args.id, args.approvedBy, args.stage),
+  rejectDisposal: (
+    _: unknown,
+    args: { id: string; rejectedBy: string; reason?: string | null },
+  ) => rejectDisposalRequest(args.id, args.rejectedBy, args.reason ?? undefined),
+  uploadDataWipeCertificate: (
+    _: unknown,
+    args: { id: string; fileKey: string; uploadedBy: string },
+  ) => uploadDataWipeCertificate(args.id, args.fileKey, args.uploadedBy),
+  completeDisposal: (
+    _: unknown,
+    args: {
+      id: string;
+      certifiedBy: string;
+      writeOffValue?: number | null;
+      recipient?: string | null;
+    },
+  ) =>
+    completeDisposal(
+      args.id,
+      args.certifiedBy,
+      args.writeOffValue ?? undefined,
+      args.recipient ?? undefined,
+    ),
+
+  // ── Offboarding Mutations ────────────────────────────────────────────
+  startOffboarding: (_: unknown, args: { employeeId: string; initiatedBy: string }) =>
+    startOffboarding(args.employeeId, args.initiatedBy),
+  completeAssetReturn: (
+    _: unknown,
+    args: {
+      assetId: string;
+      employeeId: string;
+      condition: string;
+      inspectedBy: string;
+    },
+  ) =>
+    completeAssetReturn(
+      args.assetId,
+      args.employeeId,
+      args.condition,
+      args.inspectedBy,
+    ),
+
+  // ── Maintenance Mutations ──────────────────────────────────────────
+  createMaintenanceTicket: (_: unknown, args: any) => createMaintenanceTicket(args),
+  updateMaintenanceTicket: (_: unknown, args: { id: string; status: string; repairCost?: number; resolvedAt?: number }) =>
+    updateMaintenanceTicket(args.id, args),
+
+  // ── Asset Management ───────────────────────────────────────────────
+  transferAsset: (_: unknown, args: { assetId: string; fromEmployeeId: string; toEmployeeId: string; reason?: string; conditionNoted?: string }) =>
+    transferAsset(args.assetId, args.fromEmployeeId, args.toEmployeeId, args.reason, args.conditionNoted),
+
+  // ── Super Admin Central Command ──────────────────────────────────────
+
+  createVendor: (_: unknown, args: { input: any }) => createVendor(args.input),
+  updateVendor: (_: unknown, args: { id: string; input: any }) => updateVendor(args.id, args.input),
+  deleteVendor: (_: unknown, args: { id: string }) => deleteVendor(args.id),
+
+  createLocation: (_: unknown, args: { input: any }) => createLocation(args.input),
+  updateLocation: (_: unknown, args: { id: string; input: any }) => updateLocation(args.id, args.input),
+  deleteLocation: (_: unknown, args: { id: string }) => deleteLocation(args.id),
+
+  createCategory: (_: unknown, args: { name: string; parentId?: string }) =>
+    createCategory(args.name, args.parentId),
+  updateCategory: (_: unknown, args: { id: string; name?: string; parentId?: string }) =>
+    updateCategory(args.id, args.name, args.parentId),
+  deleteCategory: (_: unknown, args: { id: string }) => deleteCategory(args.id),
+
+  sendNotification: (_: unknown, args: { input: any }) => createNotification(args.input),
+  markNotificationAsRead: (_: unknown, args: { id: string }) => {
+    markNotificationAsRead(args.id);
+    return true;
+  },
+
+  adminOverrideDisposal: (_: unknown, args: { id: string; status: string }) =>
+    adminOverrideDisposal(args.id, args.status, "SUPER_ADMIN"), // Hard-coding role for now as auth is not implemented
+  adminOverridePurchase: (_: unknown, args: { token: string; status: string }) =>
+    adminOverridePurchase(args.token, args.status, "SUPER_ADMIN"),
+  adminOverrideOffboarding: (_: unknown, args: { id: string; status: string }) =>
+    adminOverrideOffboarding(args.id, args.status, "SUPER_ADMIN"),
 };
+
