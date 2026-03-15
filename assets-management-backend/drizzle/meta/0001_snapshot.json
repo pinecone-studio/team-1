@@ -1,9 +1,125 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "084cf22b-71b9-4dea-b91c-918c3bad107f",
-  "prevId": "a1ee5c87-8632-423f-8edc-f3552f8deb7b",
+  "id": "d4efff1c-28d8-48eb-8ad4-fcaa41a743f1",
+  "prevId": "ec994c7d-9918-488b-9810-5c01a5db4834",
   "tables": {
+    "asset_contracts": {
+      "name": "asset_contracts",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "assetId": {
+          "name": "assetId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "vendorId": {
+          "name": "vendorId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "startDate": {
+          "name": "startDate",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "endDate": {
+          "name": "endDate",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "documentKey": {
+          "name": "documentKey",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        }
+      },
+      "indexes": {
+        "asset_contracts_asset_idx": {
+          "name": "asset_contracts_asset_idx",
+          "columns": [
+            "assetId"
+          ],
+          "isUnique": false
+        },
+        "asset_contracts_end_date_idx": {
+          "name": "asset_contracts_end_date_idx",
+          "columns": [
+            "endDate"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "asset_contracts_assetId_assets_id_fk": {
+          "name": "asset_contracts_assetId_assets_id_fk",
+          "tableFrom": "asset_contracts",
+          "tableTo": "assets",
+          "columnsFrom": [
+            "assetId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "asset_contracts_vendorId_vendors_id_fk": {
+          "name": "asset_contracts_vendorId_vendors_id_fk",
+          "tableFrom": "asset_contracts",
+          "tableTo": "vendors",
+          "columnsFrom": [
+            "vendorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "asset_files": {
       "name": "asset_files",
       "columns": {
@@ -72,6 +188,95 @@
           "tableTo": "employees",
           "columnsFrom": [
             "uploadedBy"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "asset_models": {
+      "name": "asset_models",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "categoryId": {
+          "name": "categoryId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "manufacturer": {
+          "name": "manufacturer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "modelName": {
+          "name": "modelName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "modelNumber": {
+          "name": "modelNumber",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "expectedLifeMonths": {
+          "name": "expectedLifeMonths",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "depreciationRate": {
+          "name": "depreciationRate",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        }
+      },
+      "indexes": {
+        "asset_models_category_idx": {
+          "name": "asset_models_category_idx",
+          "columns": [
+            "categoryId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "asset_models_categoryId_categories_id_fk": {
+          "name": "asset_models_categoryId_categories_id_fk",
+          "tableFrom": "asset_models",
+          "tableTo": "categories",
+          "columnsFrom": [
+            "categoryId"
           ],
           "columnsTo": [
             "id"
@@ -236,6 +441,20 @@
           "notNull": true,
           "autoincrement": false
         },
+        "modelId": {
+          "name": "modelId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "categoryId": {
+          "name": "categoryId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "status": {
           "name": "status",
           "type": "text",
@@ -258,13 +477,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "currentBookValue": {
-          "name": "currentBookValue",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "locationId": {
           "name": "locationId",
           "type": "text",
@@ -272,46 +484,9 @@
           "notNull": false,
           "autoincrement": false
         },
-        "assignedTo": {
-          "name": "assignedTo",
+        "currentAssigneeId": {
+          "name": "currentAssigneeId",
           "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "categoryId": {
-          "name": "categoryId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "subCategoryId": {
-          "name": "subCategoryId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%s', 'now') * 1000)"
-        },
-        "updatedAt": {
-          "name": "updatedAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%s', 'now') * 1000)"
-        },
-        "deletedAt": {
-          "name": "deletedAt",
-          "type": "integer",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -319,6 +494,44 @@
         "imageUrl": {
           "name": "imageUrl",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "condition": {
+          "name": "condition",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'GOOD'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        },
+        "deletedAt": {
+          "name": "deletedAt",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -339,6 +552,13 @@
           ],
           "isUnique": false
         },
+        "assets_model_idx": {
+          "name": "assets_model_idx",
+          "columns": [
+            "modelId"
+          ],
+          "isUnique": false
+        },
         "assets_location_idx": {
           "name": "assets_location_idx",
           "columns": [
@@ -346,10 +566,10 @@
           ],
           "isUnique": false
         },
-        "assets_assigned_to_idx": {
-          "name": "assets_assigned_to_idx",
+        "assets_assignee_idx": {
+          "name": "assets_assignee_idx",
           "columns": [
-            "assignedTo"
+            "currentAssigneeId"
           ],
           "isUnique": false
         },
@@ -392,6 +612,19 @@
         }
       },
       "foreignKeys": {
+        "assets_modelId_asset_models_id_fk": {
+          "name": "assets_modelId_asset_models_id_fk",
+          "tableFrom": "assets",
+          "tableTo": "asset_models",
+          "columnsFrom": [
+            "modelId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "assets_categoryId_categories_id_fk": {
           "name": "assets_categoryId_categories_id_fk",
           "tableFrom": "assets",
@@ -405,12 +638,25 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "assets_subCategoryId_categories_id_fk": {
-          "name": "assets_subCategoryId_categories_id_fk",
+        "assets_locationId_locations_id_fk": {
+          "name": "assets_locationId_locations_id_fk",
           "tableFrom": "assets",
-          "tableTo": "categories",
+          "tableTo": "locations",
           "columnsFrom": [
-            "subCategoryId"
+            "locationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "assets_currentAssigneeId_employees_id_fk": {
+          "name": "assets_currentAssigneeId_employees_id_fk",
+          "tableFrom": "assets",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "currentAssigneeId"
           ],
           "columnsTo": [
             "id"
@@ -468,6 +714,14 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "isDefault": {
+          "name": "isDefault",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
         },
         "createdAt": {
           "name": "createdAt",
@@ -723,7 +977,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "(strftime('%s', 'now') * 1000)"
+          "default": "(unixepoch() * 1000)"
         },
         "returnedAt": {
           "name": "returnedAt",
@@ -781,7 +1035,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "(strftime('%s', 'now') * 1000)"
+          "default": "(unixepoch() * 1000)"
         },
         "updatedAt": {
           "name": "updatedAt",
@@ -789,7 +1043,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "(strftime('%s', 'now') * 1000)"
+          "default": "(unixepoch() * 1000)"
         },
         "deletedAt": {
           "name": "deletedAt",
@@ -811,6 +1065,13 @@
           "name": "assignments_employee_idx",
           "columns": [
             "employeeId"
+          ],
+          "isUnique": false
+        },
+        "assignments_status_idx": {
+          "name": "assignments_status_idx",
+          "columns": [
+            "status"
           ],
           "isUnique": false
         }
@@ -935,6 +1196,13 @@
             "recordId"
           ],
           "isUnique": false
+        },
+        "audit_logs_actor_idx": {
+          "name": "audit_logs_actor_idx",
+          "columns": [
+            "actorId"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {
@@ -986,11 +1254,25 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "(strftime('%s', 'now') * 1000)"
+          "default": "(unixepoch() * 1000)"
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "categories_parentId_categories_id_fk": {
+          "name": "categories_parentId_categories_id_fk",
+          "tableFrom": "categories",
+          "tableTo": "categories",
+          "columnsFrom": [
+            "parentId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -1026,6 +1308,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "createdBy": {
+          "name": "createdBy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
         "startedAt": {
           "name": "startedAt",
           "type": "integer",
@@ -1039,13 +1328,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": false,
-          "autoincrement": false
-        },
-        "createdBy": {
-          "name": "createdBy",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
           "autoincrement": false
         },
         "createdAt": {
@@ -1063,16 +1345,17 @@
           "notNull": true,
           "autoincrement": false,
           "default": "(unixepoch() * 1000)"
-        },
-        "deletedAt": {
-          "name": "deletedAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "census_events_closed_idx": {
+          "name": "census_events_closed_idx",
+          "columns": [
+            "closedAt"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "census_events_createdBy_employees_id_fk": {
           "name": "census_events_createdBy_employees_id_fk",
@@ -1268,14 +1551,6 @@
           "notNull": true,
           "autoincrement": false
         },
-        "disposedAt": {
-          "name": "disposedAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch() * 1000)"
-        },
         "certR2Key": {
           "name": "certR2Key",
           "type": "text",
@@ -1289,6 +1564,14 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "disposedAt": {
+          "name": "disposedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
         },
         "createdAt": {
           "name": "createdAt",
@@ -1546,6 +1829,105 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "employee_notifications": {
+      "name": "employee_notifications",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "employeeId": {
+          "name": "employeeId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "message": {
+          "name": "message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'INFO'"
+        },
+        "link": {
+          "name": "link",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "isRead": {
+          "name": "isRead",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        }
+      },
+      "indexes": {
+        "emp_notif_employee_idx": {
+          "name": "emp_notif_employee_idx",
+          "columns": [
+            "employeeId"
+          ],
+          "isUnique": false
+        },
+        "emp_notif_read_idx": {
+          "name": "emp_notif_read_idx",
+          "columns": [
+            "employeeId",
+            "isRead"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "employee_notifications_employeeId_employees_id_fk": {
+          "name": "employee_notifications_employeeId_employees_id_fk",
+          "tableFrom": "employee_notifications",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "employeeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "employees": {
       "name": "employees",
       "columns": {
@@ -1720,7 +2102,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "(strftime('%s', 'now') * 1000)"
+          "default": "(unixepoch() * 1000)"
         },
         "updatedAt": {
           "name": "updatedAt",
@@ -1728,7 +2110,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "(strftime('%s', 'now') * 1000)"
+          "default": "(unixepoch() * 1000)"
         },
         "deletedAt": {
           "name": "deletedAt",
@@ -1761,8 +2143,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "parent_id": {
-          "name": "parent_id",
+        "parentId": {
+          "name": "parentId",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -1775,8 +2157,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "created_at": {
-          "name": "created_at",
+        "createdAt": {
+          "name": "createdAt",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -1786,12 +2168,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "locations_parent_id_locations_id_fk": {
-          "name": "locations_parent_id_locations_id_fk",
+        "locations_parentId_locations_id_fk": {
+          "name": "locations_parentId_locations_id_fk",
           "tableFrom": "locations",
           "tableTo": "locations",
           "columnsFrom": [
-            "parent_id"
+            "parentId"
           ],
           "columnsTo": [
             "id"
@@ -1864,6 +2246,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "slaDeadline": {
+          "name": "slaDeadline",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "resolvedAt": {
           "name": "resolvedAt",
           "type": "integer",
@@ -1877,7 +2266,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "(strftime('%s', 'now') * 1000)"
+          "default": "(unixepoch() * 1000)"
         },
         "updatedAt": {
           "name": "updatedAt",
@@ -1885,7 +2274,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "(strftime('%s', 'now') * 1000)"
+          "default": "(unixepoch() * 1000)"
         }
       },
       "indexes": {
@@ -1900,6 +2289,13 @@
           "name": "maintenance_tickets_status_idx",
           "columns": [
             "status"
+          ],
+          "isUnique": false
+        },
+        "maintenance_tickets_sla_idx": {
+          "name": "maintenance_tickets_sla_idx",
+          "columns": [
+            "slaDeadline"
           ],
           "isUnique": false
         }
@@ -1930,112 +2326,13 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "notifications": {
-      "name": "notifications",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
         },
-        "employeeId": {
-          "name": "employeeId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "role": {
-          "name": "role",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "message": {
-          "name": "message",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "type": {
-          "name": "type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'INFO'"
-        },
-        "link": {
-          "name": "link",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "isRead": {
-          "name": "isRead",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch() * 1000)"
-        }
-      },
-      "indexes": {
-        "notifications_employee_idx": {
-          "name": "notifications_employee_idx",
-          "columns": [
-            "employeeId"
-          ],
-          "isUnique": false
-        },
-        "notifications_role_idx": {
-          "name": "notifications_role_idx",
-          "columns": [
-            "role"
-          ],
-          "isUnique": false
-        },
-        "notifications_read_idx": {
-          "name": "notifications_read_idx",
-          "columns": [
-            "isRead"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "notifications_employeeId_employees_id_fk": {
-          "name": "notifications_employeeId_employees_id_fk",
-          "tableFrom": "notifications",
-          "tableTo": "employees",
+        "maintenance_tickets_vendorId_vendors_id_fk": {
+          "name": "maintenance_tickets_vendorId_vendors_id_fk",
+          "tableFrom": "maintenance_tickets",
+          "tableTo": "vendors",
           "columnsFrom": [
-            "employeeId"
+            "vendorId"
           ],
           "columnsTo": [
             "id"
@@ -2192,6 +2489,13 @@
           "notNull": true,
           "autoincrement": false
         },
+        "modelId": {
+          "name": "modelId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "name": {
           "name": "name",
           "type": "text",
@@ -2229,7 +2533,15 @@
           "default": "(unixepoch() * 1000)"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "purchase_order_items_order_idx": {
+          "name": "purchase_order_items_order_idx",
+          "columns": [
+            "purchaseOrderId"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "purchase_order_items_purchaseOrderId_purchase_orders_id_fk": {
           "name": "purchase_order_items_purchaseOrderId_purchase_orders_id_fk",
@@ -2250,6 +2562,19 @@
           "tableTo": "categories",
           "columnsFrom": [
             "categoryId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "purchase_order_items_modelId_asset_models_id_fk": {
+          "name": "purchase_order_items_modelId_asset_models_id_fk",
+          "tableFrom": "purchase_order_items",
+          "tableTo": "asset_models",
+          "columnsFrom": [
+            "modelId"
           ],
           "columnsTo": [
             "id"
@@ -2291,13 +2616,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false,
-          "autoincrement": false
-        },
-        "lineItemsJson": {
-          "name": "lineItemsJson",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
           "autoincrement": false
         },
         "totalCost": {
@@ -2417,15 +2735,22 @@
           "notNull": true,
           "autoincrement": false
         },
-        "assetTag": {
-          "name": "assetTag",
+        "categoryId": {
+          "name": "categoryId",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "category": {
-          "name": "category",
+        "modelId": {
+          "name": "modelId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "assetTag": {
+          "name": "assetTag",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -2502,13 +2827,20 @@
           "notNull": false,
           "autoincrement": false
         },
+        "resolvedAssetId": {
+          "name": "resolvedAssetId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "createdAt": {
           "name": "createdAt",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "(strftime('%s', 'now') * 1000)"
+          "default": "(unixepoch() * 1000)"
         },
         "updatedAt": {
           "name": "updatedAt",
@@ -2516,11 +2848,52 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "(strftime('%s', 'now') * 1000)"
+          "default": "(unixepoch() * 1000)"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "purchase_requests_category_idx": {
+          "name": "purchase_requests_category_idx",
+          "columns": [
+            "categoryId"
+          ],
+          "isUnique": false
+        },
+        "purchase_requests_asset_idx": {
+          "name": "purchase_requests_asset_idx",
+          "columns": [
+            "resolvedAssetId"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
+        "purchase_requests_categoryId_categories_id_fk": {
+          "name": "purchase_requests_categoryId_categories_id_fk",
+          "tableFrom": "purchase_requests",
+          "tableTo": "categories",
+          "columnsFrom": [
+            "categoryId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "purchase_requests_modelId_asset_models_id_fk": {
+          "name": "purchase_requests_modelId_asset_models_id_fk",
+          "tableFrom": "purchase_requests",
+          "tableTo": "asset_models",
+          "columnsFrom": [
+            "modelId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "purchase_requests_requesterEmployeeId_employees_id_fk": {
           "name": "purchase_requests_requesterEmployeeId_employees_id_fk",
           "tableFrom": "purchase_requests",
@@ -2533,8 +2906,192 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "purchase_requests_decidedBy_employees_id_fk": {
+          "name": "purchase_requests_decidedBy_employees_id_fk",
+          "tableFrom": "purchase_requests",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "decidedBy"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "purchase_requests_resolvedAssetId_assets_id_fk": {
+          "name": "purchase_requests_resolvedAssetId_assets_id_fk",
+          "tableFrom": "purchase_requests",
+          "tableTo": "assets",
+          "columnsFrom": [
+            "resolvedAssetId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "role_notification_reads": {
+      "name": "role_notification_reads",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "notificationId": {
+          "name": "notificationId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "employeeId": {
+          "name": "employeeId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "readAt": {
+          "name": "readAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        }
+      },
+      "indexes": {
+        "role_notif_reads_notif_idx": {
+          "name": "role_notif_reads_notif_idx",
+          "columns": [
+            "notificationId"
+          ],
+          "isUnique": false
+        },
+        "role_notif_reads_emp_idx": {
+          "name": "role_notif_reads_emp_idx",
+          "columns": [
+            "employeeId"
+          ],
+          "isUnique": false
+        },
+        "role_notif_reads_unique_idx": {
+          "name": "role_notif_reads_unique_idx",
+          "columns": [
+            "notificationId",
+            "employeeId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "role_notification_reads_notificationId_role_notifications_id_fk": {
+          "name": "role_notification_reads_notificationId_role_notifications_id_fk",
+          "tableFrom": "role_notification_reads",
+          "tableTo": "role_notifications",
+          "columnsFrom": [
+            "notificationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "role_notification_reads_employeeId_employees_id_fk": {
+          "name": "role_notification_reads_employeeId_employees_id_fk",
+          "tableFrom": "role_notification_reads",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "employeeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "role_notifications": {
+      "name": "role_notifications",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "message": {
+          "name": "message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'INFO'"
+        },
+        "link": {
+          "name": "link",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        }
+      },
+      "indexes": {
+        "role_notif_role_idx": {
+          "name": "role_notif_role_idx",
+          "columns": [
+            "role"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -2584,6 +3141,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "conditionNoted": {
+          "name": "conditionNoted",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "transferredAt": {
           "name": "transferredAt",
           "type": "integer",
@@ -2591,13 +3155,6 @@
           "notNull": true,
           "autoincrement": false,
           "default": "(unixepoch() * 1000)"
-        },
-        "conditionNoted": {
-          "name": "conditionNoted",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
         },
         "createdAt": {
           "name": "createdAt",
