@@ -1,0 +1,48 @@
+fragment AssetFields on Asset {
+  id
+  assetTag
+  serialNumber
+  status
+  category
+  purchaseDate
+  purchaseCost
+  currentBookValue
+  locationId
+  assignedTo
+  imageUrl
+  createdAt
+  updatedAt
+}
+
+fragment EmployeeFields on Employee {
+  id
+  firstName
+  lastName
+  email
+  role
+  department
+  branch
+  imageUrl
+}
+
+fragment CategoryFields on Category {
+  id
+  name
+  parentId
+}
+
+fragment VendorFields on Vendor {
+  id
+  name
+  contactName
+  email
+  phone
+  address
+}
+
+fragment LocationFields on Location {
+  id
+  name
+  parentId
+  type
+}

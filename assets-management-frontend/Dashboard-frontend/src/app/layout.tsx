@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
-import { ApolloProviderWrapper } from "@/components/providers/apollo-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
+import { AllProviders } from "@/components/providers/all-providers";
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
@@ -39,9 +39,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="font-sans antialiased bg-muted/40">
-        <ApolloProviderWrapper>{children}</ApolloProviderWrapper>
-        <Analytics />
-        <Toaster />
+        <AllProviders>
+          {children}
+          <Analytics />
+          <Toaster />
+        </AllProviders>
       </body>
     </html>
   );
