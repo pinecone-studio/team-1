@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import {
+  ChevronDown,
+  X,
+  ArrowLeft,
+  Check,
+  Sparkles,
+  RotateCcw,
+} from "lucide-react";
 import { useMutation, useQuery } from "@apollo/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -35,9 +42,10 @@ import {
   CATEGORY_LABELS,
   LOCATION_OPTIONS,
   MAIN_CATEGORY_OPTIONS,
-  ROOM_OPTIONS_BY_TYPE,
+  SUB_CATEGORIES_BY_MAIN,
   ROOM_TYPE_OPTIONS,
-  getRoomTypeLabel,
+  SUB_ROOM_TYPES,
+  FINAL_ROOM_OPTIONS,
 } from "./constants";
 
 type AssetDialogMode = "create" | "edit";
@@ -60,15 +68,14 @@ export function AssetFormDialog({
   initialAsset = null,
 }: AssetFormDialogProps) {
   const [assetId, setAssetId] = useState("");
-  const [assetCategory, setAssetCategory] = useState<AssetCategory | "">("");
+  const [subCategory, setSubCategory] = useState("");
   const [mainCategory, setMainCategory] = useState("");
   const [location, setLocation] = useState("");
   const [roomType, setRoomType] = useState("");
+  const [subRoomType, setSubRoomType] = useState("");
   const [roomNumber, setRoomNumber] = useState("");
-  const [hoveredLocation, setHoveredLocation] = useState<string | null>(null);
-  const [hoveredRoomType, setHoveredRoomType] = useState<string | null>(null);
   const [locationStep, setLocationStep] = useState<
-    "location" | "roomType" | "roomNumber"
+    "location" | "roomType" | "subRoomType" | "roomNumber"
   >("location");
   const [locationOpen, setLocationOpen] = useState(false);
   const [serialNumber, setSerialNumber] = useState("");
@@ -86,6 +93,27 @@ export function AssetFormDialog({
   >("idle");
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [assetIdAuto, setAssetIdAuto] = useState(true);
+
+  /** Үндсэн ангилалд хамаарах дэд ангиллууд */
+  const subCategoryOptions = useMemo(() => {
+    const keys =
+      mainCategory && mainCategory in SUB_CATEGORIES_BY_MAIN
+        ? SUB_CATEGORIES_BY_MAIN[mainCategory]
+        : (Object.keys(CATEGORY_LABELS) as AssetCategory[]);
+    return keys.map((k) => ({ key: k, label: CATEGORY_LABELS[k] }));
+  }, [mainCategory]);
+
+  /** Дэд ангиллын бичигдсэн утгыг API/seed-д ашиглах key болгон */
+  const resolvedAssetCategory = useMemo((): AssetCategory => {
+    const v = subCategory.trim();
+    if (!v) return "OTHER";
+    const byLabel = Object.entries(CATEGORY_LABELS).find(
+      ([, label]) => label === v,
+    )?.[0] as AssetCategory | undefined;
+    if (byLabel) return byLabel;
+    if (v in CATEGORY_LABELS) return v as AssetCategory;
+    return "OTHER";
+  }, [subCategory]);
   const [isSaving, setIsSaving] = useState(false);
   const [assignedEmployeeId, setAssignedEmployeeId] = useState<string>("");
   const usedAssetIdsRef = useRef(new Set<string>());
@@ -98,46 +126,33 @@ export function AssetFormDialog({
     skip: mode !== "edit",
   });
 
-  const roomTypeLabel = getRoomTypeLabel(roomType);
-  const locationDisplay = roomNumber
-    ? `${location} / ${roomTypeLabel} / ${roomNumber}`
-    : roomType
-      ? `${location} / ${roomTypeLabel}`
-      : location;
-  const locationPlaceholder =
-    locationStep === "location"
-      ? "Байршил сонгох"
-      : locationStep === "roomType"
-        ? "Өрөөний төрөл сонгох"
-        : "Өрөө сонгох";
+  const locationDisplay = [location, roomType, subRoomType, roomNumber]
+    .filter(Boolean)
+    .join(" / ");
 
-  const categoryEntries = Object.entries(CATEGORY_LABELS) as Array<
-    [AssetCategory, string]
-  >;
-
-  const resolvedInitialLocation = useMemo(() => {
+  const resolvedInitialLocation = useMemo((): {
+    location: string;
+    roomType: string;
+    subRoomType: string;
+    roomNumber: string;
+    step: "location" | "roomType" | "subRoomType" | "roomNumber";
+  } | null => {
     if (!initialAsset?.location) return null;
     const parts = initialAsset.location.split(" / ").map((part) => part.trim());
-    if (parts.length === 1) {
-      return { location: parts[0], roomType: "", roomNumber: "" };
-    }
-    if (parts.length === 2) {
-      const match = ROOM_TYPE_OPTIONS.find(
-        (option) => option.label === parts[1] || option.value === parts[1],
-      );
-      return {
-        location: parts[0],
-        roomType: match?.value ?? parts[1],
-        roomNumber: "",
-      };
-    }
-    const match = ROOM_TYPE_OPTIONS.find(
-      (option) => option.label === parts[1] || option.value === parts[1],
-    );
+    const step: "location" | "roomType" | "subRoomType" | "roomNumber" =
+      parts[3]
+        ? "roomNumber"
+        : parts[2]
+          ? "subRoomType"
+          : parts[1]
+            ? "roomType"
+            : "location";
     return {
-      location: parts[0],
-      roomType: match?.value ?? parts[1],
-      roomNumber: parts[2],
+      location: parts[0] ?? "",
+      roomType: parts[1] ?? "",
+      subRoomType: parts[2] ?? "",
+      roomNumber: parts[3] ?? "",
+      step,
     };
   }, [initialAsset?.location]);
 
@@ -205,17 +220,21 @@ export function AssetFormDialog({
 
   const resetForm = () => {
     setAssetId("");
-    setAssetCategory("");
+    setSubCategory("");
     setMainCategory("");
     setLocation("");
     setRoomType("");
+    setSubRoomType("");
     setRoomNumber("");
     setLocationStep("location");
     setLocationOpen(false);
     setSerialNumber("");
     setSerialItems([]);
     setNote("");
-    setPurchaseDate("");
+    const today = new Date();
+    setPurchaseDate(
+      `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`,
+    );
     setPurchasePrice("");
     setAssetImage(null);
     setAssetImagePreview(null);
@@ -231,19 +250,20 @@ export function AssetFormDialog({
     const yyyy = String(today.getFullYear());
     const mm = String(today.getMonth() + 1).padStart(2, "0");
     const dd = String(today.getDate()).padStart(2, "0");
-
-    setAssetCategory("MONITOR");
-    setMainCategory("shiree");
+    setSubCategory("Дэлгэц");
+    setMainCategory("IT тоног төхөөрөмж");
     setAssetIdAuto(true);
     setSerialItems(["SN-DEMO-001", "SN-DEMO-002"]);
     setSerialNumber("");
     setPurchaseDate(`${yyyy}-${mm}-${dd}`);
     setPurchasePrice("1200");
     setLocation("Гурван гол");
-    setRoomType("office");
-    setRoomNumber("3 давхрын заал");
+    setRoomType("Оффис");
+    setSubRoomType("Заал");
+    setRoomNumber("3 давхар заал");
     setLocationStep("roomNumber");
     setNote("Demo asset");
+    toast.info("Туршилтын өгөгдөл бөглөгдлөө");
   };
 
   const handleAddSerial = () => {
@@ -256,7 +276,7 @@ export function AssetFormDialog({
   };
 
   const handleAddAsset = () => {
-    if (!assetId || !assetCategory || !purchaseDate || isSaving) return;
+    if (!assetId || !subCategory.trim() || !purchaseDate || isSaving) return;
     if (imageUploadStatus === "uploading") return;
 
     const serialList = [...serialItems];
@@ -269,9 +289,9 @@ export function AssetFormDialog({
 
     const purchaseCost = Number(purchasePrice) || 0;
     const year = purchaseDate.slice(0, 4);
-    const autoSeed = `${assetCategory}-${year}`;
+    const autoSeed = `${resolvedAssetCategory}-${year}`;
     const baseId = assetIdAuto ? autoSeed : assetId;
-    const resolvedLocation = [location, roomTypeLabel || roomType, roomNumber]
+    const resolvedLocation = [location, roomType, subRoomType, roomNumber]
       .filter(Boolean)
       .join(" / ");
 
@@ -290,7 +310,7 @@ export function AssetFormDialog({
         if (mode === "edit" && initialAsset) {
           const updateInput = {
             assetTag: assetId,
-            category: assetCategory,
+            category: resolvedAssetCategory,
             serialNumber: serialList[0],
             status: initialAsset.status,
             purchaseDate: purchaseTimestamp,
@@ -325,10 +345,7 @@ export function AssetFormDialog({
               updated = assigned;
               mapped = mapGraphqlAssetToLocal(assigned);
             }
-          } else if (
-            !assignedEmployeeId &&
-            initialAsset.assignedEmployeeId
-          ) {
+          } else if (!assignedEmployeeId && initialAsset.assignedEmployeeId) {
             const returnResult = await returnAssetMutation({
               variables: { assetId: initialAsset.id },
             });
@@ -354,7 +371,7 @@ export function AssetFormDialog({
 
           return {
             assetTag: uniqueAssetId,
-            category: assetCategory,
+            category: resolvedAssetCategory,
             serialNumber: serial,
             status: "AVAILABLE",
             purchaseDate: purchaseTimestamp,
@@ -411,7 +428,9 @@ export function AssetFormDialog({
     if (!open || mode !== "edit" || !initialAsset) return;
 
     setAssetId(initialAsset.assetId);
-    setAssetCategory(initialAsset.category);
+    setSubCategory(
+      initialAsset.category ? CATEGORY_LABELS[initialAsset.category] : "",
+    );
     setMainCategory(initialAsset.mainCategory ?? "");
     setSerialNumber(initialAsset.serialNumber);
     setSerialItems([]);
@@ -426,31 +445,27 @@ export function AssetFormDialog({
     if (resolvedInitialLocation) {
       setLocation(resolvedInitialLocation.location);
       setRoomType(resolvedInitialLocation.roomType);
+      setSubRoomType(resolvedInitialLocation.subRoomType);
       setRoomNumber(resolvedInitialLocation.roomNumber);
-      setLocationStep(
-        resolvedInitialLocation.roomNumber
-          ? "roomNumber"
-          : resolvedInitialLocation.roomType
-            ? "roomType"
-            : "location",
-      );
+      setLocationStep(resolvedInitialLocation.step);
     } else {
       setLocation("");
       setRoomType("");
+      setSubRoomType("");
       setRoomNumber("");
       setLocationStep("location");
     }
   }, [initialAsset, mode, open, resolvedInitialLocation]);
 
   useEffect(() => {
-    if (!assetCategory || !purchaseDate || !assetIdAuto) return;
+    if (!subCategory.trim() || !purchaseDate || !assetIdAuto) return;
     const year = purchaseDate.slice(0, 4);
-    const seed = `${assetCategory}-${year}`;
+    const seed = `${resolvedAssetCategory}-${year}`;
     if (lastIdSeedRef.current === seed && assetId) return;
     const nextId = createUniqueCode(seed, usedAssetIdsRef.current);
     lastIdSeedRef.current = seed;
     setAssetId(nextId);
-  }, [assetCategory, assetIdAuto, assetId, purchaseDate]);
+  }, [resolvedAssetCategory, subCategory, assetIdAuto, assetId, purchaseDate]);
 
   useEffect(() => {
     if (!assetImage) {
@@ -493,7 +508,7 @@ export function AssetFormDialog({
         bucketName,
       }),
     });
-console.log({presignRes})
+    console.log({ presignRes });
 
     if (!presignRes.ok) {
       throw new Error("Failed to get presigned URL");
@@ -517,7 +532,7 @@ console.log({presignRes})
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-white sm:max-w-[760px] rounded-3xl p-8 shadow-xl mb-6 max-h-[85vh] overflow-y-auto">
-        <DialogHeader className="mb-6">
+        <DialogHeader className="mb-6 relative">
           <DialogTitle className="text-[24px] font-semibold">
             {mode === "edit" ? "Хөрөнгө засах" : "Шинэ хөрөнгө нэмэх"}
           </DialogTitle>
@@ -526,152 +541,276 @@ console.log({presignRes})
               ? "Хөрөнгийн мэдээлэл засах"
               : "Системд шинэ хөрөнгө бүртгэх"}
           </DialogDescription>
+          {mode === "create" && (
+            <div className="absolute right-0 top-0 flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={fillDemoData}
+                className="rounded-full border-dashed border-blue-200 text-blue-600 hover:bg-blue-50"
+              >
+                <Sparkles size={14} className="mr-2" /> Demo
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={resetForm}
+                className="rounded-full border-dashed border-red-200 text-red-600 hover:bg-red-50"
+              >
+                <RotateCcw size={14} className="mr-2" /> Reset
+              </Button>
+            </div>
+          )}
         </DialogHeader>
 
         <div className="grid gap-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <p className="text-lg font-semibold text-foreground">Ангилал</p>
-              <Select value={mainCategory} onValueChange={setMainCategory}>
-                <SelectTrigger className="rounded-2xl border-0 bg-gray-100 text-base shadow-none focus:ring-0 w-full p-6">
-                  <SelectValue placeholder="Category сонгох" />
-                </SelectTrigger>
-                <SelectContent>
-                  {MAIN_CATEGORY_OPTIONS.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="text-base font-semibold text-foreground ml-1">
+                Үндсэн ангилал
+              </label>
+              <input
+                list="main-cat-list"
+                value={mainCategory}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setMainCategory(next);
+                  if (next !== mainCategory) setSubCategory("");
+                }}
+                placeholder="Сонгох / Бичих"
+                className="h-14 w-full rounded-2xl bg-gray-100 px-5 text-lg outline-none focus:ring-2 focus:ring-blue-500 border-none transition-all"
+              />
+              <datalist id="main-cat-list">
+                {MAIN_CATEGORY_OPTIONS.map((i) => (
+                  <option key={i.value} value={i.label} />
+                ))}
+              </datalist>
             </div>
             <div className="space-y-2">
-              <p className="text-lg font-semibold text-foreground">
+              <label className="text-base font-semibold text-foreground ml-1">
                 Дэд ангилал
-              </p>
-              <Select
-                value={assetCategory}
-                onValueChange={(value) =>
-                  setAssetCategory(value as AssetCategory)
-                }
+              </label>
+              <input
+                list="sub-cat-list"
+                value={subCategory}
+                onChange={(e) => setSubCategory(e.target.value)}
+                placeholder="Сонгох / Бичих"
+                className="h-14 w-full rounded-2xl bg-gray-100 px-5 text-lg outline-none focus:ring-2 focus:ring-blue-500 border-none transition-all"
+              />
+              <datalist id="sub-cat-list">
+                {subCategoryOptions.map(({ key, label }) => (
+                  <option key={key} value={label} />
+                ))}
+              </datalist>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-base font-semibold text-foreground ml-1">
+              Байршил / Өрөө
+            </label>
+            <div className="relative">
+              <div
+                onClick={() => setLocationOpen(!locationOpen)}
+                className="flex h-14 w-full items-center justify-between rounded-2xl bg-gray-100 px-5 text-lg cursor-pointer hover:bg-gray-200 transition-all"
               >
-                <SelectTrigger className="rounded-2xl border-0 bg-gray-100 text-base shadow-none focus:ring-0 w-full p-6">
-                  <SelectValue placeholder="Ангилал сонгох" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categoryEntries.map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <span
+                  className={
+                    locationDisplay
+                      ? "text-gray-900 font-medium"
+                      : "text-muted-foreground"
+                  }
+                >
+                  {locationDisplay || "Байршил сонгох..."}
+                </span>
+                <ChevronDown
+                  className={`h-5 w-5 transition-transform ${locationOpen ? "rotate-180" : ""}`}
+                />
+              </div>
+              {locationOpen && (
+                <div className="absolute z-50 mt-3 w-full rounded-4xl border bg-white p-6 shadow-2xl animate-in fade-in slide-in-from-top-2">
+                  <div className="flex justify-between items-center mb-6">
+                    <div className="flex gap-1.5">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div
+                          key={i}
+                          className={`h-1.5 w-8 rounded-full ${
+                            (locationStep === "location" && i === 1) ||
+                            (locationStep === "roomType" && i <= 2) ||
+                            (locationStep === "subRoomType" && i <= 3) ||
+                            (locationStep === "roomNumber" && i <= 4)
+                              ? "bg-blue-500"
+                              : "bg-gray-100"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {(location || roomType || subRoomType || roomNumber) && (
+                        <button
+                          type="button"
+                          className="text-sm text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            setLocation("");
+                            setRoomType("");
+                            setSubRoomType("");
+                            setRoomNumber("");
+                            setLocationStep("location");
+                            setLocationOpen(false);
+                          }}
+                        >
+                          Цэвэрлэх
+                        </button>
+                      )}
+                      <X
+                        className="h-5 w-5 cursor-pointer text-muted-foreground"
+                        onClick={() => setLocationOpen(false)}
+                      />
+                    </div>
+                  </div>
+                  {locationStep === "location" && (
+                    <div className="space-y-4">
+                      <p className="font-bold">Салбар?</p>
+                      <input
+                        autoFocus
+                        list="loc-opts"
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        className="h-12 w-full rounded-xl bg-gray-50 border px-4 outline-none focus:ring-2 focus:ring-blue-500"
+                        onKeyDown={(e) =>
+                          e.key === "Enter" && setLocationStep("roomType")
+                        }
+                        placeholder="Сонгох / Бичих"
+                      />
+                      <datalist id="loc-opts">
+                        {LOCATION_OPTIONS.map((o) => (
+                          <option key={o} value={o} />
+                        ))}
+                      </datalist>
+                      <Button
+                        className="w-full rounded-xl"
+                        onClick={() => setLocationStep("roomType")}
+                      >
+                        Дараах
+                      </Button>
+                    </div>
+                  )}
+                  {locationStep === "roomType" && (
+                    <div className="space-y-4">
+                      <p className="font-bold">Төрөл?</p>
+                      <input
+                        autoFocus
+                        list="type-opts"
+                        value={roomType}
+                        onChange={(e) => setRoomType(e.target.value)}
+                        className="h-12 w-full rounded-xl bg-gray-50 border px-4 outline-none focus:ring-2 focus:ring-blue-500"
+                        onKeyDown={(e) =>
+                          e.key === "Enter" && setLocationStep("subRoomType")
+                        }
+                        placeholder="Сонгох / Бичих"
+                      />
+                      <datalist id="type-opts">
+                        {ROOM_TYPE_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.label} />
+                        ))}
+                      </datalist>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => setLocationStep("location")}
+                        >
+                          <ArrowLeft size={16} />
+                        </Button>
+                        <Button
+                          className="flex-1"
+                          onClick={() => setLocationStep("subRoomType")}
+                        >
+                          Дараах
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {locationStep === "subRoomType" && (
+                    <div className="space-y-4">
+                      <p className="font-bold">Хэсэг?</p>
+                      <input
+                        autoFocus
+                        list="sub-type-opts"
+                        value={subRoomType}
+                        onChange={(e) => setSubRoomType(e.target.value)}
+                        className="h-12 w-full rounded-xl bg-gray-50 border px-4 outline-none focus:ring-2 focus:ring-blue-500"
+                        onKeyDown={(e) =>
+                          e.key === "Enter" && setLocationStep("roomNumber")
+                        }
+                        placeholder="Сонгох / Бичих"
+                      />
+                      <datalist id="sub-type-opts">
+                        {(SUB_ROOM_TYPES[roomType] || []).map((o) => (
+                          <option key={o} value={o} />
+                        ))}
+                      </datalist>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => setLocationStep("roomType")}
+                        >
+                          <ArrowLeft size={16} />
+                        </Button>
+                        <Button
+                          className="flex-1"
+                          onClick={() => setLocationStep("roomNumber")}
+                        >
+                          Дараах
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {locationStep === "roomNumber" && (
+                    <div className="space-y-4">
+                      <p className="font-bold">Нарийвчилсан?</p>
+                      <input
+                        autoFocus
+                        list="final-opts"
+                        value={roomNumber}
+                        onChange={(e) => setRoomNumber(e.target.value)}
+                        className="h-12 w-full rounded-xl bg-gray-50 border px-4 outline-none focus:ring-2 focus:ring-blue-500"
+                        onKeyDown={(e) =>
+                          e.key === "Enter" && setLocationOpen(false)
+                        }
+                        placeholder="Сонгох / Бичих"
+                      />
+                      <datalist id="final-opts">
+                        {(FINAL_ROOM_OPTIONS[subRoomType] || []).map((o) => (
+                          <option key={o} value={o} />
+                        ))}
+                      </datalist>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => setLocationStep("subRoomType")}
+                        >
+                          <ArrowLeft size={16} />
+                        </Button>
+                        <Button
+                          className="flex-1 bg-blue-600 text-white"
+                          onClick={() => setLocationOpen(false)}
+                        >
+                          <Check size={16} className="mr-2" /> Дуусгах
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <p className="text-lg font-semibold text-foreground">Байршил</p>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setLocationOpen((prev) => !prev)}
-                  className="flex h-12 w-full items-center justify-between rounded-2xl border-0 bg-gray-100 px-4 text-base text-foreground shadow-none"
-                >
-                  <span
-                    className={locationDisplay ? "" : "text-muted-foreground"}
-                  >
-                    {locationDisplay || locationPlaceholder}
-                  </span>
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                </button>
-                {locationOpen && (
-                  <div
-                    className="absolute z-50 mt-2 w-full rounded-2xl border border-border bg-white p-2 shadow-lg"
-                    onMouseLeave={() => {
-                      setHoveredLocation(null);
-                      setHoveredRoomType(null);
-                    }}
-                  >
-                    <div className="flex gap-2">
-                      <div className="w-full space-y-1 rounded-xl bg-white p-1">
-                        {LOCATION_OPTIONS.map((item) => (
-                          <button
-                            key={item}
-                            type="button"
-                            onMouseEnter={() => {
-                              setHoveredLocation(item);
-                              setHoveredRoomType(null);
-                            }}
-                            onClick={() => {
-                              setLocation(item);
-                              setRoomType("");
-                              setRoomNumber("");
-                              setLocationStep("roomType");
-                            }}
-                            className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-base hover:bg-muted/50"
-                          >
-                            {item}
-                            <span className="text-xs text-muted-foreground">
-                              →
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-
-                      {hoveredLocation && (
-                        <div className="w-full space-y-1 rounded-xl bg-white p-1">
-                          {ROOM_TYPE_OPTIONS.map((item) => (
-                            <button
-                              key={item.value}
-                              type="button"
-                              onMouseEnter={() =>
-                                setHoveredRoomType(item.value)
-                              }
-                              onClick={() => {
-                                setLocation(hoveredLocation);
-                                setRoomType(item.value);
-                                setRoomNumber("");
-                                setLocationStep("roomNumber");
-                              }}
-                              className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-base hover:bg-muted/50"
-                            >
-                              {item.label}
-                              <span className="text-xs text-muted-foreground">
-                                →
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {hoveredLocation && hoveredRoomType && (
-                        <div className="w-full space-y-1 rounded-xl bg-white p-1">
-                          {(ROOM_OPTIONS_BY_TYPE[hoveredRoomType] ?? []).map(
-                            (room) => (
-                              <button
-                                key={room}
-                                type="button"
-                                onClick={() => {
-                                  setLocation(hoveredLocation);
-                                  setRoomType(hoveredRoomType);
-                                  setRoomNumber(room);
-                                  setLocationOpen(false);
-                                }}
-                                className="flex w-full items-center rounded-xl px-3 py-2 text-left text-base hover:bg-muted/50"
-                              >
-                                {room}
-                              </button>
-                            ),
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
             <div className="space-y-2">
               <p className="text-lg font-semibold text-foreground">
                 Худалдан авсан огноо
@@ -682,6 +821,88 @@ console.log({presignRes})
                 onChange={(event) => setPurchaseDate(event.target.value)}
                 placeholder="yyyy.mm.dd"
                 className="date-input-right h-12 rounded-2xl border-0 bg-gray-100 pr-12 text-base shadow-none focus:ring-0"
+              />
+            </div>
+            <div className="space-y-2">
+              <p className="text-lg font-semibold text-foreground">
+                Худалдан авсан үнэ ($)
+              </p>
+              <Input
+                type="number"
+                min={0}
+                value={purchasePrice}
+                onChange={(event) => setPurchasePrice(event.target.value)}
+                placeholder="1500"
+                className="h-12 rounded-2xl border-0 bg-gray-100 text-base shadow-none focus:ring-0"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <p className="text-lg font-semibold text-foreground">
+                Серийн дугаар
+              </p>
+              <div className="relative">
+                <Input
+                  value={serialNumber}
+                  onChange={(event) => setSerialNumber(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      handleAddSerial();
+                    }
+                  }}
+                  placeholder="SN123456789"
+                  className="h-12 rounded-2xl border-0 bg-gray-100 pr-20 text-base shadow-none focus:ring-0"
+                />
+                <Button
+                  type="button"
+                  onClick={handleAddSerial}
+                  disabled={!serialNumber.trim()}
+                  className="absolute right-2 top-1/2 h-9 -translate-y-1/2 rounded-xl px-4"
+                >
+                  Add
+                </Button>
+              </div>
+              {serialItems.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {serialItems.map((item, index) => (
+                    <div
+                      key={`${item}-${index}`}
+                      className="flex items-center gap-2 rounded-full border border-border bg-muted/30 px-3 py-1 text-xs text-foreground"
+                    >
+                      <span>{item}</span>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-5 w-5 rounded-full text-muted-foreground hover:text-destructive"
+                        onClick={() => {
+                          setSerialItems((prev) =>
+                            prev.filter((_, idx) => idx !== index),
+                          );
+                        }}
+                      >
+                        ×
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <p className="text-lg font-semibold text-foreground">
+                Хөрөнгийн ID
+              </p>
+              <Input
+                value={assetId}
+                onChange={(event) => {
+                  setAssetId(event.target.value);
+                  setAssetIdAuto(false);
+                }}
+                placeholder="LAP-2024-013"
+                className="h-12 rounded-2xl border-0 bg-gray-100 text-base shadow-none focus:ring-0 w-full"
               />
             </div>
           </div>
@@ -713,89 +934,6 @@ console.log({presignRes})
           )}
 
           <div className="space-y-2">
-            <p className="text-lg font-semibold text-foreground">
-              Серийн дугаар
-            </p>
-            <div className="relative">
-              <Input
-                value={serialNumber}
-                onChange={(event) => setSerialNumber(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    handleAddSerial();
-                  }
-                }}
-                placeholder="SN123456789"
-                className="h-12 rounded-2xl border-0 bg-gray-100 pr-20 text-base shadow-none focus:ring-0"
-              />
-              <Button
-                type="button"
-                onClick={handleAddSerial}
-                disabled={!serialNumber.trim()}
-                className="absolute right-2 top-1/2 h-9 -translate-y-1/2 rounded-xl px-4"
-              >
-                Add
-              </Button>
-            </div>
-            {serialItems.length > 0 && (
-              <div className="flex flex-wrap gap-2 pt-1">
-                {serialItems.map((item, index) => (
-                  <div
-                    key={`${item}-${index}`}
-                    className="flex items-center gap-2 rounded-full border border-border bg-muted/30 px-3 py-1 text-xs text-foreground"
-                  >
-                    <span>{item}</span>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="h-5 w-5 rounded-full text-muted-foreground hover:text-destructive"
-                      onClick={() => {
-                        setSerialItems((prev) =>
-                          prev.filter((_, idx) => idx !== index),
-                        );
-                      }}
-                    >
-                      ×
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <p className="text-lg font-semibold text-foreground">
-                Хөрөнгийн ID
-              </p>
-              <Input
-                value={assetId}
-                onChange={(event) => {
-                  setAssetId(event.target.value);
-                  setAssetIdAuto(false);
-                }}
-                placeholder="LAP-2024-013"
-                className="h-12 rounded-2xl border-0 bg-gray-100 text-base shadow-none focus:ring-0 w-full"
-              />
-            </div>
-            <div className="space-y-2">
-              <p className="text-lg font-semibold text-foreground">
-                Худалдан авсан үнэ ($)
-              </p>
-              <Input
-                type="number"
-                min={0}
-                value={purchasePrice}
-                onChange={(event) => setPurchasePrice(event.target.value)}
-                placeholder="1500"
-                className="h-12 rounded-2xl border-0 bg-gray-100 text-base shadow-none focus:ring-0"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
             <p className="text-lg font-semibold text-foreground">Тэмдэглэл</p>
             <Input
               value={note}
@@ -820,7 +958,9 @@ console.log({presignRes})
               />
             </div>
             {imageUploadStatus === "uploading" && (
-              <p className="text-xs text-muted-foreground">Зураг ачаалж байна...</p>
+              <p className="text-xs text-muted-foreground">
+                Зураг ачаалж байна...
+              </p>
             )}
             {imageUploadStatus === "error" && (
               <p className="text-xs text-destructive">{imageUploadError}</p>
@@ -845,13 +985,6 @@ console.log({presignRes})
           <Button
             variant="outline"
             className="h-12 rounded-2xl px-6 text-lg"
-            onClick={fillDemoData}
-          >
-            Demo
-          </Button>
-          <Button
-            variant="outline"
-            className="h-12 rounded-2xl px-6 text-lg"
             onClick={() => onOpenChange(false)}
           >
             Цуцлах
@@ -860,7 +993,7 @@ console.log({presignRes})
             onClick={handleAddAsset}
             disabled={
               !assetId ||
-              !assetCategory ||
+              !subCategory.trim() ||
               !purchaseDate ||
               isSaving ||
               imageUploadStatus === "uploading"

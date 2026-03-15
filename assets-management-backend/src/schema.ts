@@ -79,14 +79,12 @@ export const assetModels = sqliteTable(
   "asset_models",
   {
     id: text().primaryKey().notNull(),
-
     categoryId: text()
       .notNull()
       .references(() => categories.id),
     manufacturer: text().notNull(),
     modelName: text().notNull(),
     modelNumber: text(),
-
     expectedLifeMonths: integer(),
     depreciationRate: numeric(),
     createdAt: ts(),
