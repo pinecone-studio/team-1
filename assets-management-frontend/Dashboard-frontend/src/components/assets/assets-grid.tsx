@@ -6,13 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { Asset } from "@/lib/types";
 
-const FILTERS = {
-  location: ["Гурван гол", "Gallery", "Tokyo", "Sednay"],
-  roomType: ["Анги", "Оффис", "Агуулах"],
-  room: ["301", "302", "303", "304"],
-};
-
-type FilterGroup = keyof typeof FILTERS | "category" | "subCategory";
+export type FilterGroup = "locationIds" | "category" | "subCategory";
 
 type ActiveTag = {
   group: FilterGroup;
