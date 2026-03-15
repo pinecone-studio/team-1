@@ -1,5 +1,7 @@
+import { mergeResolvers } from "@graphql-tools/merge";
 import { Mutation } from "./mutations";
 import { Query } from "./queries";
+import { assetResolvers } from "./domains/assets";
 import { getAssetById } from "@/db/assets/queries";
 import { getEmployeeById } from "@/db/employees";
 import { getSubcategories } from "@/db/categories";
@@ -28,18 +30,9 @@ const safeFloat = (val: any) => {
   return isNaN(num) ? null : num;
 };
 
-export const resolvers = {
+const rootResolvers = {
   Query,
   Mutation,
-  Asset: {
-    category: (asset: {
-      subCategoryId?: string | null;
-      categoryId?: string | null;
-    }) => asset.subCategoryId ?? asset.categoryId ?? "",
-    purchaseCost: (asset: any) => safeNumber(asset.purchaseCost),
-    currentBookValue: (asset: any) => safeNumber(asset.currentBookValue),
-    purchaseDate: (asset: any) => safeNumber(asset.purchaseDate),
-  },
   Assignment: {
     employee: (assignment: { employeeId: string }) =>
       getEmployeeById(assignment.employeeId),
@@ -110,3 +103,5 @@ export const resolvers = {
     purchaseDate: (pr: any) => safeNumber(pr.purchaseDate),
   },
 };
+
+export const resolvers = mergeResolvers([rootResolvers, assetResolvers]);
