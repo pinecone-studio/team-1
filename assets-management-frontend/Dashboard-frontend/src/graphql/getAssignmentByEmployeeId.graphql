@@ -1,0 +1,33 @@
+query GetEmployeeAssignments($employeeId: ID!, $status: String) {
+  employeeAssignments(employeeId: $employeeId, status: $status) {
+    # Нэрийг нь Backend-тэйгээ ижил болгов
+    id
+    assetId
+    employeeId
+    assignedAt
+    returnedAt
+    conditionAtAssign
+    conditionAtReturn
+    status
+    financing {
+      assignedValue
+      paymentPlanMonths
+      interestRate
+      monthlyPayment
+      totalPayment
+    }
+    asset {
+      id
+      assetTag
+      category
+      serialNumber
+      imageUrl
+    }
+    employee {
+      id
+      email
+      firstName
+      lastName
+    }
+  }
+}

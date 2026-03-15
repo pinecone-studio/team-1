@@ -77,20 +77,33 @@ export function AssetAllocationContent() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const { data: employeesData } = useQuery(EmployeesDocument);
-  const { data: assetsData, loading: assetsLoading, error: assetsError } = useQuery(GetAssetsDocument);
-  const { data: assignmentsData, loading: assignmentsLoading, refetch: refetchAssignments } =
-    useQuery(AssignmentsDocument);
+  const {
+    data: assetsData,
+    loading: assetsLoading,
+    error: assetsError,
+  } = useQuery(GetAssetsDocument);
+  const {
+    data: assignmentsData,
+    loading: assignmentsLoading,
+    refetch: refetchAssignments,
+  } = useQuery(AssignmentsDocument);
   const [assignAssetMutation] = useMutation(AssignAssetDocument);
   const rows = useMemo<AllocationRow[]>(() => {
     const assignments = assignmentsData?.assignments ?? [];
+
     return assignments.map((a) => {
       const assignment = useFragment(AssignmentFieldsFragmentDoc, a);
+      const asset = assignment.asset
+        ? useFragment(AssetFieldsFragmentDoc, assignment.asset)
+        : null;
+
       const statusKey = assignment.status as keyof typeof STATUS_LABELS;
+
       return {
         id: assignment.id,
-        assetTag: assignment.asset?.assetTag ?? assignment.assetId,
+        assetTag: asset?.assetTag ?? assignment.assetId,
         employeeEmail: assignment.employee?.email ?? assignment.employeeId,
-        assignedAt: assignment.assignedAt, // Keep raw for sorting if needed, or format here
+        assignedAt: assignment.assignedAt,
         assignedDate: new Date(assignment.assignedAt).toLocaleDateString(),
         status: STATUS_LABELS[statusKey] || statusKey,
         statusKey: statusKey as any,
@@ -301,7 +314,8 @@ export function AssetAllocationContent() {
                 <SelectContent>
                   {(employeesData?.employees ?? []).map((employee: any) => (
                     <SelectItem key={employee.id} value={employee.id}>
-                      {employee.firstName} {employee.lastName} ({employee.email})
+                      {employee.firstName} {employee.lastName} ({employee.email}
+                      )
                     </SelectItem>
                   ))}
                 </SelectContent>
