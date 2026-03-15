@@ -1,0 +1,20 @@
+query GetVendors {
+  vendors {
+    ...VendorFields
+  }
+}
+
+query GetCategories {
+  categories {
+    ...CategoryFields
+    subcategories {
+      ...CategoryFields
+    }
+  }
+}
+
+query GetLocations {
+  locations {
+    ...LocationFields
+  }
+}

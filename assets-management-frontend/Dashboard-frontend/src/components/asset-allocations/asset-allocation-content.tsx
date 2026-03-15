@@ -35,8 +35,6 @@ import {
   AssignmentFieldsFragmentDoc,
   AssetFieldsFragmentDoc,
   GetAssetsDocument,
-  CreateAssetDocument,
-  CreateCategoryDocument,
   EmployeesDocument,
   AssignmentsDocument,
 } from "@/gql/graphql";

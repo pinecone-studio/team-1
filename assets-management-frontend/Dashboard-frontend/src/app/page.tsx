@@ -33,6 +33,9 @@ export default function DashboardPage() {
           {activeTitle === "Хөрөнгө хуваарилах" ? (
             <AssetAllocationContent />
           ) : null}
+          {activeTitle === "Хөрөнгө шилжүүлэх" ? (
+            <AssetTransferContent />
+          ) : null}
           {activeTitle === "Demo Ажилтан" ? <DemoEmployeeContent /> : null}
           {activeTitle === "Demo IT" ? <DemoITContent /> : null}
           {activeTitle === "Demo HR" ? <DemoHRContent /> : null}

@@ -1,0 +1,9 @@
+query GetActiveOffboarding($employeeId: ID!) {
+  offboardingEvent(employeeId: $employeeId) {
+    id
+    status
+    totalAssets
+    returnedAssets
+    createdAt
+  }
+}

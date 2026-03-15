@@ -1,0 +1,48 @@
+query GetAssets($office: String, $categoryIds: [ID!], $subCategoryIds: [ID!]) {
+  assets(
+    office: $office
+    categoryIds: $categoryIds
+    subCategoryIds: $subCategoryIds
+  ) {
+    ...AssetFields
+  }
+}
+
+query GetAsset($id: ID!) {
+  asset(id: $id) {
+    ...AssetFields
+  }
+}
+
+query SearchAssets(
+  $filter: AssetSearchInput!
+  $pagination: PaginationInput
+  $sort: AssetSortInput
+) {
+  searchAssets(filter: $filter, pagination: $pagination, sort: $sort) {
+    total
+    items {
+      ...AssetFields
+    }
+  }
+}
+
+query GetAssetHistory($assetId: ID!) {
+  assetHistory(assetId: $assetId) {
+    id
+    eventType
+    description
+    timestamp
+    actor {
+      ...EmployeeFields
+    }
+  }
+}
+
+query GetEligibleCategoryUpdateAssets {
+  searchAssets(filter: { status: AVAILABLE }) {
+    items {
+      ...AssetFields
+    }
+  }
+}
