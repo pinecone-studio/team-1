@@ -1,3 +1,19 @@
+CREATE TABLE `asset_contracts` (
+	`id` text PRIMARY KEY NOT NULL,
+	`assetId` text NOT NULL,
+	`type` text NOT NULL,
+	`vendorId` text,
+	`startDate` integer NOT NULL,
+	`endDate` integer NOT NULL,
+	`notes` text,
+	`documentKey` text,
+	`createdAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
+	FOREIGN KEY (`assetId`) REFERENCES `assets`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`vendorId`) REFERENCES `vendors`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
+CREATE INDEX `asset_contracts_asset_idx` ON `asset_contracts` (`assetId`);--> statement-breakpoint
+CREATE INDEX `asset_contracts_end_date_idx` ON `asset_contracts` (`endDate`);--> statement-breakpoint
 CREATE TABLE `asset_files` (
 	`id` text PRIMARY KEY NOT NULL,
 	`assetId` text NOT NULL,
@@ -9,6 +25,19 @@ CREATE TABLE `asset_files` (
 	FOREIGN KEY (`uploadedBy`) REFERENCES `employees`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
+CREATE TABLE `asset_models` (
+	`id` text PRIMARY KEY NOT NULL,
+	`categoryId` text NOT NULL,
+	`manufacturer` text NOT NULL,
+	`modelName` text NOT NULL,
+	`modelNumber` text,
+	`expectedLifeMonths` integer,
+	`depreciationRate` numeric,
+	`createdAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
+	FOREIGN KEY (`categoryId`) REFERENCES `categories`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
+CREATE INDEX `asset_models_category_idx` ON `asset_models` (`categoryId`);--> statement-breakpoint
 CREATE TABLE `asset_movements` (
 	`id` text PRIMARY KEY NOT NULL,
 	`assetId` text NOT NULL,
@@ -29,26 +58,28 @@ CREATE TABLE `assets` (
 	`id` text PRIMARY KEY NOT NULL,
 	`assetTag` text NOT NULL,
 	`serialNumber` text NOT NULL,
+	`modelId` text,
+	`categoryId` text,
 	`status` text DEFAULT 'AVAILABLE' NOT NULL,
 	`purchaseDate` integer,
 	`purchaseCost` integer,
-	`currentBookValue` integer,
 	`locationId` text,
-	`assignedTo` text,
-	`categoryId` text,
-	`subCategoryId` text,
-	`createdAt` integer DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
-	`updatedAt` integer DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
-	`deletedAt` integer,
+	`currentAssigneeId` text,
 	`imageUrl` text,
+	`createdAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
+	`updatedAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
+	`deletedAt` integer,
+	FOREIGN KEY (`modelId`) REFERENCES `asset_models`(`id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`categoryId`) REFERENCES `categories`(`id`) ON UPDATE no action ON DELETE no action,
-	FOREIGN KEY (`subCategoryId`) REFERENCES `categories`(`id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`locationId`) REFERENCES `locations`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`currentAssigneeId`) REFERENCES `employees`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE INDEX `assets_status_idx` ON `assets` (`status`);--> statement-breakpoint
 CREATE INDEX `assets_category_idx` ON `assets` (`categoryId`);--> statement-breakpoint
+CREATE INDEX `assets_model_idx` ON `assets` (`modelId`);--> statement-breakpoint
 CREATE INDEX `assets_location_idx` ON `assets` (`locationId`);--> statement-breakpoint
-CREATE INDEX `assets_assigned_to_idx` ON `assets` (`assignedTo`);--> statement-breakpoint
+CREATE INDEX `assets_assignee_idx` ON `assets` (`currentAssigneeId`);--> statement-breakpoint
 CREATE INDEX `assets_filter_idx` ON `assets` (`status`,`categoryId`,`locationId`);--> statement-breakpoint
 CREATE INDEX `assets_created_at_idx` ON `assets` (`createdAt`);--> statement-breakpoint
 CREATE INDEX `assets_deleted_at_idx` ON `assets` (`deletedAt`);--> statement-breakpoint
@@ -61,6 +92,7 @@ CREATE TABLE `assignment_buyout_policies` (
 	`paymentPercent` numeric NOT NULL,
 	`isFree` integer DEFAULT 0 NOT NULL,
 	`categoryId` text,
+	`isDefault` integer DEFAULT 0 NOT NULL,
 	`createdAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	FOREIGN KEY (`categoryId`) REFERENCES `categories`(`id`) ON UPDATE no action ON DELETE no action
 );
@@ -97,7 +129,7 @@ CREATE TABLE `assignments` (
 	`id` text PRIMARY KEY NOT NULL,
 	`assetId` text NOT NULL,
 	`employeeId` text NOT NULL,
-	`assignedAt` integer DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
+	`assignedAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	`returnedAt` integer,
 	`conditionAtAssign` text NOT NULL,
 	`conditionAtReturn` text,
@@ -105,8 +137,8 @@ CREATE TABLE `assignments` (
 	`signatureR2Key` text,
 	`accessoriesJson` text,
 	`buyoutPolicyId` text,
-	`createdAt` integer DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
-	`updatedAt` integer DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
+	`createdAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
+	`updatedAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	`deletedAt` integer,
 	FOREIGN KEY (`assetId`) REFERENCES `assets`(`id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`employeeId`) REFERENCES `employees`(`id`) ON UPDATE no action ON DELETE no action,
@@ -115,6 +147,7 @@ CREATE TABLE `assignments` (
 --> statement-breakpoint
 CREATE INDEX `assignments_asset_idx` ON `assignments` (`assetId`);--> statement-breakpoint
 CREATE INDEX `assignments_employee_idx` ON `assignments` (`employeeId`);--> statement-breakpoint
+CREATE INDEX `assignments_status_idx` ON `assignments` (`status`);--> statement-breakpoint
 CREATE TABLE `audit_logs` (
 	`id` text PRIMARY KEY NOT NULL,
 	`tableName` text NOT NULL,
@@ -129,11 +162,13 @@ CREATE TABLE `audit_logs` (
 --> statement-breakpoint
 CREATE INDEX `audit_logs_table_idx` ON `audit_logs` (`tableName`);--> statement-breakpoint
 CREATE INDEX `audit_logs_record_idx` ON `audit_logs` (`recordId`);--> statement-breakpoint
+CREATE INDEX `audit_logs_actor_idx` ON `audit_logs` (`actorId`);--> statement-breakpoint
 CREATE TABLE `categories` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
 	`parentId` text,
-	`createdAt` integer DEFAULT (strftime('%s', 'now') * 1000) NOT NULL
+	`createdAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
+	FOREIGN KEY (`parentId`) REFERENCES `categories`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE TABLE `census_events` (
@@ -141,15 +176,15 @@ CREATE TABLE `census_events` (
 	`name` text NOT NULL,
 	`scope` text,
 	`scopeFilter` text,
+	`createdBy` text NOT NULL,
 	`startedAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	`closedAt` integer,
-	`createdBy` text NOT NULL,
 	`createdAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	`updatedAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
-	`deletedAt` integer,
 	FOREIGN KEY (`createdBy`) REFERENCES `employees`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
+CREATE INDEX `census_events_closed_idx` ON `census_events` (`closedAt`);--> statement-breakpoint
 CREATE TABLE `census_tasks` (
 	`id` text PRIMARY KEY NOT NULL,
 	`censusId` text NOT NULL,
@@ -168,17 +203,15 @@ CREATE TABLE `census_tasks` (
 --> statement-breakpoint
 CREATE INDEX `census_tasks_asset_idx` ON `census_tasks` (`assetId`);--> statement-breakpoint
 CREATE INDEX `census_tasks_census_idx` ON `census_tasks` (`censusId`);--> statement-breakpoint
-
---> statement-breakpoint
 CREATE TABLE `disposal_records` (
 	`id` text PRIMARY KEY NOT NULL,
 	`assetId` text NOT NULL,
 	`method` text NOT NULL,
 	`writeOffValue` integer,
 	`certifiedBy` text NOT NULL,
-	`disposedAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	`certR2Key` text,
 	`recipient` text,
+	`disposedAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	`createdAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	FOREIGN KEY (`assetId`) REFERENCES `assets`(`id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`certifiedBy`) REFERENCES `employees`(`id`) ON UPDATE no action ON DELETE no action
@@ -211,6 +244,20 @@ CREATE TABLE `disposal_requests` (
 --> statement-breakpoint
 CREATE INDEX `disposal_requests_asset_idx` ON `disposal_requests` (`assetId`);--> statement-breakpoint
 CREATE INDEX `disposal_requests_status_idx` ON `disposal_requests` (`status`);--> statement-breakpoint
+CREATE TABLE `employee_notifications` (
+	`id` text PRIMARY KEY NOT NULL,
+	`employeeId` text NOT NULL,
+	`title` text NOT NULL,
+	`message` text NOT NULL,
+	`type` text DEFAULT 'INFO' NOT NULL,
+	`link` text,
+	`isRead` integer DEFAULT 0 NOT NULL,
+	`createdAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
+	FOREIGN KEY (`employeeId`) REFERENCES `employees`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
+CREATE INDEX `emp_notif_employee_idx` ON `employee_notifications` (`employeeId`);--> statement-breakpoint
+CREATE INDEX `emp_notif_read_idx` ON `employee_notifications` (`employeeId`,`isRead`);--> statement-breakpoint
 CREATE TABLE `employees` (
 	`id` text PRIMARY KEY NOT NULL,
 	`entraId` text NOT NULL,
@@ -235,18 +282,18 @@ CREATE TABLE `employees` (
 	`isSalaryCompany` integer DEFAULT 1 NOT NULL,
 	`birthDayAndMonth` text,
 	`birthdayPoster` text,
-	`createdAt` integer DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
-	`updatedAt` integer DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
+	`createdAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
+	`updatedAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	`deletedAt` integer
 );
 --> statement-breakpoint
 CREATE TABLE `locations` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
-	`parent_id` text,
+	`parentId` text,
 	`type` text NOT NULL,
-	`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,
-	FOREIGN KEY (`parent_id`) REFERENCES `locations`(`id`) ON UPDATE no action ON DELETE no action
+	`createdAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
+	FOREIGN KEY (`parentId`) REFERENCES `locations`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE TABLE `maintenance_tickets` (
@@ -258,31 +305,18 @@ CREATE TABLE `maintenance_tickets` (
 	`status` text DEFAULT 'OPEN' NOT NULL,
 	`vendorId` text,
 	`repairCost` integer,
+	`slaDeadline` integer,
 	`resolvedAt` integer,
-	`createdAt` integer DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
-	`updatedAt` integer DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
+	`createdAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
+	`updatedAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	FOREIGN KEY (`assetId`) REFERENCES `assets`(`id`) ON UPDATE no action ON DELETE no action,
-	FOREIGN KEY (`reporterId`) REFERENCES `employees`(`id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`reporterId`) REFERENCES `employees`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`vendorId`) REFERENCES `vendors`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE INDEX `maintenance_tickets_asset_idx` ON `maintenance_tickets` (`assetId`);--> statement-breakpoint
 CREATE INDEX `maintenance_tickets_status_idx` ON `maintenance_tickets` (`status`);--> statement-breakpoint
-CREATE TABLE `notifications` (
-	`id` text PRIMARY KEY NOT NULL,
-	`employeeId` text,
-	`role` text,
-	`title` text NOT NULL,
-	`message` text NOT NULL,
-	`type` text DEFAULT 'INFO' NOT NULL,
-	`link` text,
-	`isRead` integer DEFAULT 0 NOT NULL,
-	`createdAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
-	FOREIGN KEY (`employeeId`) REFERENCES `employees`(`id`) ON UPDATE no action ON DELETE no action
-);
---> statement-breakpoint
-CREATE INDEX `notifications_employee_idx` ON `notifications` (`employeeId`);--> statement-breakpoint
-CREATE INDEX `notifications_role_idx` ON `notifications` (`role`);--> statement-breakpoint
-CREATE INDEX `notifications_read_idx` ON `notifications` (`isRead`);--> statement-breakpoint
+CREATE INDEX `maintenance_tickets_sla_idx` ON `maintenance_tickets` (`slaDeadline`);--> statement-breakpoint
 CREATE TABLE `offboarding_events` (
 	`id` text PRIMARY KEY NOT NULL,
 	`employeeId` text NOT NULL,
@@ -303,21 +337,23 @@ CREATE TABLE `purchase_order_items` (
 	`id` text PRIMARY KEY NOT NULL,
 	`purchaseOrderId` text NOT NULL,
 	`categoryId` text NOT NULL,
+	`modelId` text,
 	`name` text,
 	`quantity` integer NOT NULL,
 	`unitCost` integer NOT NULL,
 	`totalCost` integer NOT NULL,
 	`createdAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	FOREIGN KEY (`purchaseOrderId`) REFERENCES `purchase_orders`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`categoryId`) REFERENCES `categories`(`id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`categoryId`) REFERENCES `categories`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`modelId`) REFERENCES `asset_models`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
+CREATE INDEX `purchase_order_items_order_idx` ON `purchase_order_items` (`purchaseOrderId`);--> statement-breakpoint
 CREATE TABLE `purchase_orders` (
 	`id` text PRIMARY KEY NOT NULL,
 	`vendorId` text NOT NULL,
 	`requestedBy` text NOT NULL,
 	`approvedBy` text,
-	`lineItemsJson` text NOT NULL,
 	`totalCost` integer NOT NULL,
 	`status` text DEFAULT 'PENDING' NOT NULL,
 	`deliveredAt` integer,
@@ -333,8 +369,9 @@ CREATE INDEX `purchase_orders_vendor_idx` ON `purchase_orders` (`vendorId`);--> 
 CREATE INDEX `purchase_orders_status_idx` ON `purchase_orders` (`status`);--> statement-breakpoint
 CREATE TABLE `purchase_requests` (
 	`id` text PRIMARY KEY NOT NULL,
+	`categoryId` text NOT NULL,
+	`modelId` text,
 	`assetTag` text NOT NULL,
-	`category` text NOT NULL,
 	`serialNumber` text NOT NULL,
 	`purchaseCost` integer,
 	`purchaseDate` integer,
@@ -345,11 +382,41 @@ CREATE TABLE `purchase_requests` (
 	`expiresAt` integer,
 	`decidedAt` integer,
 	`decidedBy` text,
-	`createdAt` integer DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
-	`updatedAt` integer DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
-	FOREIGN KEY (`requesterEmployeeId`) REFERENCES `employees`(`id`) ON UPDATE no action ON DELETE no action
+	`resolvedAssetId` text,
+	`createdAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
+	`updatedAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
+	FOREIGN KEY (`categoryId`) REFERENCES `categories`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`modelId`) REFERENCES `asset_models`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`requesterEmployeeId`) REFERENCES `employees`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`decidedBy`) REFERENCES `employees`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`resolvedAssetId`) REFERENCES `assets`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
+CREATE INDEX `purchase_requests_category_idx` ON `purchase_requests` (`categoryId`);--> statement-breakpoint
+CREATE INDEX `purchase_requests_asset_idx` ON `purchase_requests` (`resolvedAssetId`);--> statement-breakpoint
+CREATE TABLE `role_notification_reads` (
+	`id` text PRIMARY KEY NOT NULL,
+	`notificationId` text NOT NULL,
+	`employeeId` text NOT NULL,
+	`readAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
+	FOREIGN KEY (`notificationId`) REFERENCES `role_notifications`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`employeeId`) REFERENCES `employees`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
+CREATE INDEX `role_notif_reads_notif_idx` ON `role_notification_reads` (`notificationId`);--> statement-breakpoint
+CREATE INDEX `role_notif_reads_emp_idx` ON `role_notification_reads` (`employeeId`);--> statement-breakpoint
+CREATE INDEX `role_notif_reads_unique_idx` ON `role_notification_reads` (`notificationId`,`employeeId`);--> statement-breakpoint
+CREATE TABLE `role_notifications` (
+	`id` text PRIMARY KEY NOT NULL,
+	`role` text NOT NULL,
+	`title` text NOT NULL,
+	`message` text NOT NULL,
+	`type` text DEFAULT 'INFO' NOT NULL,
+	`link` text,
+	`createdAt` integer DEFAULT (unixepoch() * 1000) NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX `role_notif_role_idx` ON `role_notifications` (`role`);--> statement-breakpoint
 CREATE TABLE `transfers` (
 	`id` text PRIMARY KEY NOT NULL,
 	`assetId` text NOT NULL,
@@ -357,8 +424,8 @@ CREATE TABLE `transfers` (
 	`toEmployeeId` text NOT NULL,
 	`reason` text,
 	`approvedBy` text,
-	`transferredAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	`conditionNoted` text,
+	`transferredAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	`createdAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	FOREIGN KEY (`assetId`) REFERENCES `assets`(`id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`fromEmployeeId`) REFERENCES `employees`(`id`) ON UPDATE no action ON DELETE no action,
