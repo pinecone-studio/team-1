@@ -35,6 +35,8 @@ import {
   ReturnAssetDocument,
   UpdateAssetDocument,
   AssetFieldsFragmentDoc,
+  GetCategoriesDocument,
+  GetLocationsDocument,
 } from "@/gql/graphql";
 import { useFragment } from "@/gql";
 import type { Asset, AssetCategory } from "@/lib/types";
@@ -47,6 +49,13 @@ import {
   SUB_ROOM_TYPES,
   FINAL_ROOM_OPTIONS,
 } from "./constants";
+
+type LocationFromApi = {
+  id: string;
+  name: string;
+  parentId?: string | null;
+  type: string;
+};
 
 type AssetDialogMode = "create" | "edit";
 
@@ -94,26 +103,142 @@ export function AssetFormDialog({
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [assetIdAuto, setAssetIdAuto] = useState(true);
 
-  /** Үндсэн ангилалд хамаарах дэд ангиллууд */
+  const { data: categoriesData } = useQuery(GetCategoriesDocument, {
+    skip: !open,
+  });
+  const { data: locationsData } = useQuery(GetLocationsDocument, {
+    skip: !open,
+  });
+
+  const locationsFromDb = (locationsData?.locations ??
+    []) as unknown as LocationFromApi[];
+  const locationTree = useMemo(() => {
+    const list = locationsFromDb;
+    const byParent = new Map<string | null, LocationFromApi[]>();
+    list.forEach((loc) => {
+      const key = loc.parentId ?? null;
+      if (!byParent.has(key)) byParent.set(key, []);
+      byParent.get(key)!.push(loc);
+    });
+    return { list, byParent };
+  }, [locationsFromDb]);
+
+  const locationDatalistOptions = useMemo(() => {
+    const { list, byParent } = locationTree;
+    const roots = byParent.get(null) ?? [];
+    const locOpts =
+      roots.length > 0
+        ? roots.map((r) => r.name).sort((a, b) => a.localeCompare(b))
+        : LOCATION_OPTIONS;
+    const branchById = new Map(roots.map((r) => [r.name, r]));
+    const typeOpts =
+      roots.length > 0
+        ? location
+          ? (byParent.get(branchById.get(location)?.id ?? "") ?? [])
+              .filter((l) => l.type === "roomType")
+              .map((l) => l.name)
+              .sort((a, b) => a.localeCompare(b))
+          : list
+              .filter((l) => l.type === "roomType")
+              .map((l) => l.name)
+              .filter((v, i, a) => a.indexOf(v) === i)
+              .sort((a, b) => a.localeCompare(b))
+        : ROOM_TYPE_OPTIONS.map((o) => o.label);
+    const roomTypeNode =
+      location && roomType
+        ? (byParent.get(branchById.get(location)?.id ?? "") ?? []).find(
+            (l) => l.type === "roomType" && l.name === roomType,
+          )
+        : null;
+    const sectionById = roomTypeNode
+      ? new Map(
+          (byParent.get(roomTypeNode.id) ?? [])
+            .filter((l) => l.type === "section")
+            .map((l) => [l.name, l]),
+        )
+      : new Map<string, LocationFromApi>();
+    const subTypeOpts =
+      roots.length > 0
+        ? roomTypeNode
+          ? (byParent.get(roomTypeNode.id) ?? [])
+              .filter((l) => l.type === "section")
+              .map((l) => l.name)
+              .sort((a, b) => a.localeCompare(b))
+          : list
+              .filter((l) => l.type === "section")
+              .map((l) => l.name)
+              .filter((v, i, a) => a.indexOf(v) === i)
+              .sort((a, b) => a.localeCompare(b))
+        : SUB_ROOM_TYPES[roomType] || [];
+    const sectionNode = subRoomType
+      ? (sectionById.get(subRoomType) ??
+        (byParent.get(roomTypeNode?.id ?? "") ?? []).find(
+          (l) => l.type === "section" && l.name === subRoomType,
+        ))
+      : null;
+    const finalOpts =
+      roots.length > 0
+        ? sectionNode
+          ? (byParent.get(sectionNode.id) ?? [])
+              .filter((l) => l.type === "room")
+              .map((l) => l.name)
+              .sort((a, b) => a.localeCompare(b))
+          : list
+              .filter((l) => l.type === "room")
+              .map((l) => l.name)
+              .filter((v, i, a) => a.indexOf(v) === i)
+              .sort((a, b) => a.localeCompare(b))
+        : FINAL_ROOM_OPTIONS[subRoomType] || [];
+    return { locOpts, typeOpts, subTypeOpts, finalOpts };
+  }, [locationTree, location, roomType, subRoomType]);
+
+  /** GetCategories-ийн runtime буцаах бүтэц (fragment ref-ээс ялгаатай) */
+  type CategoryFromApi = {
+    id: string;
+    name: string;
+    parentId?: string | null;
+    subcategories?: CategoryFromApi[];
+  };
+  const categoriesFromDb = (categoriesData?.categories ??
+    []) as unknown as CategoryFromApi[];
+
+  /** Үндсэн ангиллын сонголт: DB-ээс эсвэл constants fallback (API нэрээр mainCategory илгээнэ) */
+  const mainCategoryOptions = useMemo(() => {
+    if (categoriesFromDb.length > 0) {
+      return categoriesFromDb.map((c) => ({ value: c.name, label: c.name }));
+    }
+    return MAIN_CATEGORY_OPTIONS;
+  }, [categoriesFromDb]);
+
+  /** Үндсэн ангилалд хамаарах дэд ангиллууд: DB-ээс эсвэл constants fallback */
   const subCategoryOptions = useMemo(() => {
+    if (categoriesFromDb.length > 0 && mainCategory.trim()) {
+      const main = categoriesFromDb.find((c) => c.name === mainCategory);
+      const subs = main?.subcategories ?? [];
+      if (subs.length > 0) {
+        return subs.map((s) => ({ key: s.id, label: s.name }));
+      }
+    }
     const keys =
       mainCategory && mainCategory in SUB_CATEGORIES_BY_MAIN
         ? SUB_CATEGORIES_BY_MAIN[mainCategory]
         : (Object.keys(CATEGORY_LABELS) as AssetCategory[]);
     return keys.map((k) => ({ key: k, label: CATEGORY_LABELS[k] }));
-  }, [mainCategory]);
+  }, [categoriesFromDb, mainCategory]);
 
-  /** Дэд ангиллын бичигдсэн утгыг API/seed-д ашиглах key болгон */
-  const resolvedAssetCategory = useMemo((): AssetCategory => {
+  /** Дэд ангиллын бичигдсэн утгыг API-д илгээх утга болгон (DB id эсвэл key/OTHER) */
+  const resolvedAssetCategory = useMemo((): string => {
     const v = subCategory.trim();
     if (!v) return "OTHER";
+    const fromOptions = subCategoryOptions.find((o) => o.label === v);
+    if (fromOptions) return fromOptions.key;
     const byLabel = Object.entries(CATEGORY_LABELS).find(
       ([, label]) => label === v,
-    )?.[0] as AssetCategory | undefined;
+    )?.[0];
     if (byLabel) return byLabel;
     if (v in CATEGORY_LABELS) return v as AssetCategory;
     return "OTHER";
-  }, [subCategory]);
+  }, [subCategory, subCategoryOptions]);
   const [isSaving, setIsSaving] = useState(false);
   const [assignedEmployeeId, setAssignedEmployeeId] = useState<string>("");
   const usedAssetIdsRef = useRef(new Set<string>());
@@ -201,7 +326,10 @@ export function AssetFormDialog({
       assetId: data.assetTag,
       category: data.category as AssetCategory,
       mainCategory: undefined,
-      location: data.locationId ?? undefined,
+      location:
+        (data as { locationPath?: string | null }).locationPath ??
+        data.locationId ??
+        undefined,
       serialNumber: data.serialNumber,
       purchaseCost: data.purchaseCost ?? 0,
       residualValue: 0,
@@ -213,6 +341,7 @@ export function AssetFormDialog({
       status: data.status as Asset["status"],
       assignedEmployeeId: data.assignedTo ?? undefined,
       assignedEmployeeName: undefined,
+      notes: (data as { notes?: string | null }).notes ?? undefined,
       createdAt: new Date(data.createdAt).toISOString(),
       updatedAt: new Date(data.updatedAt).toISOString(),
     };
@@ -311,6 +440,7 @@ export function AssetFormDialog({
           const updateInput = {
             assetTag: assetId,
             category: resolvedAssetCategory,
+            mainCategory: mainCategory || undefined,
             serialNumber: serialList[0],
             status: initialAsset.status,
             purchaseDate: purchaseTimestamp,
@@ -320,6 +450,7 @@ export function AssetFormDialog({
             imageUrl:
               uploadedUrl ??
               (serialList.length > 1 ? fallbackImageUrl : undefined),
+            notes: note.trim() || undefined,
           };
 
           const result = await updateAssetMutation({
@@ -372,6 +503,7 @@ export function AssetFormDialog({
           return {
             assetTag: uniqueAssetId,
             category: resolvedAssetCategory,
+            mainCategory: mainCategory || undefined,
             serialNumber: serial,
             status: "AVAILABLE",
             purchaseDate: purchaseTimestamp,
@@ -381,6 +513,7 @@ export function AssetFormDialog({
             imageUrl:
               uploadedUrl ??
               (serialList.length > 1 ? fallbackImageUrl : undefined),
+            notes: note.trim() || undefined,
           };
         });
 
@@ -437,6 +570,7 @@ export function AssetFormDialog({
     setPurchasePrice(String(initialAsset.purchaseCost ?? 0));
     setPurchaseDate(initialAsset.purchaseDate.slice(0, 10));
     setImageUrl(initialAsset.imageUrl ?? null);
+    setNote(initialAsset.notes ?? "");
     setAssetImage(null);
     setAssetImagePreview(null);
     setAssetIdAuto(false);
@@ -583,7 +717,7 @@ export function AssetFormDialog({
                 className="h-14 w-full rounded-2xl bg-gray-100 px-5 text-lg outline-none focus:ring-2 focus:ring-blue-500 border-none transition-all"
               />
               <datalist id="main-cat-list">
-                {MAIN_CATEGORY_OPTIONS.map((i) => (
+                {mainCategoryOptions.map((i) => (
                   <option key={i.value} value={i.label} />
                 ))}
               </datalist>
@@ -685,7 +819,7 @@ export function AssetFormDialog({
                         placeholder="Сонгох / Бичих"
                       />
                       <datalist id="loc-opts">
-                        {LOCATION_OPTIONS.map((o) => (
+                        {locationDatalistOptions.locOpts.map((o) => (
                           <option key={o} value={o} />
                         ))}
                       </datalist>
@@ -712,8 +846,8 @@ export function AssetFormDialog({
                         placeholder="Сонгох / Бичих"
                       />
                       <datalist id="type-opts">
-                        {ROOM_TYPE_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.label} />
+                        {locationDatalistOptions.typeOpts.map((o) => (
+                          <option key={o} value={o} />
                         ))}
                       </datalist>
                       <div className="flex gap-2">
@@ -748,7 +882,7 @@ export function AssetFormDialog({
                         placeholder="Сонгох / Бичих"
                       />
                       <datalist id="sub-type-opts">
-                        {(SUB_ROOM_TYPES[roomType] || []).map((o) => (
+                        {locationDatalistOptions.subTypeOpts.map((o) => (
                           <option key={o} value={o} />
                         ))}
                       </datalist>
@@ -784,7 +918,7 @@ export function AssetFormDialog({
                         placeholder="Сонгох / Бичих"
                       />
                       <datalist id="final-opts">
-                        {(FINAL_ROOM_OPTIONS[subRoomType] || []).map((o) => (
+                        {locationDatalistOptions.finalOpts.map((o) => (
                           <option key={o} value={o} />
                         ))}
                       </datalist>

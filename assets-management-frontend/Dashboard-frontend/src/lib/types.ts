@@ -26,6 +26,7 @@ export interface Asset {
   departmentId?: string;
   departmentName?: string;
   imageUrl?: string;
+  notes?: string;
   createdAt: string;
   updatedAt: string;
 }

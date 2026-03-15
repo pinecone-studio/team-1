@@ -9,8 +9,10 @@ fragment AssetFields on Asset {
   purchaseCost
   currentBookValue
   locationId
+  locationPath
   assignedTo
   imageUrl
+  notes
   createdAt
   updatedAt
 }
@@ -49,8 +51,8 @@ fragment LocationFields on Location {
 }
 
 # Queries
-query GetAssets($office: String, $categoryIds: [ID!], $subCategoryIds: [ID!]) {
-  assets(office: $office, categoryIds: $categoryIds, subCategoryIds: $subCategoryIds) {
+query GetAssets($office: String, $categoryIds: [ID!], $subCategoryIds: [ID!], $locationIds: [ID!]) {
+  assets(office: $office, categoryIds: $categoryIds, subCategoryIds: $subCategoryIds, locationIds: $locationIds) {
     ...AssetFields
   }
 }

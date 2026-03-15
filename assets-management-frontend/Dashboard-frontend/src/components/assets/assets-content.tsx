@@ -31,20 +31,37 @@ import {
 } from "@/components/ui/select";
 import {
   GetAssetsDocument,
+  GetLocationsDocument,
   CategoriesDocument,
   DeleteAssetDocument,
   AssetFieldsFragment,
-  AssetFieldsFragmentDoc
+  AssetFieldsFragmentDoc,
 } from "@/gql/graphql";
 import type { Asset, AssetCategory } from "@/lib/types";
 import { AssetFormDialog } from "./asset-form-dialog";
 import { CATEGORY_LABELS } from "./constants";
 import { useFragment } from "@/gql/fragment-masking";
-const FILTERS = {
-  location: ["Гурван гол", "Gallery", "Tokyo", "Sednay"],
-  roomType: ["Анги", "Оффис", "Агуулах"],
-  room: ["301", "302", "303", "304"],
+
+type LocationFromApi = {
+  id: string;
+  name: string;
+  parentId?: string | null;
+  type: string;
 };
+const LOCATION_TYPES = ["branch", "roomType", "section", "room"] as const;
+function getLeafIdsUnder(
+  locId: string,
+  locations: LocationFromApi[],
+  childrenByParent: Map<string | null, LocationFromApi[]>,
+): string[] {
+  const loc = locations.find((l) => l.id === locId);
+  if (!loc) return [];
+  if (loc.type === "room") return [locId];
+  const children = childrenByParent.get(locId) ?? [];
+  return children.flatMap((c) =>
+    getLeafIdsUnder(c.id, locations, childrenByParent),
+  );
+}
 
 export function AssetsContent() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -57,17 +74,48 @@ export function AssetsContent() {
   const [qrAssets, setQrAssets] = useState<Asset[]>([]);
 
   const [filterState, setFilterState] = useState<Record<string, Set<string>>>({
-    location: new Set(["Гурван гол"]),
-    roomType: new Set(),
-    room: new Set(),
+    locationIds: new Set(),
     category: new Set(),
     subCategory: new Set(),
   });
+  const locationsFromApi = (useQuery(GetLocationsDocument).data?.locations ??
+    []) as unknown as LocationFromApi[];
+  const locationTree = useMemo(() => {
+    const list = locationsFromApi;
+    const byParent = new Map<string | null, LocationFromApi[]>();
+    list.forEach((loc) => {
+      const key = loc.parentId ?? null;
+      if (!byParent.has(key)) byParent.set(key, []);
+      byParent.get(key)!.push(loc);
+    });
+    LOCATION_TYPES.forEach((t) =>
+      byParent.get(t)?.sort((a, b) => a.name.localeCompare(b.name)),
+    );
+    return { list, byParent };
+  }, [locationsFromApi]);
+  const resolvedLocationIdsForApi = useMemo(() => {
+    const selected = filterState.locationIds;
+    if (selected.size === 0) return undefined;
+    const leafIds = new Set<string>();
+    selected.forEach((id) =>
+      getLeafIdsUnder(id, locationTree.list, locationTree.byParent).forEach(
+        (lid) => leafIds.add(lid),
+      ),
+    );
+    return Array.from(leafIds);
+  }, [filterState.locationIds, locationTree]);
   const { data, loading, error, refetch } = useQuery(GetAssetsDocument, {
     variables: {
-      office: Array.from(filterState.location)[0] ?? "Гурван гол",
-      categoryIds: Array.from(filterState.category),
-      subCategoryIds: Array.from(filterState.subCategory),
+      office: undefined,
+      categoryIds:
+        filterState.category.size > 0
+          ? Array.from(filterState.category)
+          : undefined,
+      subCategoryIds:
+        filterState.subCategory.size > 0
+          ? Array.from(filterState.subCategory)
+          : undefined,
+      locationIds: resolvedLocationIdsForApi,
     },
   });
   const { data: categoriesData } = useQuery(CategoriesDocument);
@@ -86,7 +134,10 @@ export function AssetsContent() {
     assetId: asset.assetTag,
     category: asset.category as AssetCategory,
     mainCategory: undefined,
-    location: asset.locationId ?? undefined,
+    location:
+      (asset as { locationPath?: string | null }).locationPath ??
+      asset.locationId ??
+      undefined,
     serialNumber: asset.serialNumber,
     purchaseCost: asset.purchaseCost ?? 0,
     residualValue: 0,
@@ -133,62 +184,17 @@ export function AssetsContent() {
   }, [assetItems, remoteAssets]);
 
   const filteredAssets = mergedAssets.filter((asset) => {
-    const locationParts = (asset.location ?? "")
-      .split(" / ")
-      .map((part) => part.trim())
-      .filter(Boolean);
-    const locationValue = locationParts[0] ?? "";
-    const roomTypeValue = locationParts[1] ?? "";
-    const roomValue = locationParts[2] ?? "";
-
     const matchesSearch =
       asset.assetId.toLowerCase().includes(searchQuery.toLowerCase()) ||
       asset.serialNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       asset.assignedEmployeeName
         ?.toLowerCase()
         .includes(searchQuery.toLowerCase());
-
     const matchesStatus =
       statusFilter === "all" || asset.status === statusFilter;
     const matchesCategory =
       categoryFilter === "all" || asset.category === categoryFilter;
-
-    const locationMatch =
-      filterState.location.size === 0 ||
-      Array.from(filterState.location).some(
-        (value) => locationValue.toLowerCase() === value.toLowerCase(),
-      );
-
-    const roomTypeAliases: Record<string, string[]> = {
-      Анги: ["Анги", "Classroom"],
-      Оффис: ["Оффис", "Office"],
-      Агуулах: ["Агуулах", "Warehouse"],
-    };
-
-    const roomTypeMatch =
-      filterState.roomType.size === 0 ||
-      Array.from(filterState.roomType).some((value) =>
-        (roomTypeAliases[value] ?? [value]).some(
-          (alias) => roomTypeValue.toLowerCase() === alias.toLowerCase(),
-        ),
-      );
-
-    const roomMatch =
-      filterState.room.size === 0 ||
-      Array.from(filterState.room).some(
-        (value) =>
-          roomValue === value ||
-          roomValue.includes(value) ||
-          roomValue.includes(`${value}-`),
-      );
-    return (
-      matchesSearch &&
-      matchesStatus &&
-      matchesCategory &&
-      locationMatch &&
-      roomTypeMatch &&
-      roomMatch
-    );
+    return matchesSearch && matchesStatus && matchesCategory;
   });
 
   const toggleSelect = (id: string) => {
@@ -284,7 +290,7 @@ export function AssetsContent() {
   };
 
   const toggleFilter = (
-    group: keyof typeof FILTERS | "category" | "subCategory",
+    group: "locationIds" | "category" | "subCategory",
     value: string,
   ) => {
     setFilterState((prev) => {
@@ -299,7 +305,7 @@ export function AssetsContent() {
   };
 
   const removeFilterTag = (
-    group: keyof typeof FILTERS | "category" | "subCategory",
+    group: "locationIds" | "category" | "subCategory",
     value: string,
   ) => {
     setFilterState((prev) => {
@@ -318,21 +324,55 @@ export function AssetsContent() {
     return map;
   }, [categoriesData?.categories]);
 
+  const locationNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    locationTree.list.forEach((loc) => map.set(loc.id, loc.name));
+    return map;
+  }, [locationTree.list]);
+
+  const locationStepOptions = useMemo(() => {
+    const { list } = locationTree;
+    const roots = (locationTree.byParent.get(null) ?? [])
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const selectedIds = filterState.locationIds;
+    const step2 = list
+      .filter(
+        (l) =>
+          l.type === "roomType" &&
+          (selectedIds.size === 0 ||
+            (l.parentId && selectedIds.has(l.parentId))),
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const step3 = list
+      .filter(
+        (l) =>
+          l.type === "section" &&
+          (selectedIds.size === 0 ||
+            (l.parentId && selectedIds.has(l.parentId))),
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const step4 = list
+      .filter(
+        (l) =>
+          l.type === "room" &&
+          (selectedIds.size === 0 ||
+            (l.parentId && selectedIds.has(l.parentId))),
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+    return [
+      { label: "Салбар", options: roots },
+      { label: "Төрөл", options: step2 },
+      { label: "Хэсэг", options: step3 },
+      { label: "Өрөө", options: step4 },
+    ];
+  }, [locationTree, filterState.locationIds]);
+
   const activeTags = [
-    ...Array.from(filterState.location).map((value) => ({
-      group: "location" as const,
+    ...Array.from(filterState.locationIds).map((value) => ({
+      group: "locationIds" as const,
       value,
-      label: `Байршил: ${value}`,
-    })),
-    ...Array.from(filterState.roomType).map((value) => ({
-      group: "roomType" as const,
-      value,
-      label: `Өрөөний төрөл: ${value}`,
-    })),
-    ...Array.from(filterState.room).map((value) => ({
-      group: "room" as const,
-      value,
-      label: `Өрөө: ${value}`,
+      label: `Байршил: ${locationNameById.get(value) ?? value}`,
     })),
     ...Array.from(filterState.category).map((value) => ({
       group: "category" as const,
@@ -352,60 +392,31 @@ export function AssetsContent() {
         <h2 className="text-lg font-semibold text-foreground">Шүүлтүүр</h2>
         <div className="mt-4 space-y-6">
           <div>
-            <p className="text-sm font-semibold text-foreground">Байршил</p>
-            <div className="mt-2 space-y-2">
-              {FILTERS.location.map((item) => (
-                <label
-                  key={item}
-                  className="flex items-center gap-2 text-sm text-muted-foreground"
-                >
-                  <input
-                    type="checkbox"
-                    checked={filterState.location.has(item)}
-                    onChange={() => toggleFilter("location", item)}
-                  />
-                  {item}
-                </label>
-              ))}
-            </div>
-          </div>
-          <div>
             <p className="text-sm font-semibold text-foreground">
-              Өрөөний төрөл
+              Байршил (4 алхам)
             </p>
-            <div className="mt-2 space-y-2">
-              {FILTERS.roomType.map((item) => (
-                <label
-                  key={item}
-                  className="flex items-center gap-2 text-sm text-muted-foreground"
-                >
-                  <input
-                    type="checkbox"
-                    checked={filterState.roomType.has(item)}
-                    onChange={() => toggleFilter("roomType", item)}
-                  />
-                  {item}
-                </label>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-foreground">Өрөө</p>
-            <div className="mt-2 space-y-2">
-              {FILTERS.room.map((item) => (
-                <label
-                  key={item}
-                  className="flex items-center gap-2 text-sm text-muted-foreground"
-                >
-                  <input
-                    type="checkbox"
-                    checked={filterState.room.has(item)}
-                    onChange={() => toggleFilter("room", item)}
-                  />
-                  {item}
-                </label>
-              ))}
-            </div>
+            {locationStepOptions.map((step, idx) => (
+              <div key={idx} className="mt-3">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {step.label}
+                </p>
+                <div className="mt-1.5 space-y-1.5 max-h-32 overflow-y-auto">
+                  {step.options.map((loc) => (
+                    <label
+                      key={loc.id}
+                      className="flex items-center gap-2 text-sm text-muted-foreground"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={filterState.locationIds.has(loc.id)}
+                        onChange={() => toggleFilter("locationIds", loc.id)}
+                      />
+                      {loc.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">Ангилал</p>
@@ -471,7 +482,7 @@ export function AssetsContent() {
           onOpenChange={(open) => {
             if (!open) setEditAsset(null);
           }}
-          onAddAssets={() => { }}
+          onAddAssets={() => {}}
           onUpdateAsset={(asset) => {
             setAssetItems((prev) =>
               prev.map((item) => (item.id === asset.id ? asset : item)),
@@ -598,16 +609,25 @@ export function AssetsContent() {
           </CardHeader>
           <CardContent>
             {activeTags.length > 0 && (
-              <div className="mb-4 flex flex-wrap gap-2">
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Идэвхтэй шүүлт:
+                </span>
                 {activeTags.map((tag) => (
-                  <button
+                  <span
                     key={`${tag.group}-${tag.value}`}
-                    type="button"
-                    onClick={() => removeFilterTag(tag.group, tag.value)}
-                    className="rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-foreground"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary ring-1 ring-primary/20"
                   >
-                    {tag.label} ×
-                  </button>
+                    {tag.label}
+                    <button
+                      type="button"
+                      onClick={() => removeFilterTag(tag.group, tag.value)}
+                      className="ml-0.5 rounded p-0.5 hover:bg-primary/20 hover:text-primary"
+                      aria-label="Шүүлтийг арилгах"
+                    >
+                      ×
+                    </button>
+                  </span>
                 ))}
               </div>
             )}
