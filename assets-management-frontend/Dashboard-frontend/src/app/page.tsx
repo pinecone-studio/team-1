@@ -13,7 +13,6 @@ import { DemoEmployeeContent } from "@/components/demo-employee/demo-employee";
 import { DemoITContent } from "@/components/demo-it/demo-it";
 import { DemoHRContent } from "@/components/demo-hr/demo-hr";
 
-
 export default function DashboardPage() {
   const [activeTitle, setActiveTitle] = useState("Хянах самбар");
 
@@ -28,7 +27,7 @@ export default function DashboardPage() {
           sidebarClassName="top-14 bottom-0"
         />
 
-<SidebarInset className="min-h-0 bg-transparent">
+        <SidebarInset className="min-h-0 bg-transparent">
           {activeTitle === "Хянах самбар" ? <DashboardContent /> : null}
           {activeTitle === "Хөрөнгө" ? <AssetsContent /> : null}
           {activeTitle === "Хөрөнгө хуваарилах" ? (
@@ -37,7 +36,7 @@ export default function DashboardPage() {
           {activeTitle === "Demo Ажилтан" ? <DemoEmployeeContent /> : null}
           {activeTitle === "Demo IT" ? <DemoITContent /> : null}
           {activeTitle === "Demo HR" ? <DemoHRContent /> : null}
-   
+
           {activeTitle !== "Хянах самбар" &&
           activeTitle !== "Хөрөнгө" &&
           activeTitle !== "Хөрөнгө хуваарилах" &&
@@ -49,7 +48,7 @@ export default function DashboardPage() {
             </div>
           ) : null}
         </SidebarInset>
-      </SidebarProvider> 
+      </SidebarProvider>
     </div>
   );
 }

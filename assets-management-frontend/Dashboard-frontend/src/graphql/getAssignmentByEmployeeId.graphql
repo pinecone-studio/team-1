@@ -1,5 +1,6 @@
-query GetEmployeeAssignments($employeeId: ID!) {
-  employeeAssignments(employeeId: $employeeId) { # Нэрийг нь Backend-тэйгээ ижил болгов
+query GetEmployeeAssignments($employeeId: ID!, $status: String) {
+  employeeAssignments(employeeId: $employeeId, status: $status) {
+    # Нэрийг нь Backend-тэйгээ ижил болгов
     id
     assetId
     employeeId
@@ -18,6 +19,7 @@ query GetEmployeeAssignments($employeeId: ID!) {
     asset {
       id
       assetTag
+      category
       serialNumber
       imageUrl
     }

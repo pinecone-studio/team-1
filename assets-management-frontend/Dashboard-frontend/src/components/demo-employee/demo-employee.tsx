@@ -31,114 +31,146 @@ export function DemoEmployeeContent({
 }: {
   title?: string;
 }) {
-  // Шалгасан эсэхийг хянах state
   const [isChecked, setIsChecked] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const currentEmployeeId = "f2b2c3d4-e5f6-7890-1234-567890abcdef"; 
 
-  const { data: assignmentsData, loading, error } = useQuery(GetEmployeeAssignmentsDocument, {
-    variables: {
-      employeeId: currentEmployeeId, // Энд заавал ID-г нь дамжуулна
-    },
-    skip: !currentEmployeeId, // Хэрэв ID байхгүй бол query-г ажиллуулахгүй
+  // Жишээ ID - Нэвтэрсэн хэрэглэгчийн ID-аар солино
+  const currentEmployeeId = "f2b2c3d4-e5f6-7890-1234-567890abcdef";
+
+  // 1. Pending Query - Нийт хүлээгдэж буй хүсэлтүүд
+  const {
+    data: pendingData,
+    loading: pendingLoading,
+    refetch: refetchPending,
+  } = useQuery(GetEmployeeAssignmentsDocument, {
+    variables: { employeeId: currentEmployeeId, status: "PENDING" },
+    skip: !currentEmployeeId,
+    fetchPolicy: "network-only",
   });
-  const assignments = assignmentsData?.employeeAssignments || [];
-  const pendingAsset = assignments.find((a) => a.status === "PENDING"); 
-  const activeAssets = assignments.filter((a) => a.status !== "PENDING");
-  console.log(pendingAsset, "a;lkdsfj");
 
-  const handleApprove = (assetId: string) => {
-    toast.success(
-      `${assetId} хөрөнгийг хүлээн авлаа. PDF гэрээ үүсэж байна...`,
-    );
+  // 2. Active Query - Миний эзэмшиж буй хөрөнгө
+  const {
+    data: activeData,
+    loading: activeLoading,
+    refetch: refetchActive,
+  } = useQuery(GetEmployeeAssignmentsDocument, {
+    variables: { employeeId: currentEmployeeId, status: "ACTIVE" },
+    skip: !currentEmployeeId,
+  });
+
+  // Өгөгдлийн боловсруулалт
+  const pendingList = pendingData?.employeeAssignments ?? [];
+  const currentPending = pendingList[0] ?? null; // Жагсаалтын хамгийн эхнийх
+  const activeAssignments = activeData?.employeeAssignments ?? [];
+
+  // Үйлдэл бүрийн дараа дараагийн хүсэлт рүү шилжих логик
+  const handleActionComplete = async () => {
+    setIsChecked(false); // Дараагийн хөрөнгөнд зориулж "Шалгасан" төлөвийг reset хийнэ
+    await refetchPending();
+    await refetchActive();
   };
 
-  const handleReject = (assetId: string) => {
-    toast.error(`${assetId} хөрөнгөөс татгалзлаа.`);
+  const handleApprove = async (id: string) => {
+    // Энд Mutation дуудаж баазад ACTIVE болгоно
+    toast.success(
+      "Хөрөнгийг хүлээн авлаа. Дараагийн хүсэлт рүү шилжиж байна...",
+    );
+    await handleActionComplete();
+  };
+
+  const handleReject = async (id: string) => {
+    // Энд Mutation дуудаж баазад REJECTED болгоно
+    toast.error("Хөрөнгөөс татгалзлаа.");
+    await handleActionComplete();
   };
 
   const handleVerify = () => {
     setIsChecked(true);
     setIsDialogOpen(false);
-    toast.info(
-      "Хөрөнгийн нөхцөлийг шалгаж дууслаа. Одоо баталгаажуулах боломжтой.",
-    );
+    toast.info("Нөхцөл шалгаж дууслаа. Одоо баталгаажуулах боломжтой.");
   };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-auto p-6">
       {/* 1. Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
-          {/* <p className="text-sm text-muted-foreground">Танд ирсэн хөрөнгө болон хүсэлтүүд</p> */}
-        </div>
+        <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
         <div className="relative">
           <Button variant="outline" size="icon" className="rounded-full">
             <Bell className="h-5 w-5" />
-            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] text-white">
-              1
-            </span>
+            {pendingList.length > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] text-white font-bold">
+                {pendingList.length}
+              </span>
+            )}
           </Button>
         </div>
       </div>
 
-      {/* 2. Pending Request Card */}
-      <Card className="mt-6 border-amber-200 bg-amber-50/50">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base font-medium text-amber-800">
-            <Bell className="h-4 w-4" /> Шинэ хөрөнгө хүлээн авах хүсэлт
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col justify-between gap-4 rounded-lg border border-amber-200 bg-white p-4 sm:flex-row sm:items-center shadow-sm">
-            <div className="space-y-1">
-              <p className="font-semibold text-foreground italic">
-                MacBook Pro 14" (M3 Max)
-              </p>
-              <p className="text-sm text-muted-foreground">
-                ID: #ASSET-9921 | 2026.03.14
-              </p>
-            </div>
+      {/* 2. Шинэ хүсэлт (1-ээр гарч ирэх логик) */}
+      {currentPending ? (
+        <Card className="mt-6 border-amber-200 bg-amber-50/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base font-medium text-amber-800">
+              <Bell className="h-4 w-4" /> Шинэ хүсэлт ({pendingList.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col justify-between gap-4 rounded-lg border border-amber-200 bg-white p-4 sm:flex-row sm:items-center shadow-sm">
+              <div className="space-y-1">
+                <p className="font-bold text-lg text-foreground">
+                  {currentPending.asset?.assetTag}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Serial: {currentPending.asset?.serialNumber || "N/A"} |
+                  Олгосон:{" "}
+                  {new Date(currentPending.assignedAt).toLocaleDateString()}
+                </p>
+              </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Нөхцөл шалгах товч */}
-              {!isChecked ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {!isChecked ? (
+                  <Button
+                    onClick={() => setIsDialogOpen(true)}
+                    className="gap-2 bg-amber-500 hover:bg-amber-600 text-white"
+                  >
+                    <Eye className="h-4 w-4" /> Нөхцөл шалгах
+                  </Button>
+                ) : (
+                  <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 py-2 px-3 gap-1">
+                    <ClipboardCheck className="h-4 w-4" /> Шалгасан
+                  </Badge>
+                )}
+
                 <Button
-                  onClick={() => setIsDialogOpen(true)}
-                  className="gap-2 bg-amber-500 hover:bg-amber-600 text-white"
+                  onClick={() => handleApprove(currentPending.id)}
+                  variant="outline"
+                  disabled={!isChecked}
+                  className="gap-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 disabled:opacity-30"
                 >
-                  <Eye className="h-4 w-4" /> Нөхцөл шалгах
+                  <Check className="h-4 w-4" /> Хүлээн авах
                 </Button>
-              ) : (
-                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 py-2 px-3 gap-1">
-                  <ClipboardCheck className="h-4 w-4" /> Шалгасан
-                </Badge>
-              )}
-
-              {/* Зөвшөөрөх, Татгалзах - isChecked үнэн үед л идэвхжнэ */}
-              <Button
-                onClick={() => handleApprove("ASSET-9921")}
-                variant="outline"
-                disabled={!isChecked}
-                className="gap-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 disabled:opacity-30"
-              >
-                <Check className="h-4 w-4" /> Хүлээн авах
-              </Button>
-              <Button
-                onClick={() => handleReject("ASSET-9921")}
-                variant="destructive"
-                disabled={!isChecked}
-                className="disabled:opacity-30"
-              >
-                <X className="h-4 w-4" /> Татгалзах
-              </Button>
+                <Button
+                  onClick={() => handleReject(currentPending.id)}
+                  variant="destructive"
+                  disabled={!isChecked}
+                  className="disabled:opacity-30"
+                >
+                  <X className="h-4 w-4" /> Татгалзах
+                </Button>
+              </div>
             </div>
+          </CardContent>
+        </Card>
+      ) : (
+        !pendingLoading && (
+          <div className="mt-6 rounded-lg border border-dashed p-8 text-center text-muted-foreground bg-muted/20">
+            Танд одоогоор шинэ хүсэлт байхгүй байна.
           </div>
-        </CardContent>
-      </Card>
+        )
+      )}
 
-      {/* 3. My Assets Table (Хэвээрээ) */}
+      {/* 3. Миний эзэмшиж буй хөрөнгө */}
       <Card className="mt-6 border-border bg-card">
         <CardHeader>
           <CardTitle className="text-base font-semibold">
@@ -149,19 +181,47 @@ export function DemoEmployeeContent({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Хөрөнгийн ID</TableHead>
+                <TableHead>Serial Number</TableHead>
                 <TableHead>Нэр</TableHead>
+                <TableHead>Огноо</TableHead>
                 <TableHead>Төлөв</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow>
-                <TableCell>#DEV-202</TableCell>
-                <TableCell>Dell 27" Monitor</TableCell>
-                <TableCell>
-                  <Badge variant="secondary">Баталгаажсан</Badge>
-                </TableCell>
-              </TableRow>
+              {activeAssignments.length > 0 ? (
+                activeAssignments.map((assignment) => (
+                  <TableRow key={assignment.id}>
+                    <TableCell className="font-mono text-xs">
+                      {assignment.asset?.serialNumber || "N/A"}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {assignment.asset?.assetTag}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(assignment.assignedAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="secondary"
+                        className="bg-emerald-50 text-emerald-700 border-emerald-100"
+                      >
+                        Идэвхтэй
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={4}
+                    className="h-24 text-center text-muted-foreground"
+                  >
+                    {activeLoading
+                      ? "Ачаалж байна..."
+                      : "Бүртгэлтэй хөрөнгө байхгүй."}
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -173,33 +233,36 @@ export function DemoEmployeeContent({
           <DialogHeader>
             <DialogTitle>Хөрөнгийн нөхцөл шалгах</DialogTitle>
             <DialogDescription>
-              #ASSET-9921 дугаартай хөрөнгийн одоогийн байдал
+              {currentPending?.asset?.assetTag} хөрөнгийг хүлээн авахын өмнө
+              шалгана уу.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="text-muted-foreground">Төхөөрөмжийн төлөв:</div>
-              <div className="font-medium text-emerald-600">Шинэ (New)</div>
-              <div className="text-muted-foreground">Дагалдах хэрэгсэл:</div>
-              <div className="font-medium">Цэнэглэгч, Хайрцаг, Mouse</div>
-              <div className="text-muted-foreground">Тэмдэглэл:</div>
+              <div className="text-muted-foreground">Марк/Модель:</div>
               <div className="font-medium">
-                Дэлгэц дээр хамгаалалтын наалттай.
+                {currentPending?.asset?.assetTag}
               </div>
+              <div className="text-muted-foreground">Serial No:</div>
+              <div className="font-medium">
+                {currentPending?.asset?.serialNumber || "N/A"}
+              </div>
+              <div className="text-muted-foreground">Төлөв:</div>
+              <div className="font-medium text-emerald-600">New / Good</div>
             </div>
-            <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-              * Та "Шалгасан" товчийг дарснаар хөрөнгийн физик нөхцөлийг хүлээн
-              зөвшөөрч байгааг анхаарна уу.
+            <div className="rounded-lg bg-amber-50 p-3 text-xs text-amber-700 border border-amber-100">
+              * Та "Шалгасан" товчийг дарснаар хөрөнгийн бүрэн бүтэн байдлыг
+              баталгаажуулж байгааг анхаарна уу.
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>
               Болих
             </Button>
             <Button
-              className="bg-foreground text-background"
+              className="bg-primary text-primary-foreground"
               onClick={handleVerify}
             >
               Шалгасан

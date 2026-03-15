@@ -77,21 +77,28 @@ export function AssetAllocationContent() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const { data: employeesData } = useQuery(EmployeesDocument);
-  const { data: assetsData, loading: assetsLoading, error: assetsError } = useQuery(GetAssetsDocument);
-  const { data: assignmentsData, loading: assignmentsLoading, refetch: refetchAssignments } =
-    useQuery(AssignmentsDocument);
+  const {
+    data: assetsData,
+    loading: assetsLoading,
+    error: assetsError,
+  } = useQuery(GetAssetsDocument);
+  const {
+    data: assignmentsData,
+    loading: assignmentsLoading,
+    refetch: refetchAssignments,
+  } = useQuery(AssignmentsDocument);
   const [assignAssetMutation] = useMutation(AssignAssetDocument);
   const rows = useMemo<AllocationRow[]>(() => {
     const assignments = assignmentsData?.assignments ?? [];
 
-  return assignments.map((a) => {
+    return assignments.map((a) => {
       const assignment = useFragment(AssignmentFieldsFragmentDoc, a);
       const asset = assignment.asset
         ? useFragment(AssetFieldsFragmentDoc, assignment.asset)
         : null;
- 
+
       const statusKey = assignment.status as keyof typeof STATUS_LABELS;
- 
+
       return {
         id: assignment.id,
         assetTag: asset?.assetTag ?? assignment.assetId,
@@ -307,7 +314,8 @@ export function AssetAllocationContent() {
                 <SelectContent>
                   {(employeesData?.employees ?? []).map((employee: any) => (
                     <SelectItem key={employee.id} value={employee.id}>
-                      {employee.firstName} {employee.lastName} ({employee.email})
+                      {employee.firstName} {employee.lastName} ({employee.email}
+                      )
                     </SelectItem>
                   ))}
                 </SelectContent>
