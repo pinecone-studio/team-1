@@ -1,4 +1,5 @@
 import { getDb } from "../../client";
+import { ensureCategoryId } from "../../assets/mutations";
 import { createNotification } from "../../notifications";
 import { getPurchaseRequestsByToken } from "../queries";
 import { purchaseRequests } from "@/schema";
@@ -11,10 +12,14 @@ export async function createPurchaseRequestsBatch(
   const db = await getDb();
   const now = Date.now();
 
-  const rows = inputs.map((input) => ({
+  const categoryIds = await Promise.all(
+    inputs.map((input) => ensureCategoryId(input.category, undefined)),
+  );
+
+  const rows = inputs.map((input, i) => ({
     id: crypto.randomUUID(),
     assetTag: input.assetTag,
-    category: input.category,
+    categoryId: categoryIds[i],
     serialNumber: input.serialNumber,
     purchaseCost: input.purchaseCost,
     purchaseDate: input.purchaseDate,

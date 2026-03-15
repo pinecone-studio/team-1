@@ -13,14 +13,13 @@ export async function approvePurchaseRequestByToken(
 
   for (const request of requests) {
     if (request.status !== "PENDING") continue;
-    const subCategoryId = await ensureCategoryId(request.category);
+    const categoryId = await ensureCategoryId(request.categoryId, undefined);
     await createAsset({
       assetTag: request.assetTag,
       serialNumber: request.serialNumber,
       purchaseCost: request.purchaseCost ?? undefined,
       purchaseDate: request.purchaseDate ?? undefined,
-      currentBookValue: request.purchaseCost ?? undefined,
-      subCategoryId,
+      categoryId,
       status: "AVAILABLE",
     });
   }

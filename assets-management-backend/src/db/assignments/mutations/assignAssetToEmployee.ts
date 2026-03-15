@@ -61,7 +61,7 @@ export async function assignAssetToEmployee(
 
   await db
     .update(assets)
-    .set({ assignedTo: employeeId, status: "ASSIGN_REQUESTED", updatedAt: now })
+    .set({ status: "ASSIGN_REQUESTED", updatedAt: now })
     .where(eq(assets.id, assetId));
 
   const asset = await getAssetById(assetId);

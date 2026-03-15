@@ -59,27 +59,29 @@ CREATE TABLE `assets` (
 	`assetTag` text NOT NULL,
 	`serialNumber` text NOT NULL,
 	`modelId` text,
+	`mainCategoryId` text,
 	`categoryId` text,
 	`status` text DEFAULT 'AVAILABLE' NOT NULL,
 	`purchaseDate` integer,
 	`purchaseCost` integer,
 	`locationId` text,
-	`currentAssigneeId` text,
 	`imageUrl` text,
+	`notes` text,
+	`condition` text DEFAULT 'GOOD' NOT NULL,
 	`createdAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	`updatedAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	`deletedAt` integer,
 	FOREIGN KEY (`modelId`) REFERENCES `asset_models`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`mainCategoryId`) REFERENCES `categories`(`id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`categoryId`) REFERENCES `categories`(`id`) ON UPDATE no action ON DELETE no action,
-	FOREIGN KEY (`locationId`) REFERENCES `locations`(`id`) ON UPDATE no action ON DELETE no action,
-	FOREIGN KEY (`currentAssigneeId`) REFERENCES `employees`(`id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`locationId`) REFERENCES `locations`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE INDEX `assets_status_idx` ON `assets` (`status`);--> statement-breakpoint
+CREATE INDEX `assets_main_category_idx` ON `assets` (`mainCategoryId`);--> statement-breakpoint
 CREATE INDEX `assets_category_idx` ON `assets` (`categoryId`);--> statement-breakpoint
 CREATE INDEX `assets_model_idx` ON `assets` (`modelId`);--> statement-breakpoint
 CREATE INDEX `assets_location_idx` ON `assets` (`locationId`);--> statement-breakpoint
-CREATE INDEX `assets_assignee_idx` ON `assets` (`currentAssigneeId`);--> statement-breakpoint
 CREATE INDEX `assets_filter_idx` ON `assets` (`status`,`categoryId`,`locationId`);--> statement-breakpoint
 CREATE INDEX `assets_created_at_idx` ON `assets` (`createdAt`);--> statement-breakpoint
 CREATE INDEX `assets_deleted_at_idx` ON `assets` (`deletedAt`);--> statement-breakpoint
@@ -317,6 +319,22 @@ CREATE TABLE `maintenance_tickets` (
 CREATE INDEX `maintenance_tickets_asset_idx` ON `maintenance_tickets` (`assetId`);--> statement-breakpoint
 CREATE INDEX `maintenance_tickets_status_idx` ON `maintenance_tickets` (`status`);--> statement-breakpoint
 CREATE INDEX `maintenance_tickets_sla_idx` ON `maintenance_tickets` (`slaDeadline`);--> statement-breakpoint
+CREATE TABLE `notifications` (
+	`id` text PRIMARY KEY NOT NULL,
+	`employeeId` text,
+	`role` text,
+	`title` text NOT NULL,
+	`message` text NOT NULL,
+	`type` text DEFAULT 'INFO' NOT NULL,
+	`link` text,
+	`isRead` integer DEFAULT 0 NOT NULL,
+	`createdAt` integer DEFAULT (unixepoch() * 1000) NOT NULL,
+	FOREIGN KEY (`employeeId`) REFERENCES `employees`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
+CREATE INDEX `notifications_employee_idx` ON `notifications` (`employeeId`);--> statement-breakpoint
+CREATE INDEX `notifications_role_idx` ON `notifications` (`role`);--> statement-breakpoint
+CREATE INDEX `notifications_read_idx` ON `notifications` (`isRead`);--> statement-breakpoint
 CREATE TABLE `offboarding_events` (
 	`id` text PRIMARY KEY NOT NULL,
 	`employeeId` text NOT NULL,

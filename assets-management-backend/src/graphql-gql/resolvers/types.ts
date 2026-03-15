@@ -1,4 +1,5 @@
 import { getAssetById } from "@/db/assets/queries";
+import { getLocationPath } from "@/db/locations";
 import { getEmployeeById } from "@/db/employees";
 import { getSubcategories } from "@/db/categories";
 import type { AssetTimelineEvent } from "@/db/assetHistory";
@@ -9,9 +10,9 @@ import {
   getPaymentsByFinancing,
   getBuyoutPolicyById,
 } from "@/db/assignments";
-import { eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { categories } from "@/schema";
+import { assignments, categories } from "@/schema";
 
 const safeNumber = (val: any) => {
   if (val === null || val === undefined || val === "") return null;
@@ -27,10 +28,27 @@ const safeFloat = (val: any) => {
 
 export const typeResolvers = {
   Asset: {
+    assignedTo: async (asset: { id: string }) => {
+      const db = await getDb();
+      const row = await db
+        .select({ employeeId: assignments.employeeId })
+        .from(assignments)
+        .where(
+          and(
+            eq(assignments.assetId, asset.id),
+            isNull(assignments.returnedAt),
+          ),
+        )
+        .orderBy(desc(assignments.assignedAt))
+        .limit(1)
+        .get();
+      return row?.employeeId ?? null;
+    },
     category: (asset: {
-      subCategoryId?: string | null;
       categoryId?: string | null;
-    }) => asset.subCategoryId ?? asset.categoryId ?? "",
+    }) => asset.categoryId ?? "",
+    locationPath: (asset: { locationId?: string | null }) =>
+      getLocationPath(asset.locationId),
     purchaseCost: (asset: any) => safeNumber(asset.purchaseCost),
     currentBookValue: (asset: any) => safeNumber(asset.currentBookValue),
     purchaseDate: (asset: any) => safeNumber(asset.purchaseDate),

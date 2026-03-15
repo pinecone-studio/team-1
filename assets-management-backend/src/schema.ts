@@ -25,7 +25,6 @@ const softDelete = {
 export const categories = sqliteTable("categories", {
   id: text().primaryKey().notNull(),
   name: text().notNull(),
-
   parentId: text().references((): any => categories.id),
   createdAt: ts(),
 });
@@ -79,14 +78,12 @@ export const assetModels = sqliteTable(
   "asset_models",
   {
     id: text().primaryKey().notNull(),
-
     categoryId: text()
       .notNull()
       .references(() => categories.id),
     manufacturer: text().notNull(),
     modelName: text().notNull(),
     modelNumber: text(),
-
     expectedLifeMonths: integer(),
     depreciationRate: numeric(),
     createdAt: ts(),
@@ -103,12 +100,12 @@ export const assets = sqliteTable(
     assetTag: text().notNull(),
     serialNumber: text().notNull(),
     modelId: text().references(() => assetModels.id),
+    mainCategoryId: text().references(() => categories.id),
     categoryId: text().references(() => categories.id),
     status: text().default("AVAILABLE").notNull(),
     purchaseDate: integer(),
     purchaseCost: integer(),
     locationId: text().references(() => locations.id),
-    currentAssigneeId: text().references(() => employees.id),
     imageUrl: text(),
     notes: text(),
     condition: text().default("GOOD").notNull(),
@@ -116,10 +113,10 @@ export const assets = sqliteTable(
   },
   (t) => ({
     statusIdx: index("assets_status_idx").on(t.status),
+    mainCategoryIdx: index("assets_main_category_idx").on(t.mainCategoryId),
     categoryIdx: index("assets_category_idx").on(t.categoryId),
     modelIdx: index("assets_model_idx").on(t.modelId),
     locationIdx: index("assets_location_idx").on(t.locationId),
-    assigneeIdx: index("assets_assignee_idx").on(t.currentAssigneeId),
     filterIdx: index("assets_filter_idx").on(
       t.status,
       t.categoryId,
@@ -540,6 +537,27 @@ export const auditLogs = sqliteTable(
     tableIdx: index("audit_logs_table_idx").on(t.tableName),
     recordIdx: index("audit_logs_record_idx").on(t.recordId),
     actorIdx: index("audit_logs_actor_idx").on(t.actorId),
+  }),
+);
+
+/** Нэгдсэн мэдэгдэл хүснэгт (employee эсвэл role-оор чиглэгдэнэ) */
+export const notifications = sqliteTable(
+  "notifications",
+  {
+    id: text().primaryKey().notNull(),
+    employeeId: text().references(() => employees.id),
+    role: text(),
+    title: text().notNull(),
+    message: text().notNull(),
+    type: text().default("INFO").notNull(),
+    link: text(),
+    isRead: integer().default(0).notNull(),
+    createdAt: ts(),
+  },
+  (t) => ({
+    employeeIdx: index("notifications_employee_idx").on(t.employeeId),
+    roleIdx: index("notifications_role_idx").on(t.role),
+    readIdx: index("notifications_read_idx").on(t.isRead),
   }),
 );
 

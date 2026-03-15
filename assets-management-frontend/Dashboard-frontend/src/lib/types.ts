@@ -26,6 +26,7 @@ export interface Asset {
   departmentId?: string;
   departmentName?: string;
   imageUrl?: string;
+  notes?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -139,7 +140,26 @@ export type AssetCategory =
   | "TABLET"
   | "PRINTER"
   | "NETWORK"
-  | "OTHER";
+  | "ACCESSORIES"
+  | "OTHER"
+  | "CHAIR"
+  | "DESK"
+  | "CABINET"
+  | "SOFA"
+  | "AIR_CONDITIONER"
+  | "WATER_DISPENSER"
+  | "TELEVISION"
+  | "FRIDGE"
+  | "MICROWAVE"
+  | "FIRE_EXTINGUISHER"
+  | "CCTV"
+  | "ACCESS_CONTROL"
+  | "STATIONERY_SET"
+  | "PAPER"
+  | "KITCHENWARE"
+  | "CONSUMABLES"
+  | "CLEANING_TOOLS"
+  | "DETERGENTS";
 
 export type AssetCondition = "Good" | "Fair" | "Damaged";
 

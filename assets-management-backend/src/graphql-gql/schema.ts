@@ -45,8 +45,10 @@ export const typeDefs = /* GraphQL */ `
     purchaseCost: Float
     currentBookValue: Float
     locationId: String
+    locationPath: String
     assignedTo: String
     imageUrl: String
+    notes: String
     createdAt: Float!
     updatedAt: Float!
     deletedAt: Float
@@ -110,6 +112,7 @@ export const typeDefs = /* GraphQL */ `
   input AssetCreateInput {
     assetTag: String!
     category: String!
+    mainCategory: String
     serialNumber: String!
     status: String
     purchaseDate: Float
@@ -118,12 +121,14 @@ export const typeDefs = /* GraphQL */ `
     locationId: String
     assignedTo: String
     imageUrl: String
+    notes: String
     deletedAt: Float
   }
 
   input AssetUpdateInput {
     assetTag: String
     category: String
+    mainCategory: String
     serialNumber: String
     status: String
     purchaseDate: Float
@@ -132,6 +137,7 @@ export const typeDefs = /* GraphQL */ `
     locationId: String
     assignedTo: String
     imageUrl: String
+    notes: String
     deletedAt: Float
   }
 
@@ -359,7 +365,7 @@ export const typeDefs = /* GraphQL */ `
   type Query {
     employees: [Employee!]!
     employee(id: ID!): Employee
-    assets(office: String, categoryIds: [ID!], subCategoryIds: [ID!]): [Asset!]!
+    assets(office: String, categoryIds: [ID!], subCategoryIds: [ID!], locationIds: [ID!]): [Asset!]!
     asset(id: ID!): Asset
     assignments: [Assignment!]!
     employeeAssignments(employeeId: ID!, status: String): [Assignment!]!

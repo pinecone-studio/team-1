@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "ec994c7d-9918-488b-9810-5c01a5db4834",
+  "id": "151929e6-9795-4c6e-9a35-89b4fc1ed379",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "asset_contracts": {
@@ -448,6 +448,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "mainCategoryId": {
+          "name": "mainCategoryId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "categoryId": {
           "name": "categoryId",
           "type": "text",
@@ -484,19 +491,27 @@
           "notNull": false,
           "autoincrement": false
         },
-        "currentAssigneeId": {
-          "name": "currentAssigneeId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "imageUrl": {
           "name": "imageUrl",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "condition": {
+          "name": "condition",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'GOOD'"
         },
         "createdAt": {
           "name": "createdAt",
@@ -530,6 +545,13 @@
           ],
           "isUnique": false
         },
+        "assets_main_category_idx": {
+          "name": "assets_main_category_idx",
+          "columns": [
+            "mainCategoryId"
+          ],
+          "isUnique": false
+        },
         "assets_category_idx": {
           "name": "assets_category_idx",
           "columns": [
@@ -548,13 +570,6 @@
           "name": "assets_location_idx",
           "columns": [
             "locationId"
-          ],
-          "isUnique": false
-        },
-        "assets_assignee_idx": {
-          "name": "assets_assignee_idx",
-          "columns": [
-            "currentAssigneeId"
           ],
           "isUnique": false
         },
@@ -610,6 +625,19 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
+        "assets_mainCategoryId_categories_id_fk": {
+          "name": "assets_mainCategoryId_categories_id_fk",
+          "tableFrom": "assets",
+          "tableTo": "categories",
+          "columnsFrom": [
+            "mainCategoryId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "assets_categoryId_categories_id_fk": {
           "name": "assets_categoryId_categories_id_fk",
           "tableFrom": "assets",
@@ -629,19 +657,6 @@
           "tableTo": "locations",
           "columnsFrom": [
             "locationId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "assets_currentAssigneeId_employees_id_fk": {
-          "name": "assets_currentAssigneeId_employees_id_fk",
-          "tableFrom": "assets",
-          "tableTo": "employees",
-          "columnsFrom": [
-            "currentAssigneeId"
           ],
           "columnsTo": [
             "id"
@@ -2318,6 +2333,118 @@
           "tableTo": "vendors",
           "columnsFrom": [
             "vendorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "notifications": {
+      "name": "notifications",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "employeeId": {
+          "name": "employeeId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "message": {
+          "name": "message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'INFO'"
+        },
+        "link": {
+          "name": "link",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "isRead": {
+          "name": "isRead",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        }
+      },
+      "indexes": {
+        "notifications_employee_idx": {
+          "name": "notifications_employee_idx",
+          "columns": [
+            "employeeId"
+          ],
+          "isUnique": false
+        },
+        "notifications_role_idx": {
+          "name": "notifications_role_idx",
+          "columns": [
+            "role"
+          ],
+          "isUnique": false
+        },
+        "notifications_read_idx": {
+          "name": "notifications_read_idx",
+          "columns": [
+            "isRead"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "notifications_employeeId_employees_id_fk": {
+          "name": "notifications_employeeId_employees_id_fk",
+          "tableFrom": "notifications",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "employeeId"
           ],
           "columnsTo": [
             "id"

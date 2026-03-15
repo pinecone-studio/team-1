@@ -1,30 +1,230 @@
-# GraphQL Operations Index
-# 
-# This file serves as documentation for organized GraphQL operations.
-# All operations are now separated into focused domain files:
-#
-# Fragments (shared data shapes):
-#   fragments.graphql - AssetFields, EmployeeFields, CategoryFields, VendorFields, LocationFields
-#
-# Asset Operations:
-#   assets-queries.graphql - GetAssets, GetAsset, SearchAssets, GetAssetHistory, GetEligibleCategoryUpdateAssets
-#   assets-mutations.graphql - CreateAsset, UpdateAsset, DeleteAsset, UpdateAssetCategory
-#
-# Reference Data:
-#   reference-queries.graphql - GetVendors, GetCategories, GetLocations
-#
-# Assignment & Transfer:
-#   assignment-mutations.graphql - AssignAsset, ReturnAsset, TransferAsset
-#
-# Maintenance:
-#   maintenance-mutations.graphql - CreateMaintenanceTicket
-#
-# Disposal Process:
-#   disposal-operations.graphql - GetActiveDisposals, RequestDisposal, ApproveDisposal, RejectDisposal
-#
-# Employee Offboarding:
-#   offboarding-queries.graphql - GetActiveOffboarding
-#
-# Note: GraphQL Codegen automatically processes all .graphql files in src/graphql/
-# You can import any query/mutation/fragment from @/gql/graphql in your components.
+# Fragments
+fragment AssetFields on Asset {
+  id
+  assetTag
+  serialNumber
+  status
+  category
+  purchaseDate
+  purchaseCost
+  currentBookValue
+  locationId
+  locationPath
+  assignedTo
+  imageUrl
+  notes
+  createdAt
+  updatedAt
+}
 
+fragment EmployeeFields on Employee {
+  id
+  firstName
+  lastName
+  email
+  role
+  department
+  branch
+  imageUrl
+}
+
+fragment CategoryFields on Category {
+  id
+  name
+  parentId
+}
+
+fragment VendorFields on Vendor {
+  id
+  name
+  contactName
+  email
+  phone
+  address
+}
+
+fragment LocationFields on Location {
+  id
+  name
+  parentId
+  type
+}
+
+# Queries
+query GetAssets($office: String, $categoryIds: [ID!], $subCategoryIds: [ID!], $locationIds: [ID!]) {
+  assets(office: $office, categoryIds: $categoryIds, subCategoryIds: $subCategoryIds, locationIds: $locationIds) {
+    ...AssetFields
+  }
+}
+
+query GetAsset($id: ID!) {
+  asset(id: $id) {
+    ...AssetFields
+  }
+}
+
+query SearchAssets($filter: AssetSearchInput!, $pagination: PaginationInput, $sort: AssetSortInput) {
+  searchAssets(filter: $filter, pagination: $pagination, sort: $sort) {
+    total
+    items {
+      ...AssetFields
+    }
+  }
+}
+
+query GetAssetHistory($assetId: ID!) {
+  assetHistory(assetId: $assetId) {
+    id
+    eventType
+    description
+    timestamp
+    actor {
+      ...EmployeeFields
+    }
+  }
+}
+
+query GetVendors {
+  vendors {
+    ...VendorFields
+  }
+}
+
+query GetCategories {
+  categories {
+    ...CategoryFields
+    subcategories {
+      ...CategoryFields
+    }
+  }
+}
+
+query GetLocations {
+  locations {
+    ...LocationFields
+  }
+}
+
+query GetActiveDisposals {
+  disposalRequests(status: "PENDING") {
+    id
+    assetId
+    method
+    status
+    createdAt
+  }
+}
+
+query GetActiveOffboarding($employeeId: ID!) {
+  offboardingEvent(employeeId: $employeeId) {
+    id
+    status
+    totalAssets
+    returnedAssets
+    createdAt
+  }
+}
+
+query GetEligibleCategoryUpdateAssets {
+  searchAssets(filter: { status: AVAILABLE }) {
+    items {
+      ...AssetFields
+    }
+  }
+}
+
+# Mutations
+mutation CreateAsset($input: AssetCreateInput!) {
+  createAsset(input: $input) {
+    ...AssetFields
+  }
+}
+
+mutation UpdateAsset($id: ID!, $input: AssetUpdateInput!) {
+  updateAsset(id: $id, input: $input) {
+    ...AssetFields
+  }
+}
+
+mutation DeleteAsset($id: ID!) {
+  deleteAsset(id: $id)
+}
+
+mutation AssignAsset(
+  $assetId: ID!
+  $employeeId: ID!
+  $conditionAtAssign: String
+  $accessoriesJson: String
+  $buyoutPolicyId: ID
+  $assignedValue: Float
+  $paymentPlanMonths: Int
+  $interestRate: Float
+) {
+  assignAsset(
+    assetId: $assetId
+    employeeId: $employeeId
+    conditionAtAssign: $conditionAtAssign
+    accessoriesJson: $accessoriesJson
+    buyoutPolicyId: $buyoutPolicyId
+    assignedValue: $assignedValue
+    paymentPlanMonths: $paymentPlanMonths
+    interestRate: $interestRate
+  ) {
+    ...AssetFields
+  }
+}
+
+mutation ReturnAsset($assetId: ID!, $conditionAtReturn: String) {
+  returnAsset(assetId: $assetId, conditionAtReturn: $conditionAtReturn) {
+    ...AssetFields
+  }
+}
+
+mutation UpdateAssetCategory($assetId: ID!, $categoryId: ID!) {
+  updateAssetCategory(assetId: $assetId, categoryId: $categoryId) {
+    ...AssetFields
+  }
+}
+
+mutation TransferAsset($assetId: ID!, $fromEmployeeId: ID!, $toEmployeeId: ID!, $reason: String, $conditionNoted: String) {
+  transferAsset(assetId: $assetId, fromEmployeeId: $fromEmployeeId, toEmployeeId: $toEmployeeId, reason: $reason, conditionNoted: $conditionNoted) {
+    id
+    assetId
+    fromEmployeeId
+    toEmployeeId
+    reason
+    transferredAt
+  }
+}
+
+mutation CreateMaintenanceTicket($assetId: ID!, $reporterId: ID!, $description: String!, $severity: String!, $vendorId: ID, $repairCost: Int) {
+  createMaintenanceTicket(assetId: $assetId, reporterId: $reporterId, description: $description, severity: $severity, vendorId: $vendorId, repairCost: $repairCost) {
+    id
+    assetId
+    description
+    status
+    severity
+  }
+}
+
+mutation RequestDisposal($assetId: ID!, $requestedBy: ID!, $method: String!, $reason: String) {
+  requestDisposal(assetId: $assetId, requestedBy: $requestedBy, method: $method, reason: $reason) {
+    id
+    status
+    assetId
+  }
+}
+
+mutation ApproveDisposal($id: ID!, $approvedBy: ID!, $stage: String!) {
+  approveDisposal(id: $id, approvedBy: $approvedBy, stage: $stage) {
+    id
+    status
+  }
+}
+
+mutation RejectDisposal($id: ID!, $rejectedBy: ID!, $reason: String) {
+  rejectDisposal(id: $id, rejectedBy: $rejectedBy, reason: $reason) {
+    id
+    status
+  }
+}

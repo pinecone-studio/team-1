@@ -3,14 +3,17 @@ import {
   deleteAndArchiveAsset,
   deleteAssetById,
   ensureCategoryId,
+  ensureMainCategoryId,
   updateAssetById,
   updateAssetCategory,
 } from "@/db/assets/mutations";
 import { getAssetById } from "@/db/assets/queries";
+import { ensureLocationId } from "@/db/locations";
 
 type AssetCreateInput = {
   assetTag: string;
   category: string;
+  mainCategory?: string | null;
   serialNumber: string;
   status?: string | null;
   purchaseDate?: number | null;
@@ -19,12 +22,14 @@ type AssetCreateInput = {
   locationId?: string | null;
   assignedTo?: string | null;
   imageUrl?: string | null;
+  notes?: string | null;
   deletedAt?: number | null;
 };
 
 type AssetUpdateInput = {
   assetTag?: string | null;
   category?: string | null;
+  mainCategory?: string | null;
   serialNumber?: string | null;
   status?: string | null;
   purchaseDate?: number | null;
@@ -33,6 +38,7 @@ type AssetUpdateInput = {
   locationId?: string | null;
   assignedTo?: string | null;
   imageUrl?: string | null;
+  notes?: string | null;
   deletedAt?: number | null;
 };
 
@@ -48,8 +54,8 @@ const buildAssetUpdate = (input: AssetUpdateInput) => {
   setIfDefined("purchaseCost", input.purchaseCost);
   setIfDefined("currentBookValue", input.currentBookValue);
   setIfDefined("locationId", input.locationId);
-  setIfDefined("assignedTo", input.assignedTo);
   setIfDefined("imageUrl", input.imageUrl);
+  setIfDefined("notes", input.notes);
   setIfDefined("deletedAt", input.deletedAt);
   if (input.currentBookValue === undefined && input.purchaseCost !== undefined) {
     updates.currentBookValue = input.purchaseCost;
@@ -60,26 +66,43 @@ const buildAssetUpdate = (input: AssetUpdateInput) => {
 export const assetMutations = {
   createAsset: async (_: unknown, args: { input: AssetCreateInput }) => {
     const input = args.input;
-    const subCategoryId = await ensureCategoryId(input.category);
+    const mainCategoryId =
+      input.mainCategory?.trim() ?
+        await ensureMainCategoryId(input.mainCategory.trim()) :
+        undefined;
+    const categoryId = await ensureCategoryId(
+      input.category,
+      input.mainCategory ?? null
+    );
+    const locationIdResolved = await ensureLocationId(input.locationId);
     return createAsset({
       assetTag: input.assetTag,
       serialNumber: input.serialNumber,
       status: input.status ?? undefined,
       purchaseDate: input.purchaseDate ?? undefined,
       purchaseCost: input.purchaseCost ?? undefined,
-      currentBookValue: input.currentBookValue ?? input.purchaseCost ?? undefined,
-      locationId: input.locationId ?? undefined,
-      assignedTo: input.assignedTo ?? undefined,
+      locationId: locationIdResolved ?? input.locationId ?? undefined,
       imageUrl: input.imageUrl ?? undefined,
+      notes: input.notes ?? undefined,
       deletedAt: input.deletedAt ?? undefined,
-      subCategoryId,
-    });
+      mainCategoryId: mainCategoryId ?? undefined,
+      categoryId,
+    } as Parameters<typeof createAsset>[0]);
   },
   updateAsset: async (_: unknown, args: { id: string; input: AssetUpdateInput }) => {
     const input = args.input;
     const updates = buildAssetUpdate(input);
+    if (input.locationId !== undefined) {
+      updates.locationId = (await ensureLocationId(input.locationId)) ?? input.locationId ?? undefined;
+    }
+    if (input.mainCategory != null && input.mainCategory.trim()) {
+      updates.mainCategoryId = await ensureMainCategoryId(input.mainCategory.trim());
+    }
     if (input.category != null) {
-      updates.subCategoryId = await ensureCategoryId(input.category);
+      updates.categoryId = await ensureCategoryId(
+        input.category,
+        input.mainCategory ?? null
+      );
     }
     if (Object.keys(updates).length === 0) {
       return getAssetById(args.id);
@@ -98,7 +121,7 @@ export const assetMutations = {
     return deleteAndArchiveAsset(args.id);
   },
   updateAssetCategory: async (_: unknown, args: { assetId: string; categoryId: string }) => {
-    const subCategoryId = await ensureCategoryId(args.categoryId);
-    return updateAssetCategory(args.assetId, subCategoryId);
+    const categoryId = await ensureCategoryId(args.categoryId);
+    return updateAssetCategory(args.assetId, categoryId);
   },
 };
