@@ -1,12 +1,23 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { getDb } from "../../client";
 import { assets, assignments, notifications } from "@/schema";
 
 export async function getEmployeeDashboardData(employeeId: string) {
   const db = await getDb();
 
-  const [myAssets, myAssignments, myNotifications] = await Promise.all([
-    db.select().from(assets).where(eq(assets.assignedTo, employeeId)).all(),
+  const [myAssetsRows, myAssignments, myNotifications] = await Promise.all([
+    db
+      .select({ asset: assets })
+      .from(assets)
+      .innerJoin(
+        assignments,
+        and(
+          eq(assignments.assetId, assets.id),
+          eq(assignments.employeeId, employeeId),
+          isNull(assignments.returnedAt),
+        ),
+      )
+      .all(),
     db
       .select()
       .from(assignments)
@@ -27,6 +38,8 @@ export async function getEmployeeDashboardData(employeeId: string) {
       .limit(10)
       .all(),
   ]);
+
+  const myAssets = myAssetsRows.map((r) => r.asset);
 
   return {
     myAssets,

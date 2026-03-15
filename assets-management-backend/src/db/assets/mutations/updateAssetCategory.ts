@@ -6,7 +6,7 @@ import { assets } from "@/schema";
 
 export async function updateAssetCategory(
   assetId: string,
-  subCategoryId: string,
+  categoryId: string,
 ) {
   const db = await getDb();
 
@@ -25,7 +25,7 @@ export async function updateAssetCategory(
   await db
     .update(assets)
     .set({
-      subCategoryId,
+      categoryId,
       updatedAt: now,
     })
     .where(eq(assets.id, assetId));

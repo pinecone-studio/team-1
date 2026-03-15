@@ -63,7 +63,7 @@ export async function transferAsset(
 
   await db
     .update(assets)
-    .set({ assignedTo: toEmployeeId, status: "ASSIGNED", updatedAt: now })
+    .set({ status: "ASSIGNED", updatedAt: now })
     .where(eq(assets.id, assetId));
 
   const asset = await getAssetById(assetId);

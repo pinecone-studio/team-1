@@ -1,4 +1,5 @@
 import { getDb } from "../../client";
+import { ensureCategoryId } from "../../assets/mutations";
 import { getPurchaseRequestById } from "../queries";
 import { purchaseRequests } from "@/schema";
 import type { PurchaseRequestCreate } from "../types";
@@ -7,11 +8,12 @@ export async function createPurchaseRequest(input: PurchaseRequestCreate) {
   const db = await getDb();
   const now = Date.now();
   const id = crypto.randomUUID();
+  const categoryId = await ensureCategoryId(input.category, undefined);
 
   await db.insert(purchaseRequests).values({
     id,
     assetTag: input.assetTag,
-    category: input.category,
+    categoryId,
     serialNumber: input.serialNumber,
     purchaseCost: input.purchaseCost,
     purchaseDate: input.purchaseDate,

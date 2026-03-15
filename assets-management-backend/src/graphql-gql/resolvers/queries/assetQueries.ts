@@ -9,6 +9,7 @@ export const assetQueries = {
       office?: string;
       categoryIds?: string[];
       subCategoryIds?: string[];
+      locationIds?: string[];
     },
   ) => {
     const rawOffice = args.office?.trim();
@@ -18,8 +19,13 @@ export const assetQueries = {
           .replace(/^(Gurwan Gol|Gurvan Gol)/i, "Гурван гол")
           .replace(/\s+\d+$/, "")
           .trim()
-      : defaultOffice;
-    return getAssets(normalizedOffice, args.categoryIds, args.subCategoryIds);
+      : undefined;
+    return getAssets(
+      normalizedOffice,
+      args.categoryIds,
+      args.subCategoryIds,
+      args.locationIds,
+    );
   },
   asset: (_: unknown, args: { id: string }) => getAssetById(args.id),
   searchAssets: (

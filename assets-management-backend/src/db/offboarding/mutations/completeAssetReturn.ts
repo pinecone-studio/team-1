@@ -39,7 +39,7 @@ export async function completeAssetReturn(
 
   await db
     .update(assets)
-    .set({ status: nextStatus, assignedTo: null, updatedAt: now })
+    .set({ status: nextStatus, updatedAt: now })
     .where(eq(assets.id, assetId));
 
   await writeAuditLog(
