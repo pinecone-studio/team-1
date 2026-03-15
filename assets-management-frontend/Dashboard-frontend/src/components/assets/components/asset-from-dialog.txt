@@ -20,7 +20,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { CreateAssetDocument, UpdateAssetDocument } from "@/gql/graphql";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Asset, AssetCategory } from "@/lib/types";
 import {
   CATEGORY_LABELS,
