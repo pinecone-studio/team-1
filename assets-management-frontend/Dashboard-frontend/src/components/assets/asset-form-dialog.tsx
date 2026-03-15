@@ -1109,7 +1109,7 @@ export function AssetFormDialog({
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Зураг сонговол энд preview харагдана.
+                Зураг сонговол preview харагдана.
               </p>
             )}
           </div>
