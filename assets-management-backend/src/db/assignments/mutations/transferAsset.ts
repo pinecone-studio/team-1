@@ -1,6 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { getDb } from "../../client";
 import { getAssetById } from "../../assets/queries";
+import { writeAuditLog } from "../../auditLogger";
 import { createNotification } from "../../notifications";
 import {
   assets,
@@ -61,10 +62,22 @@ export async function transferAsset(
     updatedAt: now,
   });
 
+  const assetBefore = await getAssetById(assetId);
   await db
     .update(assets)
     .set({ status: "ASSIGNED", updatedAt: now })
     .where(eq(assets.id, assetId));
+
+  if (assetBefore) {
+    await writeAuditLog(
+      "assets",
+      assetId,
+      "TRANSFERRED",
+      fromEmployeeId,
+      { status: assetBefore.status, assignedTo: fromEmployeeId },
+      { status: "ASSIGNED", fromEmployeeId, toEmployeeId, reason },
+    );
+  }
 
   const asset = await getAssetById(assetId);
   if (asset) {

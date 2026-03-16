@@ -1,7 +1,7 @@
 import { getAssetById } from "@/db/assets/queries";
 import { getLocationPath } from "@/db/locations";
 import { getEmployeeById } from "@/db/employees";
-import { getSubcategories } from "@/db/categories";
+import { getCategoryById, getSubcategories } from "@/db/categories";
 import type { AssetTimelineEvent } from "@/db/assetHistory";
 import type { DisposalRequest } from "@/db/disposalRequests";
 import type { OffboardingEvent } from "@/db/offboarding";
@@ -44,9 +44,39 @@ export const typeResolvers = {
         .get();
       return row?.employeeId ?? null;
     },
-    category: (asset: {
+    status: async (asset: { id: string; status?: string | null }) => {
+      const dbStatus = asset.status ?? "AVAILABLE";
+      if (
+        dbStatus === "PENDING_DISPOSAL" ||
+        dbStatus === "DISPOSED" ||
+        dbStatus === "DISPOSAL_REQUESTED"
+      ) {
+        return dbStatus;
+      }
+      const db = await getDb();
+      const row = await db
+        .select({ status: assignments.status })
+        .from(assignments)
+        .where(
+          and(
+            eq(assignments.assetId, asset.id),
+            isNull(assignments.returnedAt),
+          ),
+        )
+        .orderBy(desc(assignments.assignedAt))
+        .limit(1)
+        .get();
+      if (row?.status === "ACTIVE") return "ASSIGNED";
+      return dbStatus;
+    },
+    category: async (asset: {
       categoryId?: string | null;
-    }) => asset.categoryId ?? "",
+    }) => {
+      const id = asset.categoryId ?? "";
+      if (!id) return "";
+      const cat = await getCategoryById(id);
+      return cat?.name ?? id;
+    },
     locationPath: (asset: { locationId?: string | null }) =>
       getLocationPath(asset.locationId),
     purchaseCost: (asset: any) => safeNumber(asset.purchaseCost),
@@ -66,6 +96,10 @@ export const typeResolvers = {
         : null,
     financing: (assignment: { id: string }) =>
       getFinancingByAssignment(assignment.id),
+    requestedBy: (assignment: { requestedByEmployeeId?: string | null }) =>
+      assignment.requestedByEmployeeId
+        ? getEmployeeById(assignment.requestedByEmployeeId)
+        : null,
   },
   AssignmentBuyoutPolicy: {
     category: async (policy: { categoryId?: string }) => {
@@ -100,6 +134,7 @@ export const typeResolvers = {
       event.actorId ? getEmployeeById(event.actorId) : null,
   },
   DisposalRequest: {
+    asset: (dr: DisposalRequest) => getAssetById(dr.assetId),
     requestedBy: (dr: DisposalRequest) => getEmployeeById(dr.requestedBy),
     itApprovedBy: (dr: DisposalRequest) =>
       dr.itApprovedBy ? getEmployeeById(dr.itApprovedBy) : null,

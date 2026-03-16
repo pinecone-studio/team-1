@@ -2,6 +2,7 @@ import {
   assignAssetToEmployee,
   returnAssetFromEmployee,
   transferAsset as transferAssetDb,
+  updateAssignmentStatus as updateAssignmentStatusDb,
 } from "@/db/assignments";
 
 export const assignmentMutations = {
@@ -16,6 +17,7 @@ export const assignmentMutations = {
       assignedValue?: number | null;
       paymentPlanMonths?: number | null;
       interestRate?: number | null;
+      requestedByEmployeeId?: string | null;
     },
   ) =>
     assignAssetToEmployee(
@@ -29,6 +31,7 @@ export const assignmentMutations = {
         paymentPlanMonths: args.paymentPlanMonths ?? undefined,
         interestRate: args.interestRate ?? undefined,
       },
+      args.requestedByEmployeeId ?? undefined,
     ),
   returnAsset: (
     _: unknown,
@@ -55,4 +58,8 @@ export const assignmentMutations = {
       args.reason,
       args.conditionNoted,
     ),
+  updateAssignmentStatus: (
+    _: unknown,
+    args: { assignmentId: string; status: string },
+  ) => updateAssignmentStatusDb(args.assignmentId, args.status),
 };

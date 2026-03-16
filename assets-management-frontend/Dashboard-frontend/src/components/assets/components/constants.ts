@@ -1,16 +1,5 @@
 import type { AssetCategory } from "@/lib/types";
 
-export const CATEGORY_LABELS: Record<AssetCategory, string> = {
-  LAPTOP: "Зөөврийн компьютер",
-  DESKTOP: "Суурин компьютер",
-  MONITOR: "Дэлгэц",
-  PHONE: "Утас",
-  TABLET: "Таблет",
-  PRINTER: "Принтер",
-  NETWORK: "Сүлжээ",
-  OTHER: "Бусад",
-};
-
 export const MAIN_CATEGORY_OPTIONS = [
   { value: "shiree", label: "IT тоног төхөөрөмж" },
   { value: "sandal", label: "Тавилга" },

@@ -49,11 +49,14 @@ export function AssetsContent() {
   const [editAsset, setEditAsset] = useState<Asset | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [qrAssets, setQrAssets] = useState<Asset[]>([]);
-  const [filterState, setFilterState] = useState<Record<string, Set<string>>>({
+  const [filterState, setFilterState] = useState<
+    Record<FilterGroup, Set<string>>
+  >({
     locationIds: new Set(),
     category: new Set(),
     subCategory: new Set(),
   });
+  const [viewMode, setViewMode] = useState<"list" | "byType">("list");
   const locationsFromApi = (useQuery(GetLocationsDocument).data?.locations ??
     []) as unknown as LocationFromApi[];
   const locationTree = useMemo(() => {
@@ -180,6 +183,15 @@ export function AssetsContent() {
     });
   };
 
+  const toggleFilterLocationByIds = (ids: string[]) => {
+    setFilterState((prev) => {
+      const next = new Set(prev.locationIds);
+      const anySelected = ids.some((id) => next.has(id));
+      ids.forEach((id) => (anySelected ? next.delete(id) : next.add(id)));
+      return { ...prev, locationIds: next };
+    });
+  };
+
   const removeFilterTag = (group: FilterGroup, value: string) => {
     setFilterState((prev) => {
       const next = { ...prev, [group]: new Set(prev[group]) };
@@ -204,12 +216,13 @@ export function AssetsContent() {
     return map;
   }, [locationTree.list]);
 
+  /** Group locations by name so same name shows once; each option has name + all ids with that name */
   const locationStepOptions = useMemo(() => {
     const { list } = locationTree;
+    const selectedIds = filterState.locationIds;
     const roots = (locationTree.byParent.get(null) ?? [])
       .slice()
       .sort((a, b) => a.name.localeCompare(b.name));
-    const selectedIds = filterState.locationIds;
     const step2 = list
       .filter(
         (l) =>
@@ -234,11 +247,24 @@ export function AssetsContent() {
             (l.parentId && selectedIds.has(l.parentId))),
       )
       .sort((a, b) => a.name.localeCompare(b.name));
+    const groupByName = (
+      locs: LocationFromApi[],
+    ): { name: string; ids: string[] }[] => {
+      const byName = new Map<string, string[]>();
+      locs.forEach((loc) => {
+        const n = loc.name;
+        if (!byName.has(n)) byName.set(n, []);
+        byName.get(n)!.push(loc.id);
+      });
+      return Array.from(byName.entries())
+        .map(([name, ids]) => ({ name, ids }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    };
     return [
-      { label: "Салбар", options: roots },
-      { label: "Төрөл", options: step2 },
-      { label: "Хэсэг", options: step3 },
-      { label: "Өрөө", options: step4 },
+      { label: "Салбар", options: groupByName(roots) },
+      { label: "Төрөл", options: groupByName(step2) },
+      { label: "Хэсэг", options: groupByName(step3) },
+      { label: "Өрөө", options: groupByName(step4) },
     ];
   }, [locationTree, filterState.locationIds]);
 
@@ -275,17 +301,19 @@ export function AssetsContent() {
                   {step.label}
                 </p>
                 <div className="mt-1.5 space-y-1.5 max-h-32 overflow-y-auto">
-                  {step.options.map((loc) => (
+                  {step.options.map((opt) => (
                     <label
-                      key={loc.id}
+                      key={opt.name + opt.ids[0]}
                       className="flex items-center gap-2 text-sm text-muted-foreground"
                     >
                       <input
                         type="checkbox"
-                        checked={filterState.locationIds.has(loc.id)}
-                        onChange={() => toggleFilter("locationIds", loc.id)}
+                        checked={opt.ids.some((id) =>
+                          filterState.locationIds.has(id),
+                        )}
+                        onChange={() => toggleFilterLocationByIds(opt.ids)}
                       />
-                      {loc.name}
+                      {opt.name}
                     </label>
                   ))}
                 </div>
@@ -381,6 +409,23 @@ export function AssetsContent() {
           onCategoryChange={setCategoryFilter}
         />
 
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant={viewMode === "list" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("list")}
+          >
+            Жагсаалт
+          </Button>
+          <Button
+            variant={viewMode === "byType" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("byType")}
+          >
+            Төрлөөр
+          </Button>
+        </div>
+
         <AssetsGrid
           assets={filteredAssets}
           selectedIds={selectedIds}
@@ -406,6 +451,11 @@ export function AssetsContent() {
           error={error}
           activeTags={activeTags}
           onRemoveTag={removeFilterTag}
+          showTableOnly={
+            filterState.category.size > 0 || filterState.subCategory.size > 0
+          }
+          viewMode={viewMode}
+          categoryNameById={categoryNameById}
         />
       </div>
     </div>

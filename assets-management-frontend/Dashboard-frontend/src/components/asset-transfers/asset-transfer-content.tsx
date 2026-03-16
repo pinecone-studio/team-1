@@ -1,27 +1,27 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useQuery, useMutation } from "@apollo/client";
+import {
+  GetAssetsDocument,
+  EmployeesDocument,
+  TransferAssetDocument,
+  AssignAssetDocument,
+} from "@/gql/graphql";
+import { toast } from "sonner";
 import { AssetSelectionCard } from "./asset-selection-card";
 import { TransferRequestCard } from "./transfer-request-card";
 
-const assets = [
-  {
-    id: "MAC-2026-001",
-    serial: "C02XG0FDJGH5",
-    type: "LAPTOP",
-    owner: "John Smith",
-    location: "Гурван гол",
-    locationType: "Оффис",
-    roomNumber: "301",
-  },
-];
-
-const employees = [
-  { id: "emp-01", name: "John Smith" },
-  { id: "emp-02", name: "Emily Johnson" },
-  { id: "emp-03", name: "Bob Wilson" },
-  { id: "emp-04", name: "Diana Evans" },
-];
+export type TransferAssetItem = {
+  id: string;
+  serial: string;
+  type: string;
+  owner: string;
+  ownerId: string | null;
+  location: string;
+  locationType: string;
+  roomNumber: string;
+};
 
 export function AssetTransferContent() {
   // Search and Filter States
@@ -45,22 +45,87 @@ export function AssetTransferContent() {
   );
   const [reason, setReason] = useState("");
 
+  const { data: assetsData, loading: assetsLoading, refetch: refetchAssets } =
+    useQuery(GetAssetsDocument, {
+      variables: {
+        office: undefined,
+        categoryIds: undefined,
+        subCategoryIds: undefined,
+        locationIds: undefined,
+      },
+    });
+  const { data: employeesData } = useQuery(EmployeesDocument);
+  const [transferAssetMutation, { loading: transferLoading }] =
+    useMutation(TransferAssetDocument);
+  const [assignAssetMutation] = useMutation(AssignAssetDocument);
+
+  const employeeNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    (employeesData?.employees ?? []).forEach((emp) => {
+      map.set(emp.id, `${emp.firstName} ${emp.lastName}`);
+    });
+    return map;
+  }, [employeesData?.employees]);
+
+  const assets: TransferAssetItem[] = useMemo(() => {
+    const raw = (assetsData?.assets ?? []) as Array<{
+      id: string;
+      assetTag: string;
+      serialNumber: string;
+      category: string;
+      locationPath?: string | null;
+      assignedTo?: string | null;
+    }>;
+    return raw.map((a) => {
+      const path = (a.locationPath ?? "").trim();
+      const parts = path ? path.split(/\s*\/\s*/) : [];
+      return {
+        id: a.id,
+        serial: a.serialNumber ?? "",
+        type: typeof a.category === "string" ? a.category : "",
+        owner: (a.assignedTo && employeeNameById.get(a.assignedTo)) ?? "—",
+        ownerId: a.assignedTo ?? null,
+        location: parts[0] ?? "—",
+        locationType: parts[1] ?? "—",
+        roomNumber: parts[3] ?? parts[2] ?? "—",
+      };
+    });
+  }, [assetsData?.assets, employeeNameById]);
+
+  const employees = useMemo(
+    () =>
+      (employeesData?.employees ?? []).map((emp) => ({
+        id: emp.id,
+        name: `${emp.firstName} ${emp.lastName}`,
+      })),
+    [employeesData?.employees],
+  );
+
   // Filter logic
   const filteredAssets = useMemo(() => {
+    let list = assets;
+    if (assetLocation !== "all")
+      list = list.filter((asset) => asset.location === assetLocation);
+    if (assetLocationType !== "all")
+      list = list.filter((asset) => asset.locationType === assetLocationType);
+    if (assetRoomNumber !== "all")
+      list = list.filter((asset) => asset.roomNumber === assetRoomNumber);
     const query = assetSearch.trim().toLowerCase();
-    const locationFiltered =
-      assetLocation === "all"
-        ? assets
-        : assets.filter((asset) => asset.location === assetLocation);
-
-    if (!query) return locationFiltered;
-    return locationFiltered.filter((asset) =>
-      [asset.id, asset.serial, asset.owner, asset.type, asset.location]
-        .join(" ")
-        .toLowerCase()
-        .includes(query),
-    );
-  }, [assetSearch, assetLocation]);
+    if (query)
+      list = list.filter((asset) =>
+        [asset.id, asset.serial, asset.owner, asset.type, asset.location]
+          .join(" ")
+          .toLowerCase()
+          .includes(query),
+      );
+    return list;
+  }, [
+    assets,
+    assetSearch,
+    assetLocation,
+    assetLocationType,
+    assetRoomNumber,
+  ]);
 
   const filteredSelectedAssets = filteredAssets.filter((asset) =>
     selectedAssetIds.includes(asset.id),
@@ -111,10 +176,45 @@ export function AssetTransferContent() {
     setAssetRoomItem("all");
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!selectedAssets.length || !selectedEmployeeId) return;
-    // Handle submission logic here
+    const toEmployeeId = selectedEmployeeId;
+    const toastId = toast.loading("Хүсэлт илгээж байна...");
+    let hasError = false;
+    for (const asset of selectedAssets) {
+      try {
+        if (asset.ownerId) {
+          await transferAssetMutation({
+            variables: {
+              assetId: asset.id,
+              fromEmployeeId: asset.ownerId,
+              toEmployeeId,
+              reason: reason || undefined,
+            },
+          });
+        } else {
+          await assignAssetMutation({
+            variables: {
+              assetId: asset.id,
+              employeeId: toEmployeeId,
+              conditionAtAssign: "GOOD",
+            },
+          });
+        }
+      } catch (e) {
+        console.error("Transfer/assign failed:", e);
+        hasError = true;
+      }
+    }
+    if (hasError) {
+      toast.error("Шилжүүлэхэд алдаа гарлаа.", { id: toastId });
+    } else {
+      toast.success("Амжилттай шилжүүллээ.", { id: toastId });
+    }
     setReason("");
+    setSelectedAssetIds([]);
+    setSelectedEmployeeId(null);
+    refetchAssets();
   };
 
   return (
@@ -168,7 +268,7 @@ export function AssetTransferContent() {
             onEmployeeChange={setSelectedEmployeeId}
             onReasonChange={setReason}
             onSubmit={handleSubmit}
-            isLoading={false}
+            isLoading={transferLoading}
           />
         </div>
       </div>

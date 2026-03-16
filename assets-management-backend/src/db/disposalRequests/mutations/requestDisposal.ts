@@ -48,6 +48,14 @@ export async function requestDisposal(
     { status: asset.status },
     { status: "DISPOSAL_REQUESTED", method, reason },
   );
+  await writeAuditLog(
+    "assets",
+    assetId,
+    "DISPOSAL_REQUESTED",
+    requestedBy,
+    { status: asset.status },
+    { status: "DISPOSAL_REQUESTED", method, reason },
+  );
 
   await createNotification({
     role: "IT_ADMIN",

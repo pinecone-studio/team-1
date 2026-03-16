@@ -1,13 +1,4 @@
-query GetActiveDisposals {
-  disposalRequests(status: "PENDING") {
-    id
-    assetId
-    method
-    status
-    createdAt
-  }
-}
-
+# GetActiveDisposals — assets.graphql дотор (asset, requestedBy-тай)
 mutation RequestDisposal(
   $assetId: ID!
   $requestedBy: ID!

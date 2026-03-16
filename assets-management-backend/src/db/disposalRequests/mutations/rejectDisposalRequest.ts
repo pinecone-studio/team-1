@@ -42,6 +42,16 @@ export async function rejectDisposalRequest(
     { status: req.status },
     { status: "REJECTED", rejectionReason },
   );
+  if (req.assetId) {
+    await writeAuditLog(
+      "assets",
+      req.assetId,
+      "DISPOSAL_REJECTED",
+      rejectedBy,
+      { status: req.status },
+      { status: "REJECTED", rejectionReason },
+    );
+  }
 
   const updated = await getDisposalRequest(id);
   if (!updated) throw new Error("Failed to update disposal request");

@@ -73,6 +73,8 @@ type Assignment {
   asset: Asset
   buyoutPolicy: AssignmentBuyoutPolicy
   financing: AssignmentFinancing
+  """Хүлээгдэж буй шилжүүлэлтийг хэн илгээсэн (ASSIGN_REQUESTED үед)"""
+  requestedBy: Employee
 }
 
 type AssignmentBuyoutPolicy {
@@ -275,6 +277,7 @@ input EmployeeUpdateInput {
 type DisposalRequest {
   id: ID!
   assetId: ID!
+  asset: Asset
   requestedBy: Employee
   method: String!
   reason: String
@@ -485,6 +488,7 @@ type Mutation {
     assignedValue: Float
     paymentPlanMonths: Int
     interestRate: Float
+    requestedByEmployeeId: ID
   ): Asset
   updateAssetCategory(assetId: ID!, categoryId: ID!): Asset
   returnAsset(assetId: ID!, conditionAtReturn: String): Asset
@@ -565,6 +569,7 @@ type Mutation {
     reason: String
     conditionNoted: String
   ): Transfer!
+  updateAssignmentStatus(assignmentId: ID!, status: String!): Assignment
 
   # ── Super Admin Central Command ──────────────────────────────────────
   createVendor(input: VendorInput!): Vendor!

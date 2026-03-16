@@ -103,6 +103,9 @@ export function TransferRequestCard({
               </SelectContent>
             </Select>
           </div>
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
+            Ажилчдыг өгөгдлийн сангаас ачаалж, шилжүүлэхэд assignment үүсгэнэ.
+          </p>
         </div>
 
         {/* Reason */}

@@ -199,6 +199,8 @@ export const assignments = sqliteTable(
     signatureR2Key: text(),
     accessoriesJson: text(),
     buyoutPolicyId: text().references(() => assignmentBuyoutPolicies.id),
+    /** Хүлээгдэж буй шилжүүлэлтийг хэн илгээсэн (ASSIGN_REQUESTED үед) */
+    requestedByEmployeeId: text().references(() => employees.id),
     ...softDelete,
   },
   (t) => ({

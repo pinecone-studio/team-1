@@ -8,8 +8,10 @@ fragment AssetFields on Asset {
   purchaseCost
   currentBookValue
   locationId
+  locationPath
   assignedTo
   imageUrl
+  notes
   createdAt
   updatedAt
 }

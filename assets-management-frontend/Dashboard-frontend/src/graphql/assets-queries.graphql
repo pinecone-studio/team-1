@@ -1,13 +1,3 @@
-query GetAssets($office: String, $categoryIds: [ID!], $subCategoryIds: [ID!]) {
-  assets(
-    office: $office
-    categoryIds: $categoryIds
-    subCategoryIds: $subCategoryIds
-  ) {
-    ...AssetFields
-  }
-}
-
 query GetAsset($id: ID!) {
   asset(id: $id) {
     ...AssetFields
