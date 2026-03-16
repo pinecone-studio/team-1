@@ -18,5 +18,6 @@
   },
   "[graphql]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
-  }
+  },
+  "files.autoSave": "onFocusChange"
 }
