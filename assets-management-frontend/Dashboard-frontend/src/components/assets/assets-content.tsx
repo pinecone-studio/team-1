@@ -16,6 +16,7 @@ import type { Asset, AssetCategory } from "@/lib/types";
 import { AssetFormDialog } from "./asset-form-dialog";
 import { AssetsGrid, type FilterGroup } from "./assets-grid";
 import { AssetsSearchBar } from "./assets-search-bar";
+import { CATEGORY_LABELS } from "./constants";
 import { useFragment } from "@/gql/fragment-masking";
 
 type LocationFromApi = {
