@@ -1,0 +1,32 @@
+mutation CreateAsset($input: AssetCreateInput!) {
+  createAsset(input: $input) {
+    ...AssetFields
+  }
+}
+
+mutation UpdateAsset($id: ID!, $input: AssetUpdateInput!) {
+  updateAsset(id: $id, input: $input) {
+    ...AssetFields
+  }
+}
+
+mutation DeleteAsset($id: ID!) {
+  deleteAsset(id: $id)
+}
+
+mutation UpdateAssetCategory($assetId: ID!, $categoryId: ID!) {
+  updateAssetCategory(assetId: $assetId, categoryId: $categoryId) {
+    ...AssetFields
+  }
+}
+
+# Bulk update multiple assets with same location/category
+mutation BulkUpdateAssets($assetIds: [ID!]!, $input: AssetUpdateInput!) {
+  bulkUpdateAssets(assetIds: $assetIds, input: $input) {
+    id
+    assetTag
+    location
+    category
+    status
+  }
+}

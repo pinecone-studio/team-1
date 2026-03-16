@@ -9,6 +9,9 @@ import {
   UserCheck,
   UserMinus,
   ArrowLeftRight,
+  Users,
+  Monitor,
+  Building2,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -59,6 +62,18 @@ const menuItems = [
     title: "Тайлан",
     icon: FileText,
   },
+  {
+    title: "Demo Ажилтан",
+    icon: Users,
+  },
+  {
+    title: "Demo IT",
+    icon: Monitor,
+  },
+  {
+    title: "Demo HR",
+    icon: Building2,
+  },
 ];
 
 export function AppSidebar({
@@ -80,7 +95,12 @@ export function AppSidebar({
   };
 
   return (
-    <Sidebar className={cn("border-r border-sidebar-border bg-white", sidebarClassName)}>
+    <Sidebar
+      className={cn(
+        "border-r border-sidebar-border bg-white",
+        sidebarClassName,
+      )}
+    >
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>

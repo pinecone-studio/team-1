@@ -1,0 +1,647 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  ChevronDown,
+  X,
+  ArrowLeft,
+  Check,
+  Image as ImageIcon,
+} from "lucide-react";
+import { useMutation } from "@apollo/client";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { Asset, AssetCategory } from "@/lib/types";
+import {
+  CATEGORY_LABELS,
+  LOCATION_OPTIONS,
+  MAIN_CATEGORY_OPTIONS,
+  ROOM_TYPE_OPTIONS,
+  SUB_ROOM_TYPES,
+  FINAL_ROOM_OPTIONS,
+  getRoomTypeLabel,
+} from "./constants";
+
+type AssetDialogMode = "create" | "edit";
+
+type AssetFormDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAddAssets: (assets: Asset[]) => void;
+  onUpdateAsset?: (asset: Asset) => void;
+  mode?: AssetDialogMode;
+  initialAsset?: Asset | null;
+};
+
+export function AssetFormDialog({
+  open,
+  onOpenChange,
+  mode = "create",
+  initialAsset = null,
+}: AssetFormDialogProps) {
+  // --- Basic States ---
+  const [assetId, setAssetId] = useState("");
+  const [assetCategory, setAssetCategory] = useState<AssetCategory | string>(
+    "",
+  );
+  const [mainCategory, setMainCategory] = useState("");
+  const [serialNumber, setSerialNumber] = useState("");
+  const [serialItems, setSerialItems] = useState<string[]>([]);
+  const [note, setNote] = useState("");
+  const [purchaseDate, setPurchaseDate] = useState("");
+  const [purchasePrice, setPurchasePrice] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  // --- Location Wizard States ---
+  const [location, setLocation] = useState("");
+  const [roomType, setRoomType] = useState("");
+  const [subRoomType, setSubRoomType] = useState("");
+  const [roomNumber, setRoomNumber] = useState("");
+  const [locationStep, setLocationStep] = useState<
+    "location" | "roomType" | "subRoomType" | "roomNumber"
+  >("location");
+  const [locationOpen, setLocationOpen] = useState(false);
+
+  // --- Image States ---
+  const [assetImage, setAssetImage] = useState<File | null>(null);
+  const [assetImagePreview, setAssetImagePreview] = useState<string | null>(
+    null,
+  );
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  const [createAssetMutation] = useMutation(CreateAssetDocument);
+  const [updateAssetMutation] = useMutation(UpdateAssetDocument);
+
+  const locationDisplay = [
+    location,
+    getRoomTypeLabel(roomType),
+    subRoomType,
+    roomNumber,
+  ]
+    .filter(Boolean)
+    .join(" / ");
+
+  const resetForm = () => {
+    setAssetId("");
+    setAssetCategory("");
+    setMainCategory("");
+    setLocation("");
+    setRoomType("");
+    setSubRoomType("");
+    setRoomNumber("");
+    setLocationStep("location");
+    setLocationOpen(false);
+    setSerialNumber("");
+    setSerialItems([]);
+    setNote("");
+    setPurchaseDate(new Date().toISOString().split("T")[0]);
+    setPurchasePrice("");
+    setAssetImage(null);
+    setAssetImagePreview(null);
+    setImageUrl(null);
+  };
+
+  const handleAddSerial = () => {
+    const val = serialNumber.trim();
+    if (val && !serialItems.includes(val)) {
+      setSerialItems((prev) => [...prev, val]);
+      setSerialNumber("");
+    }
+  };
+
+  const uploadImageIfNeeded = async (): Promise<string | null> => {
+    if (!assetImage) return imageUrl;
+    const bucketName = process.env.NEXT_PUBLIC_R2_BUCKET_NAME;
+    const publicUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
+    const presignUrl = "/api/r2/presign";
+
+    const key = `assets/${crypto.randomUUID()}-${assetImage.name.replace(/\s+/g, "-")}`;
+    const presignRes = await fetch(presignUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, contentType: assetImage.type, bucketName }),
+    });
+
+    if (!presignRes.ok) throw new Error("Presign failed");
+    const { url } = (await presignRes.json()) as { url: string };
+
+    await fetch(url, {
+      method: "PUT",
+      body: assetImage,
+      headers: { "Content-Type": assetImage.type },
+    });
+    return `${publicUrl}/${key}`;
+  };
+
+  const handleSave = async () => {
+    if (!assetCategory || !purchaseDate || isSaving) {
+      toast.error("Мэдээллээ бүрэн оруулна уу");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const finalImageUrl = await uploadImageIfNeeded();
+      const serialList =
+        serialItems.length > 0 ? serialItems : [serialNumber.trim()];
+
+      if (serialList.length === 0 || !serialList[0]) {
+        toast.error("Серийн дугаар оруулна уу");
+        setIsSaving(false);
+        return;
+      }
+
+      const inputBase = {
+        assetTag: assetId,
+        category: assetCategory as AssetCategory,
+        purchaseDate: Date.parse(purchaseDate),
+        purchaseCost: Number(purchasePrice),
+        locationId: locationDisplay,
+        imageUrl: finalImageUrl || undefined,
+        note: note,
+      };
+
+      if (mode === "edit" && initialAsset) {
+        await updateAssetMutation({
+          variables: {
+            id: initialAsset.id,
+            input: {
+              ...inputBase,
+              serialNumber: serialList[0],
+              status: initialAsset.status,
+            },
+          },
+        });
+        toast.success("Амжилттай шинэчлэгдлээ");
+      } else {
+        await Promise.all(
+          serialList.map((sn, i) => {
+            const tag = serialList.length > 1 ? `${assetId}-${i + 1}` : assetId;
+            return createAssetMutation({
+              variables: {
+                input: {
+                  ...inputBase,
+                  assetTag: tag,
+                  serialNumber: sn,
+                  status: "AVAILABLE",
+                },
+              },
+            });
+          }),
+        );
+        toast.success("Амжилттай бүртгэгдлээ");
+      }
+      onOpenChange(false);
+      resetForm();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    if (open && mode === "edit" && initialAsset) {
+      setAssetId(initialAsset.assetId || "");
+      setAssetCategory(initialAsset.category || "");
+      setPurchasePrice(String(initialAsset.purchaseCost || ""));
+      setPurchaseDate(initialAsset.purchaseDate?.split("T")[0] || "");
+      setImageUrl(initialAsset.imageUrl || null);
+      setNote(initialAsset.note || "");
+      const parts = initialAsset.location?.split(" / ") || [];
+      setLocation(parts[0] || "");
+      setRoomType(parts[1] || "");
+      setSubRoomType(parts[2] || "");
+      setRoomNumber(parts[3] || "");
+    } else if (open) {
+      setPurchaseDate(new Date().toISOString().split("T")[0]);
+    }
+  }, [open, mode, initialAsset]);
+
+  useEffect(() => {
+    if (assetImage) {
+      const url = URL.createObjectURL(assetImage);
+      setAssetImagePreview(url);
+      return () => URL.revokeObjectURL(url);
+    }
+  }, [assetImage]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-white sm:max-w-[760px] rounded-[2.5rem] p-10 shadow-2xl max-h-[92vh] overflow-y-auto border-none">
+        <DialogHeader className="mb-6">
+          <DialogTitle className="text-3xl font-bold text-gray-900">
+            {mode === "edit" ? "Хөрөнгө засах" : "Шинэ хөрөнгө нэмэх"}
+          </DialogTitle>
+          <DialogDescription className="text-lg text-gray-500">
+            Мэдээллийг жагсаалтаас сонгох эсвэл шууд бичиж болно.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-8">
+          {/* 1. Category Row */}
+          <div className="grid sm:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <label className="text-base font-semibold text-gray-700 ml-1">
+                Үндсэн ангилал
+              </label>
+              <input
+                list="main-cat-list"
+                value={mainCategory}
+                onChange={(e) => setMainCategory(e.target.value)}
+                placeholder="Бичих эсвэл сонгох"
+                className="h-14 w-full rounded-2xl bg-gray-100 px-5 text-lg outline-none focus:ring-2 focus:ring-blue-500 border-none transition-all"
+              />
+              <datalist id="main-cat-list">
+                {MAIN_CATEGORY_OPTIONS.map((i) => (
+                  <option key={i.value} value={i.label} />
+                ))}
+              </datalist>
+            </div>
+            <div className="space-y-3">
+              <label className="text-base font-semibold text-gray-700 ml-1">
+                Дэд ангилал
+              </label>
+              <input
+                list="sub-cat-list"
+                value={assetCategory}
+                onChange={(e) => setAssetCategory(e.target.value)}
+                placeholder="Бичих эсвэл сонгох"
+                className="h-14 w-full rounded-2xl bg-gray-100 px-5 text-lg outline-none focus:ring-2 focus:ring-blue-500 border-none transition-all"
+              />
+              <datalist id="sub-cat-list">
+                {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
+                  <option key={k} value={v} />
+                ))}
+              </datalist>
+            </div>
+          </div>
+
+          {/* 2. Location Wizard Row */}
+          <div className="space-y-3">
+            <label className="text-base font-semibold text-gray-700 ml-1">
+              Байршил / Өрөө
+            </label>
+            <div className="relative">
+              <div
+                onClick={() => setLocationOpen(!locationOpen)}
+                className="flex h-14 w-full items-center justify-between rounded-2xl bg-gray-100 px-5 text-lg cursor-pointer hover:bg-gray-200 transition-all border border-transparent"
+              >
+                <span
+                  className={
+                    locationDisplay
+                      ? "text-gray-900 font-medium"
+                      : "text-gray-400"
+                  }
+                >
+                  {locationDisplay || "Байршил сонгох..."}
+                </span>
+                <ChevronDown
+                  className={`h-5 w-5 text-gray-400 transition-transform ${locationOpen ? "rotate-180" : ""}`}
+                />
+              </div>
+
+              {locationOpen && (
+                <div className="absolute z-50 mt-3 w-full rounded-[2rem] border bg-white p-6 shadow-2xl animate-in fade-in slide-in-from-top-2">
+                  <div className="flex justify-between items-center mb-6">
+                    <div className="flex gap-1.5">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div
+                          key={i}
+                          className={`h-1.5 w-8 rounded-full transition-all ${(locationStep === "location" && i === 1) || (locationStep === "roomType" && i <= 2) || (locationStep === "subRoomType" && i <= 3) || (locationStep === "roomNumber" && i <= 4) ? "bg-blue-500" : "bg-gray-100"}`}
+                        />
+                      ))}
+                    </div>
+                    <X
+                      className="h-5 w-5 cursor-pointer text-gray-400 hover:text-gray-600"
+                      onClick={() => setLocationOpen(false)}
+                    />
+                  </div>
+
+                  {locationStep === "location" && (
+                    <div className="space-y-4 animate-in slide-in-from-right-2">
+                      <p className="font-bold text-gray-900">
+                        Байршил хаана вэ?
+                      </p>
+                      <input
+                        autoFocus
+                        list="loc-opts"
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        placeholder="Байршил..."
+                        className="h-12 w-full rounded-xl bg-gray-50 border px-4 outline-none focus:ring-2 focus:ring-blue-500"
+                        onKeyDown={(e) =>
+                          e.key === "Enter" && setLocationStep("roomType")
+                        }
+                      />
+                      <datalist id="loc-opts">
+                        {LOCATION_OPTIONS.map((o) => (
+                          <option key={o} value={o} />
+                        ))}
+                      </datalist>
+                      <Button
+                        className="w-full rounded-xl"
+                        onClick={() => setLocationStep("roomType")}
+                      >
+                        Дараах
+                      </Button>
+                    </div>
+                  )}
+
+                  {locationStep === "roomType" && (
+                    <div className="space-y-4 animate-in slide-in-from-right-2">
+                      <p className="font-bold text-gray-900">Төрөл?</p>
+                      <input
+                        autoFocus
+                        list="type-opts"
+                        value={roomType}
+                        onChange={(e) => setRoomType(e.target.value)}
+                        placeholder="Төрөл..."
+                        className="h-12 w-full rounded-xl bg-gray-50 border px-4 outline-none focus:ring-2 focus:ring-blue-500"
+                        onKeyDown={(e) =>
+                          e.key === "Enter" && setLocationStep("subRoomType")
+                        }
+                      />
+                      <datalist id="type-opts">
+                        {ROOM_TYPE_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.label} />
+                        ))}
+                      </datalist>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => setLocationStep("location")}
+                        >
+                          <ArrowLeft size={16} />
+                        </Button>
+                        <Button
+                          className="flex-1"
+                          onClick={() => setLocationStep("subRoomType")}
+                        >
+                          Дараах
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {locationStep === "subRoomType" && (
+                    <div className="space-y-4 animate-in slide-in-from-right-2">
+                      <p className="font-bold text-gray-900">Аль хэсэг вэ?</p>
+                      <input
+                        autoFocus
+                        list="sub-type-opts"
+                        value={subRoomType}
+                        onChange={(e) => setSubRoomType(e.target.value)}
+                        placeholder="Хэсэг..."
+                        className="h-12 w-full rounded-xl bg-gray-50 border px-4 outline-none focus:ring-2 focus:ring-blue-500"
+                        onKeyDown={(e) =>
+                          e.key === "Enter" && setLocationStep("roomNumber")
+                        }
+                      />
+                      <datalist id="sub-type-opts">
+                        {(SUB_ROOM_TYPES[roomType] || []).map((o) => (
+                          <option key={o} value={o} />
+                        ))}
+                      </datalist>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => setLocationStep("roomType")}
+                        >
+                          <ArrowLeft size={16} />
+                        </Button>
+                        <Button
+                          className="flex-1"
+                          onClick={() => setLocationStep("roomNumber")}
+                        >
+                          Дараах
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {locationStep === "roomNumber" && (
+                    <div className="space-y-4 animate-in slide-in-from-right-2">
+                      <p className="font-bold text-gray-900">
+                        Дугаар эсвэл нарийвчилсан байршил?
+                      </p>
+                      <input
+                        autoFocus
+                        list="final-opts"
+                        value={roomNumber}
+                        onChange={(e) => setRoomNumber(e.target.value)}
+                        placeholder="Сонгох эсвэл бичих..."
+                        className="h-12 w-full rounded-xl bg-gray-50 border px-4 outline-none focus:ring-2 focus:ring-blue-500"
+                        onKeyDown={(e) =>
+                          e.key === "Enter" && setLocationOpen(false)
+                        }
+                      />
+                      <datalist id="final-opts">
+                        {(FINAL_ROOM_OPTIONS[subRoomType] || []).map((o) => (
+                          <option key={o} value={o} />
+                        ))}
+                      </datalist>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => setLocationStep("subRoomType")}
+                        >
+                          <ArrowLeft size={16} />
+                        </Button>
+                        <Button
+                          className="flex-1 bg-blue-600 text-white"
+                          onClick={() => setLocationOpen(false)}
+                        >
+                          <Check size={16} className="mr-2" /> Дуусгах
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 3. Serial & ID Row */}
+          <div className="grid sm:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <label className="text-base font-semibold text-gray-700 ml-1">
+                Серийн дугаар (SN)
+              </label>
+              <div className="relative">
+                <input
+                  value={serialNumber}
+                  onChange={(e) => setSerialNumber(e.target.value)}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && (e.preventDefault(), handleAddSerial())
+                  }
+                  placeholder="SN123..."
+                  className="h-14 w-full rounded-2xl bg-gray-100 border-none px-5 pr-24 text-lg outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <Button
+                  size="sm"
+                  onClick={handleAddSerial}
+                  className="absolute right-2 top-2 h-10 rounded-xl bg-gray-900 text-white"
+                >
+                  Нэмэх
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {serialItems.map((sn, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-1.5 rounded-full text-sm font-medium border border-blue-100 animate-in zoom-in-95"
+                  >
+                    {sn}{" "}
+                    <X
+                      size={14}
+                      className="cursor-pointer"
+                      onClick={() =>
+                        setSerialItems((prev) =>
+                          prev.filter((_, idx) => idx !== i),
+                        )
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-3">
+              <label className="text-base font-semibold text-gray-700 ml-1">
+                Хөрөнгийн ID (Tag)
+              </label>
+              <Input
+                value={assetId}
+                onChange={(e) => setAssetId(e.target.value)}
+                placeholder="LAP-001"
+                className="h-14 rounded-2xl border-none bg-gray-100 px-5 text-lg"
+              />
+            </div>
+          </div>
+
+          {/* 4. Price & Date Row */}
+          <div className="grid sm:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <label className="text-base font-semibold text-gray-700 ml-1">
+                Үнэ ($)
+              </label>
+              <Input
+                type="number"
+                value={purchasePrice}
+                onChange={(e) => setPurchasePrice(e.target.value)}
+                placeholder="0.00"
+                className="h-14 rounded-2xl border-none bg-gray-100 px-5 text-lg"
+              />
+            </div>
+            <div className="space-y-3">
+              <label className="text-base font-semibold text-gray-700 ml-1">
+                Огноо
+              </label>
+              <Input
+                type="date"
+                value={purchaseDate}
+                onChange={(e) => setPurchaseDate(e.target.value)}
+                className="h-14 rounded-2xl border-none bg-gray-100 px-5 text-lg"
+              />
+            </div>
+          </div>
+
+          {/* 5. Note Row */}
+          <div className="space-y-3">
+            <label className="text-base font-semibold text-gray-700 ml-1">
+              Тэмдэглэл
+            </label>
+            <Input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Нэмэлт тайлбар..."
+              className="h-14 rounded-2xl border-none bg-gray-100 px-5 text-lg"
+            />
+          </div>
+
+          {/* 6. Image Upload Row */}
+          <div className="space-y-3">
+            <label className="text-base font-semibold text-gray-700 ml-1">
+              Хөрөнгийн зураг
+            </label>
+            <div className="flex items-center gap-6 p-4 bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200">
+              <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl bg-gray-200 flex items-center justify-center border border-gray-100">
+                {assetImagePreview || imageUrl ? (
+                  <img
+                    src={assetImagePreview || imageUrl!}
+                    className="h-full w-full object-cover"
+                    alt="Asset"
+                  />
+                ) : (
+                  <ImageIcon className="h-10 w-10 text-gray-400" />
+                )}
+              </div>
+              <div className="space-y-2">
+                <input
+                  type="file"
+                  id="asset-image"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={(e) => setAssetImage(e.target.files?.[0] || null)}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-xl h-10"
+                  onClick={() =>
+                    document.getElementById("asset-image")?.click()
+                  }
+                >
+                  Зураг сонгох
+                </Button>
+                <p className="text-xs text-gray-400">
+                  PNG, JPG format (Max 5MB)
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter className="mt-12 gap-4">
+          <Button
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            className="h-14 rounded-2xl px-10 text-lg"
+          >
+            Цуцлах
+          </Button>
+          <Button
+            disabled={isSaving}
+            onClick={handleSave}
+            className="h-14 rounded-2xl px-12 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold flex-1 shadow-xl shadow-blue-100"
+          >
+            {isSaving
+              ? "Хадгалж байна..."
+              : mode === "edit"
+                ? "Шинэчлэх"
+                : "Хөрөнгө бүртгэх"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

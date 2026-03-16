@@ -1,9 +1,15 @@
-import { assets } from "../../../../drizzle/schema";
 import { getDb } from "../../client";
 import type { Asset, AssetCreate } from "../types";
 import { getAssetById } from "../queries";
+import { assets } from "@/schema";
 
-function buildAssetRow(input: AssetCreate, now: number) {
+function buildAssetRow(
+  input: AssetCreate & {
+    mainCategoryId?: string | null;
+    notes?: string | null;
+  },
+  now: number
+) {
   const fallbackImageUrl = process.env.DEFAULT_ASSET_IMAGE_URL;
   return {
     id: crypto.randomUUID(),
@@ -12,13 +18,12 @@ function buildAssetRow(input: AssetCreate, now: number) {
     status: input.status ?? "AVAILABLE",
     purchaseDate: input.purchaseDate,
     purchaseCost: input.purchaseCost,
-    currentBookValue: input.currentBookValue,
     locationId: input.locationId,
-    assignedTo: input.assignedTo,
+    mainCategoryId: input.mainCategoryId,
     categoryId: input.categoryId,
-    subCategoryId: input.subCategoryId,
     deletedAt: input.deletedAt,
     imageUrl: input.imageUrl ?? fallbackImageUrl,
+    notes: input.notes ?? undefined,
     createdAt: now,
     updatedAt: now,
   };

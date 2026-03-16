@@ -1,0 +1,32 @@
+query Assignments {
+  assignments {
+    ...AssignmentFields
+  }
+}
+
+fragment AssignmentFields on Assignment {
+  id
+  assetId
+  employeeId
+  assignedAt
+  returnedAt
+  conditionAtAssign
+  conditionAtReturn
+  status
+  financing {
+    assignedValue
+    paymentPlanMonths
+    interestRate
+    monthlyPayment
+    totalPayment
+  }
+  asset {
+    ...AssetFields
+  }
+  employee {
+    id
+    email
+    firstName
+    lastName
+  }
+}

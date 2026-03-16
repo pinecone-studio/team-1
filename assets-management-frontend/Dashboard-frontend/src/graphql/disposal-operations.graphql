@@ -1,0 +1,41 @@
+query GetActiveDisposals {
+  disposalRequests(status: "PENDING") {
+    id
+    assetId
+    method
+    status
+    createdAt
+  }
+}
+
+mutation RequestDisposal(
+  $assetId: ID!
+  $requestedBy: ID!
+  $method: String!
+  $reason: String
+) {
+  requestDisposal(
+    assetId: $assetId
+    requestedBy: $requestedBy
+    method: $method
+    reason: $reason
+  ) {
+    id
+    status
+    assetId
+  }
+}
+
+mutation ApproveDisposal($id: ID!, $approvedBy: ID!, $stage: String!) {
+  approveDisposal(id: $id, approvedBy: $approvedBy, stage: $stage) {
+    id
+    status
+  }
+}
+
+mutation RejectDisposal($id: ID!, $rejectedBy: ID!, $reason: String) {
+  rejectDisposal(id: $id, rejectedBy: $rejectedBy, reason: $reason) {
+    id
+    status
+  }
+}

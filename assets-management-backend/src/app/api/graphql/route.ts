@@ -1,10 +1,9 @@
 import * as Yoga from "graphql-yoga";
 import { makeExecutableSchema } from "@graphql-tools/schema";
-import { typeDefs } from "@/graphql-gql/schema";
-import { resolvers } from "@/graphql-gql/resolvers";
+import { typeDefs, resolvers } from "@/graphql-gql";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-// export const runtime = "nodejs";
+export const runtime = "nodejs";
 
 const schema = makeExecutableSchema({
   typeDefs,
@@ -15,6 +14,7 @@ const { handleRequest } = Yoga.createYoga({
   schema,
   graphqlEndpoint: "/api/graphql",
   fetchAPI: { Response, Request },
+  maskedErrors: false,
 });
 
 type RouteContext = { params: Promise<{}> };
