@@ -1,7 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-	/* config options here */
+  serverExternalPackages: ["docusign-esign"],
+  // Турбопак-ийг идэвхжүүлэх эсвэл зүгээр л хоосон тохиргоо үлдээх
+  turbopack: {},
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals.push("pdfkit");
+    }
+    return config;
+  },
 };
 
 export default nextConfig;

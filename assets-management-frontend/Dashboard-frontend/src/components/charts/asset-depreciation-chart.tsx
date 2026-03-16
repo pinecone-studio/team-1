@@ -56,7 +56,9 @@ export function AssetDepreciationChart() {
       ]),
     );
 
-    const unmaskedAssets = assets.map((a) => useFragment(AssetFieldsFragmentDoc, a));
+    const unmaskedAssets = assets.map((a) =>
+      useFragment(AssetFieldsFragmentDoc, a),
+    );
 
     unmaskedAssets.forEach((asset) => {
       const purchaseDate = asset.purchaseDate
@@ -103,7 +105,7 @@ export function AssetDepreciationChart() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[280px]">
+        <div className="h-70">
           {loading ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
               Уншиж байна...

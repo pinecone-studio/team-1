@@ -5,13 +5,14 @@ import { useState } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { DashboardContent } from "@/components/dashboard-content";
-import { AssetsContent } from "@/components/assets/assets-content";
+// import { AssetsContent } from "@/components/assets/assets-content";
 import { AssetAllocationContent } from "@/components/asset-allocations/asset-allocation-content";
 import { AssetTransferContent } from "@/components/asset-transfers/asset-transfer-content";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { DemoEmployeeContent } from "@/components/demo-employee/demo-employee";
 import { DemoITContent } from "@/components/demo-it/demo-it";
 import { DemoHRContent } from "@/components/demo-hr/demo-hr";
+import OffboardingContent from "@/components/offboarding/offboarding-content";
 
 export default function DashboardPage() {
   const [activeTitle, setActiveTitle] = useState("Хянах самбар");
@@ -29,7 +30,7 @@ export default function DashboardPage() {
 
         <SidebarInset className="min-h-0 bg-transparent">
           {activeTitle === "Хянах самбар" ? <DashboardContent /> : null}
-          {activeTitle === "Хөрөнгө" ? <AssetsContent /> : null}
+          {/* {activeTitle === "Хөрөнгө" ? <AssetsContent /> : null} */}
           {activeTitle === "Хөрөнгө хуваарилах" ? (
             <AssetAllocationContent />
           ) : null}
@@ -39,6 +40,7 @@ export default function DashboardPage() {
           {activeTitle === "Demo Ажилтан" ? <DemoEmployeeContent /> : null}
           {activeTitle === "Demo IT" ? <DemoITContent /> : null}
           {activeTitle === "Demo HR" ? <DemoHRContent /> : null}
+          {activeTitle === "Ажлаас гарах" ? <OffboardingContent /> : null}
 
           {activeTitle !== "Хянах самбар" &&
           activeTitle !== "Хөрөнгө" &&

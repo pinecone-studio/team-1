@@ -1,7 +1,7 @@
 "use client";
 
 import { KPICards } from "@/components/kpi-cards";
-import { AssetStatusChart } from "@/components/charts/asset-status-chart";
+
 import { AssetDistributionChart } from "@/components/charts/asset-distribution-chart";
 import { AssetDepreciationChart } from "@/components/charts/asset-depreciation-chart";
 import { RecentActivities } from "@/components/recent-activities";
@@ -13,13 +13,12 @@ export function DashboardContent() {
         <KPICards />
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <AssetStatusChart />
           <AssetDistributionChart />
+          <RecentActivities />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
           <AssetDepreciationChart />
-          <RecentActivities />
         </div>
       </div>
     </div>
