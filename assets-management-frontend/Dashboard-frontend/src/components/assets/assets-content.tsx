@@ -14,7 +14,8 @@ import {
 } from "@/gql/graphql";
 import type { Asset, AssetCategory } from "@/lib/types";
 import { AssetFormDialog } from "./asset-form-dialog";
-import { CATEGORY_LABELS } from "./constants";
+import { AssetsGrid, type FilterGroup } from "./assets-grid";
+import { AssetsSearchBar } from "./assets-search-bar";
 import { useFragment } from "@/gql/fragment-masking";
 
 type LocationFromApi = {
@@ -47,11 +48,14 @@ export function AssetsContent() {
   const [editAsset, setEditAsset] = useState<Asset | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [qrAssets, setQrAssets] = useState<Asset[]>([]);
-  const [filterState, setFilterState] = useState<Record<string, Set<string>>>({
+  const [filterState, setFilterState] = useState<
+    Record<FilterGroup, Set<string>>
+  >({
     locationIds: new Set(),
     category: new Set(),
     subCategory: new Set(),
   });
+  const [viewMode, setViewMode] = useState<"list" | "byType">("list");
   const locationsFromApi = (useQuery(GetLocationsDocument).data?.locations ??
     []) as unknown as LocationFromApi[];
   const locationTree = useMemo(() => {
@@ -166,52 +170,7 @@ export function AssetsContent() {
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, [mergedAssets, searchQuery, statusFilter, categoryFilter, filterState]);
-
-  const activeTags = useMemo(() => {
-    return [
-      ...Array.from(filterState.location).map((value) => ({
-        group: "location" as const,
-        value,
-        label: `Байршил: ${value}`,
-      })),
-      ...Array.from(filterState.roomType).map((value) => ({
-        group: "roomType" as const,
-        value,
-        label: `Өрөөний төрөл: ${value}`,
-      })),
-      ...Array.from(filterState.room).map((value) => ({
-        group: "room" as const,
-        value,
-        label: `Өрөө: ${value}`,
-      })),
-      ...Array.from(filterState.category).map((value) => ({
-        group: "category" as const,
-        value,
-        label: `Ангилал: ${categoryNameById.get(value) ?? value}`,
-      })),
-      ...Array.from(filterState.subCategory).map((value) => ({
-        group: "subCategory" as const,
-        value,
-        label: `Дэд ангилал: ${categoryNameById.get(value) ?? value}`,
-      })),
-    ];
-  }, [filterState, categoryNameById]);
-
-  const toggleFilter = (
-    group: "locationIds" | "category" | "subCategory",
-    value: string,
-  ) => {
+  const toggleFilter = (group: FilterGroup, value: string) => {
     setFilterState((prev) => {
       const next = { ...prev, [group]: new Set(prev[group]) };
       if (next[group].has(value)) {
@@ -223,10 +182,16 @@ export function AssetsContent() {
     });
   };
 
-  const removeFilterTag = (
-    group: "locationIds" | "category" | "subCategory",
-    value: string,
-  ) => {
+  const toggleFilterLocationByIds = (ids: string[]) => {
+    setFilterState((prev) => {
+      const next = new Set(prev.locationIds);
+      const anySelected = ids.some((id) => next.has(id));
+      ids.forEach((id) => (anySelected ? next.delete(id) : next.add(id)));
+      return { ...prev, locationIds: next };
+    });
+  };
+
+  const removeFilterTag = (group: FilterGroup, value: string) => {
     setFilterState((prev) => {
       const next = { ...prev, [group]: new Set(prev[group]) };
       next[group].delete(value);
@@ -234,14 +199,15 @@ export function AssetsContent() {
     });
   };
 
-  const categoryNameById = useMemo(() => {
-    const map = new Map<string, string>();
-    (categoriesData?.categories ?? []).forEach((category) => {
-      map.set(category.id, category.name);
-      category.subcategories?.forEach((sub) => map.set(sub.id, sub.name));
-    });
-    return map;
-  }, [categoriesData?.categories]);
+  const handleDeleteAsset = (id: string) => {
+    if (!window.confirm("Архивлаад устгах уу?")) return;
+    deleteAssetMutation({ variables: { id } })
+      .then(() => {
+        setAssetItems((prev) => prev.filter((item) => item.id !== id));
+        refetch();
+      })
+      .catch((err) => console.error("Failed to delete asset:", err));
+  };
 
   const locationNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -249,12 +215,13 @@ export function AssetsContent() {
     return map;
   }, [locationTree.list]);
 
+  /** Group locations by name so same name shows once; each option has name + all ids with that name */
   const locationStepOptions = useMemo(() => {
     const { list } = locationTree;
+    const selectedIds = filterState.locationIds;
     const roots = (locationTree.byParent.get(null) ?? [])
       .slice()
       .sort((a, b) => a.name.localeCompare(b.name));
-    const selectedIds = filterState.locationIds;
     const step2 = list
       .filter(
         (l) =>
@@ -279,27 +246,40 @@ export function AssetsContent() {
             (l.parentId && selectedIds.has(l.parentId))),
       )
       .sort((a, b) => a.name.localeCompare(b.name));
+    const groupByName = (
+      locs: LocationFromApi[],
+    ): { name: string; ids: string[] }[] => {
+      const byName = new Map<string, string[]>();
+      locs.forEach((loc) => {
+        const n = loc.name;
+        if (!byName.has(n)) byName.set(n, []);
+        byName.get(n)!.push(loc.id);
+      });
+      return Array.from(byName.entries())
+        .map(([name, ids]) => ({ name, ids }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    };
     return [
-      { label: "Салбар", options: roots },
-      { label: "Төрөл", options: step2 },
-      { label: "Хэсэг", options: step3 },
-      { label: "Өрөө", options: step4 },
+      { label: "Салбар", options: groupByName(roots) },
+      { label: "Төрөл", options: groupByName(step2) },
+      { label: "Хэсэг", options: groupByName(step3) },
+      { label: "Өрөө", options: groupByName(step4) },
     ];
   }, [locationTree, filterState.locationIds]);
 
-  const activeTags = [
+  const activeTags: { group: FilterGroup; value: string; label: string }[] = [
     ...Array.from(filterState.locationIds).map((value) => ({
-      group: "locationIds" as const,
+      group: "locationIds" as FilterGroup,
       value,
       label: `Байршил: ${locationNameById.get(value) ?? value}`,
     })),
     ...Array.from(filterState.category).map((value) => ({
-      group: "category" as const,
+      group: "category" as FilterGroup,
       value,
       label: `Ангилал: ${categoryNameById.get(value) ?? value}`,
     })),
     ...Array.from(filterState.subCategory).map((value) => ({
-      group: "subCategory" as const,
+      group: "subCategory" as FilterGroup,
       value,
       label: `Дэд ангилал: ${categoryNameById.get(value) ?? value}`,
     })),
@@ -320,17 +300,19 @@ export function AssetsContent() {
                   {step.label}
                 </p>
                 <div className="mt-1.5 space-y-1.5 max-h-32 overflow-y-auto">
-                  {step.options.map((loc) => (
+                  {step.options.map((opt) => (
                     <label
-                      key={loc.id}
+                      key={opt.name + opt.ids[0]}
                       className="flex items-center gap-2 text-sm text-muted-foreground"
                     >
                       <input
                         type="checkbox"
-                        checked={filterState.locationIds.has(loc.id)}
-                        onChange={() => toggleFilter("locationIds", loc.id)}
+                        checked={opt.ids.some((id) =>
+                          filterState.locationIds.has(id),
+                        )}
+                        onChange={() => toggleFilterLocationByIds(opt.ids)}
                       />
-                      {loc.name}
+                      {opt.name}
                     </label>
                   ))}
                 </div>
@@ -392,9 +374,14 @@ export function AssetsContent() {
         <AssetFormDialog
           open={showAddDialog}
           onOpenChange={setShowAddDialog}
-          onAddAssets={(assets) =>
-            setAssetItems((prev) => [...assets, ...prev])
-          }
+          onAddAssets={(assets) => {
+            setAssetItems((prev) => [...assets, ...prev]);
+            refetch().then(() => {
+              setAssetItems((prev) =>
+                prev.filter((item) => !assets.some((a) => a.id === item.id)),
+              );
+            });
+          }}
         />
         <AssetFormDialog
           open={!!editAsset}
@@ -421,10 +408,27 @@ export function AssetsContent() {
           onCategoryChange={setCategoryFilter}
         />
 
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant={viewMode === "list" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("list")}
+          >
+            Жагсаалт
+          </Button>
+          <Button
+            variant={viewMode === "byType" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("byType")}
+          >
+            Төрлөөр
+          </Button>
+        </div>
+
         <AssetsGrid
           assets={filteredAssets}
           selectedIds={selectedIds}
-          onToggleSelect={(id) => {
+          onToggleSelect={(id: string) => {
             setSelectedIds((prev) => {
               const next = new Set(prev);
               if (next.has(id)) next.delete(id);
@@ -446,171 +450,12 @@ export function AssetsContent() {
           error={error}
           activeTags={activeTags}
           onRemoveTag={removeFilterTag}
+          showTableOnly={
+            filterState.category.size > 0 || filterState.subCategory.size > 0
+          }
+          viewMode={viewMode}
+          categoryNameById={categoryNameById}
         />
-
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="text-card-foreground">
-              Эд хөрөнгө ({filteredAssets.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {activeTags.length > 0 && (
-              <div className="mb-4 flex flex-wrap items-center gap-2">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Идэвхтэй шүүлт:
-                </span>
-                {activeTags.map((tag) => (
-                  <span
-                    key={`${tag.group}-${tag.value}`}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary ring-1 ring-primary/20"
-                  >
-                    {tag.label}
-                    <button
-                      type="button"
-                      onClick={() => removeFilterTag(tag.group, tag.value)}
-                      className="ml-0.5 rounded p-0.5 hover:bg-primary/20 hover:text-primary"
-                      aria-label="Шүүлтийг арилгах"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" onClick={selectAll}>
-                Select all
-              </Button>
-              <Button variant="outline" size="sm" onClick={selectFirstFour}>
-                Select 4
-              </Button>
-              <Button variant="outline" size="sm" onClick={clearSelection}>
-                Clear
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={openSelectedQr}
-                disabled={selectedIds.size === 0}
-              >
-                QR Selected
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                Selected: {selectedIds.size}
-              </span>
-            </div>
-            {loading && (
-              <div className="py-8 text-center text-muted-foreground">
-                Ачаалж байна...
-              </div>
-            )}
-            {error && (
-              <div className="py-8 text-center text-destructive">
-                {error.message}
-              </div>
-            )}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredAssets.map((asset) => (
-                <Card key={asset.id} className="overflow-hidden border-border">
-                  <div className="relative h-40 w-full bg-muted/30">
-                    <label className="absolute left-2 top-2 flex items-center gap-2 rounded-full bg-white/90 px-2 py-1 text-xs text-foreground shadow">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(asset.id)}
-                        onChange={() => toggleSelect(asset.id)}
-                      />
-                      Select
-                    </label>
-                    {asset.imageUrl ? (
-                      <img
-                        src={asset.imageUrl}
-                        alt={asset.assetId}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
-                        No image
-                      </div>
-                    )}
-                  </div>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">
-                          {asset.assetId}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {CATEGORY_LABELS[asset.category]}
-                        </p>
-                      </div>
-                      <span className="rounded-full bg-muted px-2 py-1 text-[10px] uppercase text-muted-foreground">
-                        {asset.status}
-                      </span>
-                    </div>
-                    <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                      <p>Serial: {asset.serialNumber}</p>
-                      <p>Location: {asset.location || "—"}</p>
-                      <p>
-                        Date:{" "}
-                        {new Date(asset.purchaseDate).toLocaleDateString()}
-                      </p>
-                      <p>Value: ${asset.currentBookValue.toLocaleString()}</p>
-                    </div>
-                    <div className="mt-4 flex items-center justify-end gap-1">
-                      <Link href={`/assets/${asset.id}`}>
-                        <Button variant="ghost" size="icon">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openQrDialog([asset])}
-                      >
-                        QR
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setEditAsset(asset)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive"
-                        onClick={() => {
-                          if (!window.confirm("Архивлаад устгах уу?")) return;
-                          deleteAssetMutation({ variables: { id: asset.id } })
-                            .then(() => {
-                              setAssetItems((prev) =>
-                                prev.filter((item) => item.id !== asset.id),
-                              );
-                              refetch();
-                            })
-                            .catch((err) => {
-                              console.error("Failed to delete asset:", err);
-                            });
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            {filteredAssets.length === 0 && (
-              <div className="py-12 text-center">
-                <p className="text-muted-foreground">
-                  Шүүлтүүрт тохирох эд хөрөнгө олдсонгүй.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

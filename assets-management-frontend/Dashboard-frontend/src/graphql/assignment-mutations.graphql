@@ -1,52 +1,6 @@
-mutation AssignAsset(
-  $assetId: ID!
-  $employeeId: ID!
-  $conditionAtAssign: String
-  $accessoriesJson: String
-  $buyoutPolicyId: ID
-  $assignedValue: Float
-  $paymentPlanMonths: Int
-  $interestRate: Float
-) {
-  assignAsset(
-    assetId: $assetId
-    employeeId: $employeeId
-    conditionAtAssign: $conditionAtAssign
-    accessoriesJson: $accessoriesJson
-    buyoutPolicyId: $buyoutPolicyId
-    assignedValue: $assignedValue
-    paymentPlanMonths: $paymentPlanMonths
-    interestRate: $interestRate
-  ) {
-    ...AssetFields
-  }
-}
-
-mutation ReturnAsset($assetId: ID!, $conditionAtReturn: String) {
-  returnAsset(assetId: $assetId, conditionAtReturn: $conditionAtReturn) {
-    ...AssetFields
-  }
-}
-
-mutation TransferAsset(
-  $assetId: ID!
-  $fromEmployeeId: ID!
-  $toEmployeeId: ID!
-  $reason: String
-  $conditionNoted: String
-) {
-  transferAsset(
-    assetId: $assetId
-    fromEmployeeId: $fromEmployeeId
-    toEmployeeId: $toEmployeeId
-    reason: $reason
-    conditionNoted: $conditionNoted
-  ) {
+mutation UpdateAssignmentStatus($assignmentId: ID!, $status: String!) {
+  updateAssignmentStatus(assignmentId: $assignmentId, status: $status) {
     id
-    assetId
-    fromEmployeeId
-    toEmployeeId
-    reason
-    transferredAt
+    status
   }
 }

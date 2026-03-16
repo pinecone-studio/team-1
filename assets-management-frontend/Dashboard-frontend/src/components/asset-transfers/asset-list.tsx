@@ -122,8 +122,15 @@ export function AssetList({
       {/* Info Message */}
       {!showAllAssets && filteredAssetsCount > 5 && (
         <p className="text-xs text-muted-foreground">
-          Нийт {filteredAssetsCount} хөрөнгө байна. (Бүгдийг харах) дээр дарж
-          бүгдийг үзнэ үү.
+          Нийт {filteredAssetsCount} хөрөнгө байна.{" "}
+          <button
+            type="button"
+            onClick={onToggleShowAll}
+            className="underline hover:text-foreground focus:outline-none focus:underline"
+          >
+            (Бүгдийг харах)
+          </button>{" "}
+          дээр дарж бүгдийг үзнэ үү.
         </p>
       )}
     </div>

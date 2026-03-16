@@ -19,14 +19,3 @@ mutation UpdateAssetCategory($assetId: ID!, $categoryId: ID!) {
     ...AssetFields
   }
 }
-
-# Bulk update multiple assets with same location/category
-mutation BulkUpdateAssets($assetIds: [ID!]!, $input: AssetUpdateInput!) {
-  bulkUpdateAssets(assetIds: $assetIds, input: $input) {
-    id
-    assetTag
-    location
-    category
-    status
-  }
-}

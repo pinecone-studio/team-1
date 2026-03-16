@@ -1,56 +1,4 @@
-# Fragments
-fragment AssetFields on Asset {
-  id
-  assetTag
-  serialNumber
-  status
-  category
-  purchaseDate
-  purchaseCost
-  currentBookValue
-  locationId
-  locationPath
-  assignedTo
-  imageUrl
-  notes
-  createdAt
-  updatedAt
-}
-
-fragment EmployeeFields on Employee {
-  id
-  firstName
-  lastName
-  email
-  role
-  department
-  branch
-  imageUrl
-}
-
-fragment CategoryFields on Category {
-  id
-  name
-  parentId
-}
-
-fragment VendorFields on Vendor {
-  id
-  name
-  contactName
-  email
-  phone
-  address
-}
-
-fragment LocationFields on Location {
-  id
-  name
-  parentId
-  type
-}
-
-# Queries
+# Queries (fragments: see fragments.graphql)
 query GetAssets($office: String, $categoryIds: [ID!], $subCategoryIds: [ID!], $locationIds: [ID!]) {
   assets(office: $office, categoryIds: $categoryIds, subCategoryIds: $subCategoryIds, locationIds: $locationIds) {
     ...AssetFields
@@ -110,8 +58,42 @@ query GetActiveDisposals {
     id
     assetId
     method
+    reason
     status
     createdAt
+    asset {
+      id
+      assetTag
+      category
+    }
+    requestedBy {
+      id
+      firstName
+      lastName
+      email
+    }
+  }
+}
+
+query GetDisposalRequests($status: String) {
+  disposalRequests(status: $status) {
+    id
+    assetId
+    method
+    reason
+    status
+    createdAt
+    asset {
+      id
+      assetTag
+      category
+    }
+    requestedBy {
+      id
+      firstName
+      lastName
+      email
+    }
   }
 }
 

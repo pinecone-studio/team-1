@@ -1,11 +1,20 @@
 "use client";
 
-import React from "react";
-import { Check, ShieldCheck, History, Search, X } from "lucide-react"; // X icon нэмэв
+import React, { useState } from "react";
+import { Check, ShieldCheck, History, Search, X, Eye } from "lucide-react";
+import { useQuery, useMutation } from "@apollo/client";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -15,18 +24,104 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
+import {
+  GetActiveDisposalsDocument,
+  GetDisposalRequestsDocument,
+  ApproveDisposalDocument,
+  RejectDisposalDocument,
+  EmployeesDocument,
+} from "@/gql/graphql";
+
+const DISPOSAL_STATUS_LABELS: Record<string, string> = {
+  PENDING: "Хүлээгдэж буй",
+  IT_APPROVED: "IT баталгаажсан",
+  FINANCE_APPROVED: "Санхүү баталгаажсан",
+  COMPLETED: "Дууссан",
+  REJECTED: "Татгалзсан",
+};
+
+type DisposalItem = {
+  id: string;
+  assetId: string;
+  method: string;
+  reason?: string | null;
+  status: string;
+  createdAt: number;
+  asset?: { id?: string; assetTag?: string; category?: string } | null;
+  requestedBy?: { id?: string; firstName?: string; lastName?: string; email?: string } | null;
+};
+
+const DEMO_IT_APPROVER_INDEX = 0;
 
 export function DemoITContent({
   title = "IT Хяналтын самбар",
 }: {
   title?: string;
 }) {
-  const handleFinalConfirm = (assetId: string) => {
-    toast.success(`${assetId} хөрөнгийг амжилттай баталгаажууллаа.`);
+  const [selectedDisposal, setSelectedDisposal] = useState<DisposalItem | null>(null);
+
+  const { data: disposalsData } = useQuery(
+    GetActiveDisposalsDocument,
+    { fetchPolicy: "network-only" },
+  );
+  const { data: employeesData } = useQuery(EmployeesDocument);
+  const demoApproverId = employeesData?.employees?.[DEMO_IT_APPROVER_INDEX]?.id ?? "";
+
+  const { data: allDisposalsData } = useQuery(GetDisposalRequestsDocument, {
+    variables: { status: undefined },
+    fetchPolicy: "network-only",
+  });
+  const allDisposals = allDisposalsData?.disposalRequests ?? [];
+
+  const [approveDisposal, { loading: approving }] = useMutation(
+    ApproveDisposalDocument,
+    {
+      refetchQueries: [
+        { query: GetActiveDisposalsDocument },
+        { query: GetDisposalRequestsDocument, variables: { status: undefined } },
+      ],
+    },
+  );
+  const [rejectDisposal, { loading: rejecting }] = useMutation(
+    RejectDisposalDocument,
+    {
+      refetchQueries: [
+        { query: GetActiveDisposalsDocument },
+        { query: GetDisposalRequestsDocument, variables: { status: undefined } },
+      ],
+    },
+  );
+
+  const pendingDisposals = disposalsData?.disposalRequests ?? [];
+
+  const handleApprove = async (id: string) => {
+    if (!demoApproverId) {
+      toast.error("Баталгаажуулах ажилтан олдсонгүй.");
+      return;
+    }
+    try {
+      await approveDisposal({
+        variables: { id, approvedBy: demoApproverId, stage: "IT_APPROVED" },
+      });
+      toast.success("Устгах хүсэлтийг IT-ээр баталгаажууллаа.");
+    } catch (err) {
+      toast.error("Баталгаажуулахад алдаа гарлаа.");
+    }
   };
 
-  const handleCancelRequest = (assetId: string) => {
-    toast.error(`${assetId} хүсэлтийг цуцаллаа.`);
+  const handleReject = async (id: string) => {
+    if (!demoApproverId) {
+      toast.error("Татгалзах ажилтан олдсонгүй.");
+      return;
+    }
+    try {
+      await rejectDisposal({
+        variables: { id, rejectedBy: demoApproverId, reason: "Татгалзсан" },
+      });
+      toast.error("Устгах хүсэлтийг татгалзлаа.");
+    } catch (err) {
+      toast.error("Татгалзах үед алдаа гарлаа.");
+    }
   };
 
   return (
@@ -35,7 +130,7 @@ export function DemoITContent({
         <div>
           <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
           <p className="text-sm text-muted-foreground italic">
-            IT Administrator View
+            IT Administrator View — Устгах хүсэлтүүд (ажилтнаас ирсэн)
           </p>
         </div>
         <Button variant="outline" size="sm" className="gap-2">
@@ -43,66 +138,90 @@ export function DemoITContent({
         </Button>
       </div>
 
-      {/* 1. Баталгаажуулах хүлээгдэж буй хэсэг */}
+      {/* Устгах хүсэлтүүд (PENDING) — ажилтан "Миний хөрөнгө" дээрээс илгээсэн */}
       <Card className="mt-6 border-blue-200 bg-blue-50/30">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-medium text-blue-800">
-            <ShieldCheck className="h-5 w-5" /> Шинэ хүсэлтүүд
+            <ShieldCheck className="h-5 w-5" /> Устгах хүсэлтүүд ({pendingDisposals.length})
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-col justify-between gap-4 rounded-lg border border-blue-100 bg-white p-4 sm:flex-row sm:items-center shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white font-bold">
-                G
+        <CardContent className="space-y-4">
+          {pendingDisposals.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-blue-200 bg-white p-6 text-center text-sm text-muted-foreground">
+              Одоогоор хүлээгдэж буй устгах хүсэлт байхгүй. Ажилтан «Миний хөрөнгө» → хөрөнгө дээр дарж «Устгах хүсэлт илгээх»-ээр илгээж болно.
+            </p>
+          ) : (
+            pendingDisposals.map((req) => {
+              const r = req as DisposalItem;
+              const assetName = r.asset?.assetTag ?? r.assetId;
+              const categoryName = r.asset?.category ?? "—";
+              const requesterName = r.requestedBy
+                ? [r.requestedBy.firstName, r.requestedBy.lastName].filter(Boolean).join(" ") || r.requestedBy.email
+                : "—";
+              return (
+              <div
+                key={req.id}
+                className="flex flex-col justify-between gap-4 rounded-lg border border-blue-100 bg-white p-4 sm:flex-row sm:items-center shadow-sm cursor-pointer hover:bg-blue-50/50 transition-colors"
+                onClick={() => setSelectedDisposal(r)}
+              >
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white font-bold text-sm">
+                    {(assetName ?? "?").slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-foreground">
+                      {assetName} <span className="text-muted-foreground font-normal">({categoryName})</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Хэнээс: <span className="font-medium text-foreground">{requesterName}</span> | Арга: {r.method} | {new Date(r.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedDisposal(r);
+                    }}
+                  >
+                    <Eye className="h-3.5 w-3.5" /> Дэлгэрэнгүй
+                  </Button>
+                  <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200">
+                    PENDING
+                  </Badge>
+                  <Button
+                    onClick={() => handleApprove(r.id)}
+                    className="gap-2 bg-blue-600 text-white hover:bg-blue-700"
+                    size="sm"
+                    disabled={approving || rejecting}
+                  >
+                    <Check className="h-4 w-4" /> Батлах (IT)
+                  </Button>
+                  <Button
+                    onClick={() => handleReject(r.id)}
+                    variant="outline"
+                    className="gap-2 border-rose-600 text-rose-600 hover:bg-rose-50"
+                    size="sm"
+                    disabled={approving || rejecting}
+                  >
+                    <X className="h-4 w-4" /> Цуцлах
+                  </Button>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold text-foreground italic">
-                  MacBook Pro 14" (M3 Max)
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Ажилтан: <span className="font-medium">Ганбаатар</span> | ID:
-                  #ASSET-9921
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Badge
-                variant="outline"
-                className="bg-amber-50 text-amber-600 border-amber-200"
-              >
-                Ажилтан зөвшөөрсөн
-              </Badge>
-
-              {/* Батлах товч */}
-              <Button
-                onClick={() => handleFinalConfirm("ASSET-9921")}
-                className="gap-2 bg-blue-600 text-white hover:bg-blue-700"
-                size="sm"
-              >
-                <Check className="h-4 w-4" /> Батлах
-              </Button>
-
-              {/* Цуцлах товч - БАТЛАХЫН АРД */}
-              <Button
-                onClick={() => handleCancelRequest("ASSET-9921")}
-                variant="outline"
-                className="gap-2 border-rose-600 text-rose-600 hover:bg-rose-50"
-                size="sm"
-              >
-                <X className="h-4 w-4" /> Цуцлах
-              </Button>
-            </div>
-          </div>
+              );
+            })
+          )}
         </CardContent>
       </Card>
 
-      {/* 2. Жагсаалтын хэсэг */}
+      {/* 2. Ямар бараа, хэнээс ирсэн, баталгаажуулсан эсэх — бүх устгах хүсэлт */}
       <Card className="mt-6 border-border bg-card">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-base font-semibold">
-            Системийн бүртгэл
+            Устгах хүсэлт — бараа, хэнээс, баталгаажуулсан
           </CardTitle>
           <div className="relative w-48">
             <Search className="absolute left-2 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
@@ -116,27 +235,148 @@ export function DemoITContent({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Хөрөнгө</TableHead>
-                <TableHead>Эзэмшигч</TableHead>
-                <TableHead>Төлөв</TableHead>
+                <TableHead>Хөрөнгө (нэр / ангилал)</TableHead>
+                <TableHead>Хэнээс ирсэн</TableHead>
+                <TableHead>Устгах арга</TableHead>
+                <TableHead>Огноо</TableHead>
+                <TableHead>Баталгаажуулсан</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow>
-                <TableCell className="font-medium italic">
-                  Dell 27" Monitor
-                </TableCell>
-                <TableCell>Дорж П.</TableCell>
-                <TableCell>
-                  <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none">
-                    Confirmed
-                  </Badge>
-                </TableCell>
-              </TableRow>
+              {allDisposals.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground text-sm">
+                    Устгах хүсэлт байхгүй байна.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                allDisposals.map((req) => {
+                  const r = req as DisposalItem;
+                  const assetName = r.asset?.assetTag ?? r.assetId;
+                  const categoryName = r.asset?.category ?? "—";
+                  const requesterName = r.requestedBy
+                    ? [r.requestedBy.firstName, r.requestedBy.lastName].filter(Boolean).join(" ") || r.requestedBy.email
+                    : "—";
+                  const statusLabel = DISPOSAL_STATUS_LABELS[r.status] ?? r.status;
+                  return (
+                    <TableRow key={r.id}>
+                      <TableCell className="font-medium">
+                        {assetName} <span className="text-muted-foreground font-normal">({categoryName})</span>
+                      </TableCell>
+                      <TableCell>{requesterName}</TableCell>
+                      <TableCell className="text-sm">{r.method}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(r.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            r.status === "COMPLETED"
+                              ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                              : r.status === "REJECTED"
+                                ? "bg-rose-100 text-rose-700 border-rose-200"
+                                : r.status === "IT_APPROVED" || r.status === "FINANCE_APPROVED"
+                                  ? "bg-blue-100 text-blue-700 border-blue-200"
+                                  : "bg-amber-100 text-amber-600 border-amber-200"
+                          }
+                        >
+                          {statusLabel}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
+      {/* Устгах хүсэлтийн дэлгэрэнгүй — мэдээлэл шалгах dialog */}
+      <Dialog
+        open={!!selectedDisposal}
+        onOpenChange={(open) => !open && setSelectedDisposal(null)}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Устгах хүсэлтийн дэлгэрэнгүй</DialogTitle>
+            <DialogDescription>
+              Ажилтанаас ирсэн устгах хүсэлтийн мэдээлэл. Шалгаад Батлах эсвэл Цуцлах товчоор шийднэ үү.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedDisposal && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="text-muted-foreground">Хөрөнгө (нэр):</div>
+                <div className="font-medium">{selectedDisposal.asset?.assetTag ?? selectedDisposal.assetId}</div>
+                <div className="text-muted-foreground">Ангилал:</div>
+                <div className="font-medium">{selectedDisposal.asset?.category ?? "—"}</div>
+                <div className="text-muted-foreground">Хэнээс ирсэн (ажилтан):</div>
+                <div className="font-medium">
+                  {selectedDisposal.requestedBy
+                    ? [selectedDisposal.requestedBy.firstName, selectedDisposal.requestedBy.lastName].filter(Boolean).join(" ") || selectedDisposal.requestedBy.email
+                    : "—"}
+                </div>
+                {selectedDisposal.requestedBy?.email && (
+                  <>
+                    <div className="text-muted-foreground">Имэйл:</div>
+                    <div className="font-medium text-xs">{selectedDisposal.requestedBy.email}</div>
+                  </>
+                )}
+                <div className="text-muted-foreground">Устгах арга:</div>
+                <div className="font-medium">{selectedDisposal.method}</div>
+                {selectedDisposal.reason && (
+                  <>
+                    <div className="text-muted-foreground">Шалтгаан:</div>
+                    <div className="font-medium">{selectedDisposal.reason}</div>
+                  </>
+                )}
+                <div className="text-muted-foreground">Төлөв:</div>
+                <div>
+                  <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200">
+                    {selectedDisposal.status}
+                  </Badge>
+                </div>
+                <div className="text-muted-foreground">Илгээсэн огноо:</div>
+                <div className="font-medium">
+                  {new Date(selectedDisposal.createdAt).toLocaleString()}
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setSelectedDisposal(null)}>
+              Хаах
+            </Button>
+            {selectedDisposal && (
+              <>
+                <Button
+                  className="gap-2 bg-blue-600 text-white hover:bg-blue-700"
+                  onClick={async () => {
+                    await handleApprove(selectedDisposal.id);
+                    setSelectedDisposal(null);
+                  }}
+                  disabled={approving || rejecting}
+                >
+                  <Check className="h-4 w-4" /> Батлах (IT)
+                </Button>
+                <Button
+                  variant="outline"
+                  className="gap-2 border-rose-600 text-rose-600 hover:bg-rose-50"
+                  onClick={async () => {
+                    await handleReject(selectedDisposal.id);
+                    setSelectedDisposal(null);
+                  }}
+                  disabled={approving || rejecting}
+                >
+                  <X className="h-4 w-4" /> Цуцлах
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

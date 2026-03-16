@@ -12,6 +12,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { DemoEmployeeContent } from "@/components/demo-employee/demo-employee";
 import { DemoITContent } from "@/components/demo-it/demo-it";
 import { DemoHRContent } from "@/components/demo-hr/demo-hr";
+import { AssetFilter } from "@/components/assets/asset-filter";
 
 export default function DashboardPage() {
   const [activeTitle, setActiveTitle] = useState("Хянах самбар");
@@ -30,6 +31,7 @@ export default function DashboardPage() {
         <SidebarInset className="min-h-0 bg-transparent">
           {activeTitle === "Хянах самбар" ? <DashboardContent /> : null}
           {activeTitle === "Хөрөнгө" ? <AssetsContent /> : null}
+          {activeTitle === "Эд Хөрөнгө" ? <AssetFilter /> : null}
           {activeTitle === "Хөрөнгө хуваарилах" ? (
             <AssetAllocationContent />
           ) : null}

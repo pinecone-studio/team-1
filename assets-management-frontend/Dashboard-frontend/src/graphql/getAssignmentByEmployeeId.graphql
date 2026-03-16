@@ -29,5 +29,10 @@ query GetEmployeeAssignments($employeeId: ID!, $status: String) {
       firstName
       lastName
     }
+    requestedBy {
+      id
+      firstName
+      lastName
+    }
   }
 }

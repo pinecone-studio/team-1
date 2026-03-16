@@ -43,6 +43,10 @@ const menuItems = [
     subItems: [{ title: "" }, { title: "" }],
   },
   {
+    title: "Эд Хөрөнгө",
+    icon: Package,
+  },
+  {
     title: "Хөрөнгө хуваарилах",
     icon: UserCheck,
   },
