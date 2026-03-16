@@ -1,5 +1,5 @@
 import { getDb } from "@/db/client";
-import { eq, desc } from "drizzle-orm";
+import { and, eq, desc } from "drizzle-orm";
 import { auditLogs, maintenanceTickets } from "@/schema";
 
 export const miscQueries = {
@@ -8,14 +8,14 @@ export const miscQueries = {
     args: { tableName?: string; recordId?: string },
   ) => {
     const db = await getDb();
-    let query = db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt));
-    if (args.tableName) {
-      query = query.where(eq(auditLogs.tableName, args.tableName)) as any;
+    const conditions = [];
+    if (args.tableName) conditions.push(eq(auditLogs.tableName, args.tableName));
+    if (args.recordId) conditions.push(eq(auditLogs.recordId, args.recordId));
+    let q = db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt));
+    if (conditions.length > 0) {
+      q = q.where(and(...conditions)) as typeof q;
     }
-    if (args.recordId) {
-      query = query.where(eq(auditLogs.recordId, args.recordId)) as any;
-    }
-    return query.all();
+    return q.all();
   },
   maintenanceTickets: async (_: unknown, args: { status?: string }) => {
     const db = await getDb();

@@ -1,6 +1,8 @@
 import { getDb } from "../../client";
 import type { Asset, AssetCreate } from "../types";
 import { getAssetById } from "../queries";
+import { getFirstEmployeeId } from "../../employees/queries/getEmployees";
+import { writeAuditLog } from "../../auditLogger";
 import { assets } from "@/schema";
 
 function buildAssetRow(
@@ -35,6 +37,18 @@ export async function createAsset(input: AssetCreate): Promise<Asset> {
   const row = buildAssetRow(input, now);
 
   await db.insert(assets).values(row);
+
+  const actorId = await getFirstEmployeeId();
+  if (actorId) {
+    await writeAuditLog(
+      "assets",
+      row.id,
+      "REGISTERED",
+      actorId,
+      undefined,
+      { assetTag: row.assetTag, serialNumber: row.serialNumber, status: row.status },
+    );
+  }
 
   const created = await getAssetById(row.id);
   if (!created) {

@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "../../client";
 import { getAssetById } from "../../assets/queries";
+import { writeAuditLog } from "../../auditLogger";
 import { createNotification } from "../../notifications";
 import {
   assets,
@@ -19,6 +20,7 @@ export async function assignAssetToEmployee(
     paymentPlanMonths?: number;
     interestRate?: number;
   },
+  requestedByEmployeeId?: string,
 ) {
   const db = await getDb();
   const now = Date.now();
@@ -30,9 +32,10 @@ export async function assignAssetToEmployee(
     employeeId,
     assignedAt: now,
     conditionAtAssign,
-    status: "PENDING",
+    status: "ASSIGN_REQUESTED",
     accessoriesJson,
     buyoutPolicyId,
+    requestedByEmployeeId: requestedByEmployeeId ?? null,
     createdAt: now,
     updatedAt: now,
   });
@@ -66,14 +69,26 @@ export async function assignAssetToEmployee(
 
   const asset = await getAssetById(assetId);
   if (asset) {
+    await writeAuditLog(
+      "assets",
+      assetId,
+      "ASSIGNED",
+      employeeId,
+      { status: asset.status },
+      { status: "ASSIGN_REQUESTED", employeeId },
+    );
+  }
+
+  const assetAfter = asset ?? (await getAssetById(assetId));
+  if (assetAfter) {
     await createNotification({
       employeeId,
       title: "New Asset Assigned",
-      message: `A new asset ${asset.assetTag} (${asset.serialNumber}) has been assigned to you.`,
+      message: `A new asset ${assetAfter.assetTag} (${assetAfter.serialNumber}) has been assigned to you.`,
       type: "INFO",
       link: `/my-assets/${assetId}`,
     });
   }
 
-  return asset;
+  return assetAfter ?? null;
 }

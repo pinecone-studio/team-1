@@ -3,7 +3,7 @@ import { getDb } from "../../client";
 import { writeAuditLog } from "../../auditLogger";
 import { createNotification } from "../../notifications";
 import { getDisposalRequest } from "../queries";
-import { disposalRequests } from "@/schema";
+import { assets, disposalRequests } from "@/schema";
 import type { DisposalRequest } from "../types";
 
 export async function approveDisposalRequest(
@@ -40,6 +40,13 @@ export async function approveDisposalRequest(
     .set(updates)
     .where(eq(disposalRequests.id, id));
 
+  if (stage === "IT_APPROVED" && req.assetId) {
+    await db
+      .update(assets)
+      .set({ status: "PENDING_DISPOSAL", updatedAt: now })
+      .where(eq(assets.id, req.assetId));
+  }
+
   await writeAuditLog(
     "disposal_requests",
     id,
@@ -50,6 +57,18 @@ export async function approveDisposalRequest(
     { status: req.status },
     { status: stage },
   );
+  if (req.assetId) {
+    await writeAuditLog(
+      "assets",
+      req.assetId,
+      stage === "IT_APPROVED"
+        ? "DISPOSAL_IT_APPROVED"
+        : "DISPOSAL_FINANCE_APPROVED",
+      approvedBy,
+      { status: req.status },
+      { status: stage },
+    );
+  }
 
   if (stage === "IT_APPROVED") {
     await createNotification({

@@ -8,6 +8,8 @@ import {
   updateAssetCategory,
 } from "@/db/assets/mutations";
 import { getAssetById } from "@/db/assets/queries";
+import { getFirstEmployeeId } from "@/db/employees/queries/getEmployees";
+import { writeAuditLog } from "@/db/auditLogger";
 import { ensureLocationId } from "@/db/locations";
 
 type AssetCreateInput = {
@@ -107,7 +109,20 @@ export const assetMutations = {
     if (Object.keys(updates).length === 0) {
       return getAssetById(args.id);
     }
-    return updateAssetById(args.id, updates as never);
+    const oldAsset = await getAssetById(args.id);
+    const updated = await updateAssetById(args.id, updates as never);
+    const actorId = await getFirstEmployeeId();
+    if (actorId && oldAsset && updated) {
+      await writeAuditLog(
+        "assets",
+        args.id,
+        "ASSET_UPDATED",
+        actorId,
+        { ...oldAsset },
+        updates as Record<string, unknown>,
+      );
+    }
+    return updated;
   },
   deleteAsset: async (_: unknown, args: { id: string }) => {
     const hasArchiveEnv =

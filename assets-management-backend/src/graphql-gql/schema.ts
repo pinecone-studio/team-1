@@ -74,6 +74,8 @@ export const typeDefs = /* GraphQL */ `
     asset: Asset
     buyoutPolicy: AssignmentBuyoutPolicy
     financing: AssignmentFinancing
+    """Хүлээгдэж буй шилжүүлэлтийг хэн илгээсэн (ASSIGN_REQUESTED үед)"""
+    requestedBy: Employee
   }
 
   type AssignmentBuyoutPolicy {
@@ -276,6 +278,7 @@ export const typeDefs = /* GraphQL */ `
   type DisposalRequest {
     id: ID!
     assetId: ID!
+    asset: Asset
     requestedBy: Employee
     method: String!
     reason: String
@@ -566,6 +569,7 @@ export const typeDefs = /* GraphQL */ `
       reason: String
       conditionNoted: String
     ): Transfer!
+    updateAssignmentStatus(assignmentId: ID!, status: String!): Assignment
 
     # ── Super Admin Central Command ──────────────────────────────────────
     createVendor(input: VendorInput!): Vendor!

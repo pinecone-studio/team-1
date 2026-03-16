@@ -43,8 +43,15 @@ export async function getAssetHistory(
       .from(disposalRecords)
       .where(eq(disposalRecords.assetId, assetId))
       .all(),
-    db.select().from(auditLogs).where(eq(auditLogs.recordId, assetId)).all(),
+    db
+      .select()
+      .from(auditLogs)
+      .where(
+        eq(auditLogs.recordId, assetId),
+      )
+      .all(),
   ]);
+  const assetAuditRows = auditRows.filter((r) => r.tableName === "assets");
 
   const events: AssetTimelineEvent[] = [];
 
@@ -137,13 +144,44 @@ export async function getAssetHistory(
     });
   }
 
-  for (const al of auditRows) {
+  for (const al of assetAuditRows) {
+    let description = al.action;
+    try {
+      const newVal = al.newValueJson ? JSON.parse(al.newValueJson) as Record<string, unknown> : null;
+      if (newVal) {
+        if (al.action === "TRANSFERRED" && newVal.fromEmployeeId && newVal.toEmployeeId) {
+          description = `Шилжүүлсэн: ${newVal.fromEmployeeId} → ${newVal.toEmployeeId}${newVal.reason ? ` (${newVal.reason})` : ""}`;
+        } else if (al.action === "ASSIGNED" && newVal.employeeId) {
+          description = `Олгосон: ажилтан ${newVal.employeeId}`;
+        } else if (al.action === "DISPOSAL_REQUESTED") {
+          description = `Устгах хүсэлт илгээсэн${newVal.method ? ` (${newVal.method})` : ""}`;
+        } else if (al.action === "DISPOSAL_IT_APPROVED") {
+          description = "IT админ баталгаажсан";
+        } else if (al.action === "DISPOSAL_FINANCE_APPROVED") {
+          description = "Санхүүгийн баталгаажсан";
+        } else if (al.action === "DISPOSAL_REJECTED") {
+          description = "Устгах хүсэлт татгалзсан";
+        } else if (al.action === "ASSET_DISPOSED") {
+          description = "Устгасан (IT/санхүү)";
+        } else if (al.action === "ASSET_RETURNED") {
+          description = "Эзэмшигчээс буцаасан";
+        } else if (al.action === "REGISTERED") {
+          description = `Бүртгэгдсэн: ${newVal.assetTag ?? ""} (S/N: ${newVal.serialNumber ?? ""})`;
+        } else if (al.action === "ASSIGNMENT_ACCEPTED") {
+          description = "Эзэмшигч зөвшөөрсөн";
+        } else if (al.action === "ASSIGNMENT_REJECTED") {
+          description = "Эзэмшигч татгалзсан";
+        }
+      }
+    } catch {
+      // keep description as al.action
+    }
     events.push({
-      id: `${al.id}:AUDIT_LOG`,
-      eventType: "AUDIT_LOG",
-      description: `${al.action} on ${al.tableName}`,
+      id: `${al.id}:AUDIT`,
+      eventType: al.action,
+      description,
       actorId: al.actorId,
-      timestamp: new Date(al.createdAt).toISOString(),
+      timestamp: new Date(Number(al.createdAt)).toISOString(),
     });
   }
 

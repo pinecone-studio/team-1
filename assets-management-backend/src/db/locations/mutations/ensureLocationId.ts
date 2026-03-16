@@ -15,6 +15,12 @@ export async function ensureLocationId(fullPath: string | null | undefined): Pro
   const trimmed = fullPath?.trim();
   if (!trimmed) return undefined;
 
+  // Хэрвээ бүрэн UUID/id хэлбэртэй байвал зам гэж үзэхгүй, шууд id гэж ойлгоно.
+  // Ингэснээр "161235cd-..." гэх мэт утгыг нэрээр нь шинэ branch болгон үүсгэхээс сэргийлнэ.
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)) {
+    return trimmed;
+  }
+
   const parts = trimmed.split(" / ").map((p) => p.trim()).filter(Boolean);
   if (parts.length === 0) return undefined;
 
