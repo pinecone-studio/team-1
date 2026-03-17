@@ -52,7 +52,7 @@ function DialogOverlay({
   );
 }
 
-// ✅ FIXED DialogContent
+// ✅ FULLY FIXED DialogContent
 function DialogContent({
   className,
   children,
@@ -68,19 +68,18 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          // 🔥 core layout (NO width ограничения anymore)
+          // Position
           "fixed top-1/2 left-1/2 z-50 grid",
           "-translate-x-1/2 -translate-y-1/2",
-          "gap-4 rounded-xl bg-background p-4 text-sm",
-          "ring-1 ring-foreground/10 outline-none",
 
-          // 🔥 animations
+          // ✅ SIZE FIX (хамгийн чухал)
+          "w-full max-w-lg",
+          "max-h-[90vh] overflow-y-auto",
+
+          // Animation
           "duration-100",
           "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
           "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
-
-          // 🔥 prevent layout breaking
-          "overflow-auto",
 
           className,
         )}
@@ -95,7 +94,7 @@ function DialogContent({
               size="icon-sm"
               className="absolute right-2 top-2"
             >
-              <XIcon />
+              <XIcon className="h-4 w-4" />
               <span className="sr-only">Close</span>
             </Button>
           </DialogPrimitive.Close>
@@ -129,7 +128,7 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 border-t bg-muted/50 p-4 rounded-b-xl",
+        "-mx-4 -mb-4 flex flex-col-reverse gap-2 border-t border-border bg-muted/50 p-4 rounded-b-xl",
         "sm:flex-row sm:justify-end",
         className,
       )}
