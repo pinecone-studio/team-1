@@ -41,6 +41,10 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AssetFormDialog } from "./asset-form-dialog";
 import { AssetTransferDialog } from "./asset-transfer-dialog";
+import { Search, Filter } from "lucide-react";
+
+/** A4 хуудсан дээр 7 багана, ~4 эгнээ (хэвлэх layout-тай таарна) */
+const QR_TILES_PER_A4_PAGE = 28;
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   ASSIGNED: { label: "Эзэмшигчтэй", className: "bg-blue-100 text-blue-800" },
@@ -83,6 +87,35 @@ function FilterIcon({ className }: { className?: string }) {
   );
 }
 
+function formatAssetId(id: string) {
+  if (!id) return "";
+
+  const parts = id.split("-");
+
+  // эхний 3 хэсэг
+  const firstThree = parts.slice(0, 3);
+
+  // эхний хэсгийн 3 үсэг
+  if (firstThree.length > 0) {
+    firstThree[0] = firstThree[0].slice(0, 3);
+  }
+
+  return firstThree.join("-");
+}
+
+function formatName(name?: string) {
+  if (!name) return "—";
+
+  const parts = name.trim().split(" ");
+
+  if (parts.length === 1) return parts[0];
+
+  const firstInitial = parts[0][0].toUpperCase();
+  const lastName = parts[1];
+
+  return `${firstInitial}.${lastName}`;
+}
+
 function escapeHtml(text: string) {
   return text
     .replace(/&/g, "&amp;")
@@ -119,10 +152,14 @@ export function AssetFilter() {
   const [assignEmployeeId, setAssignEmployeeId] = useState<string>("");
   const [assigning, setAssigning] = useState(false);
   // "" = бүх төлөв (filter хийгдээгүй)
-  const [statusFilter, setStatusFilter] = useState<string>("");
+
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [subCategoryFilter, setSubCategoryFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const selectAllRef = useRef<HTMLInputElement>(null);
   const qrPrintRef = useRef<HTMLDivElement | null>(null);
-
+  const [expandedColumn, setExpandedColumn] = useState<string | null>(null);
   const { data, loading, error, refetch } = useQuery(GetAssetsDocument, {
     variables: {
       office: undefined,
@@ -282,7 +319,6 @@ export function AssetFilter() {
         const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(
           qrUrl,
         )}`;
-        ``;
         const label =
           escapeHtml(asset.assetId || "") ||
           escapeHtml(asset.serialNumber || "") ||
@@ -551,7 +587,8 @@ export function AssetFilter() {
               );
               const primaryAsset = selectedAssetsList[0];
               const employeeName =
-                assignEmployeeId && employeeNameById.get(assignEmployeeId || "");
+                assignEmployeeId &&
+                employeeNameById.get(assignEmployeeId || "");
 
               return (
                 <>
@@ -622,7 +659,8 @@ export function AssetFilter() {
                         </span>
                         <span className="text-muted-foreground">Үнэ</span>
                         <span className="font-medium">
-                          {(primaryAsset.currentBookValue ||
+                          {(
+                            primaryAsset.currentBookValue ||
                             primaryAsset.purchaseCost ||
                             0
                           ).toLocaleString()}
@@ -654,7 +692,9 @@ export function AssetFilter() {
               onClick={async () => {
                 if (!assignEmployeeId || selectedIds.size === 0) return;
                 setAssigning(true);
-                const toastId = toast.loading("Хуваарилах хүсэлт илгээж байна...");
+                const toastId = toast.loading(
+                  "Хуваарилах хүсэлт илгээж байна...",
+                );
                 try {
                   const targets = assets.filter((a) => selectedIds.has(a.id));
                   for (const asset of targets) {
@@ -690,7 +730,7 @@ export function AssetFilter() {
       </Dialog>
 
       <Dialog open={showQrDialog} onOpenChange={setShowQrDialog}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>QR код хэвлэх / PDF болгох</DialogTitle>
             <DialogDescription>
@@ -699,23 +739,32 @@ export function AssetFilter() {
               хадгалах боломжтой.
             </DialogDescription>
           </DialogHeader>
+          {qrAssets.length > 1 && (
+            <p className="text-sm text-muted-foreground mt-1">
+              Нийт <strong>{qrAssets.length}</strong> хөрөнгө · 1 A4 хуудасанд{" "}
+              <strong>{QR_TILES_PER_A4_PAGE}</strong> ширхэг · нийт A4 дээр{" "}
+              <strong>
+                {Math.ceil(qrAssets.length / QR_TILES_PER_A4_PAGE)}
+              </strong>{" "}
+              хуудас гарна.
+            </p>
+          )}
           <div
             ref={qrPrintRef}
-            className="mt-4 bg-white p-4 border border-border rounded-lg shadow-sm"
+            className="mt-4 bg-white p-4 border border-border rounded-lg shadow-sm overflow-auto min-h-[280px] max-h-[60vh] flex-1"
           >
             {qrAssets.length === 1 ? (
-              // Нэг хөрөнгө сонгосон үед дэлгэрэнгүй карт
-              qrAssets.map((asset) => {
-                const qrUrl =
-                  typeof window !== "undefined"
-                    ? `${window.location.origin}/assets/${asset.id}`
-                    : `/assets/${asset.id}`;
-                return (
-                  <div
-                    key={asset.id}
-                    className="flex items-center justify-center"
-                  >
-                    <div className="shrink-0 flex flex-col items-center gap-2">
+              <div className="flex items-center justify-center min-h-[240px]">
+                {qrAssets.map((asset) => {
+                  const qrUrl =
+                    typeof window !== "undefined"
+                      ? `${window.location.origin}/assets/${asset.id}`
+                      : `/assets/${asset.id}`;
+                  return (
+                    <div
+                      key={asset.id}
+                      className="shrink-0 flex flex-col items-center gap-2"
+                    >
                       <img
                         src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
                           qrUrl,
@@ -724,12 +773,11 @@ export function AssetFilter() {
                         className="h-48 w-48 rounded-md border border-border bg-white object-contain"
                       />
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             ) : (
-              // Олон хөрөнгө сонгосон үед A4 grid-тэй төстэй харагдац
-              <div className="grid grid-cols-4  gap-3">
+              <div className="grid grid-cols-7 gap-2">
                 {qrAssets.map((asset, index) => {
                   const qrUrl =
                     typeof window !== "undefined"
@@ -740,16 +788,16 @@ export function AssetFilter() {
                   return (
                     <div
                       key={asset.id}
-                      className="flex flex-col items-center justify-center rounded-md border border-border/60 bg-white px-2 py-2"
+                      className="flex flex-col items-center justify-center rounded-md border border-border/60 bg-white p-1.5 h-[100px] min-h-[100px]"
                     >
                       <img
                         src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(
                           qrUrl,
                         )}`}
                         alt={`${label} QR`}
-                        className="h-20 w-20 rounded bg-white object-contain"
+                        className="h-14 w-14 min-h-14 min-w-14 rounded bg-white object-contain shrink-0"
                       />
-                      <span className="mt-1 text-[11px] text-muted-foreground text-center truncate w-full">
+                      <span className="mt-0.5 text-[10px] text-muted-foreground text-center truncate w-full leading-tight">
                         {label}
                       </span>
                     </div>
@@ -758,7 +806,7 @@ export function AssetFilter() {
               </div>
             )}
           </div>
-          <DialogFooter className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <DialogFooter className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between shrink-0">
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setShowQrDialog(false)}>
                 Хаах
@@ -782,192 +830,129 @@ export function AssetFilter() {
         </DialogContent>
       </Dialog>
 
-      <div className="rounded-md border border-border overflow-hidden">
-        <Table>
+      <div className="rounded-md  overflow-hidden font-inter ">
+        <Table className="table-fixed w-full  border-separate border-spacing-y-2">
+          {/* HEADER */}
           <TableHeader>
-            <TableRow className="border-0 bg-sky-800 hover:bg-sky-800">
-              <TableHead className="w-12 font-medium border-0 text-white">
-                <label className="flex items-center gap-1 cursor-pointer">
-                  <input
-                    ref={selectAllRef}
-                    type="checkbox"
-                    checked={allSelected}
-                    onChange={selectAll}
-                    className="h-4 w-4 rounded border-2 border-white bg-transparent text-white focus:ring-white focus:ring-offset-0 focus:ring-2"
-                  />
-                </label>
+            <TableRow className="bg-[#0f4c6e] text-white hover:!bg-[#0f4c6e]">
+              <TableHead className="w-10 text-white">
+                <input
+                  ref={selectAllRef}
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={selectAll}
+                  className="h-4 w-4 rounded border-white"
+                />
               </TableHead>
-              <TableHead className="font-medium border-0 text-white">
-                <span className="flex items-center gap-1">
-                  № <FilterIcon />
-                </span>
+
+              <TableHead className="w-10 text-white">№</TableHead>
+              <TableHead className="truncate text-white">
+                Хөрөнгийн ID
               </TableHead>
-              <TableHead className="font-medium border-0 text-white">
-                <span className="flex items-center gap-1">
-                  Хөрөнгийн ID <FilterIcon />
-                </span>
+              <TableHead className="text-white  truncate ">
+                Хөрөнгийн нэр
               </TableHead>
-              <TableHead className="font-medium border-0 text-white">
-                <span className="flex items-center gap-1">
-                  Хөрөнгийн нэр <FilterIcon />
-                </span>
+              <TableHead className="text-white">Ангилал</TableHead>
+              <TableHead className="text-white">Дэд ангилал</TableHead>
+              <TableHead className="text-white ">Төлөв</TableHead>
+              <TableHead className="text-white">Байршил</TableHead>
+              <TableHead className="text-white text-center w-35">
+                Эзэмшигч
               </TableHead>
-              <TableHead className="font-medium border-0 text-white">
-                <span className="flex items-center gap-1">
-                  Ангилал <FilterIcon />
-                </span>
+              <TableHead className="text-white text-center w-30">
+                Үнэ (₮)
               </TableHead>
-              <TableHead className="font-medium border-0 text-white">
-                <span className="flex items-center gap-1">
-                  Дэд ангилал <FilterIcon />
-                </span>
+              <TableHead className="text-white text-center w-20">
+                Он сар
               </TableHead>
-              <TableHead className="font-medium border-0 text-white">
-                <div className="relative flex flex-col gap-0.5">
-                  <button
-                    type="button"
-                    className="flex items-center gap-1 cursor-pointer select-none leading-none"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const el = document.getElementById(
-                        "status-filter-select",
-                      ) as HTMLSelectElement | null;
-                      el?.focus();
-                      el?.click();
-                    }}
-                  >
-                    Төлөв
-                    <FilterIcon className="h-3 w-3" />
-                  </button>
-                  {/* Нууц select – native dropdown ашиглахын тулд */}
-                  <select
-                    id="status-filter-select"
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="absolute inset-x-0 top-0 h-7 w-24 opacity-0 cursor-pointer"
-                  >
-                    <option value="">Төлөв</option>
-                    <option value="all">Бүгд</option>
-                    <option value="ASSIGNED">Эзэмшигчтэй</option>
-                    <option value="AVAILABLE">Эзэмшигчгүй</option>
-                    <option value="FOR_SALE">Зарж болох</option>
-                    <option value="DAMAGED">Эвдрэлтэй</option>
-                  </select>
-                </div>
-              </TableHead>
-              <TableHead className="font-medium border-0 text-white">
-                <span className="flex items-center gap-1">
-                  Байршил <FilterIcon />
-                </span>
-              </TableHead>
-              <TableHead className="font-medium border-0 text-white">
-                <span className="flex items-center gap-1">
-                  Эзэмшигч <FilterIcon />
-                </span>
-              </TableHead>
-              <TableHead className="font-medium text-right border-0 text-white">
-                <span className="flex items-center justify-end gap-1">
-                  Үнэ (₮) <FilterIcon />
-                </span>
-              </TableHead>
-              <TableHead className="font-medium text-right border-0 text-white">
+              <TableHead className="text-white text-center w-[90px]">
                 QR
               </TableHead>
             </TableRow>
           </TableHeader>
+
+          {/* BODY */}
           <TableBody>
-            {loading && (
-              <TableRow>
-                <TableCell
-                  colSpan={12}
-                  className="py-12 text-center font-medium text-black"
-                >
-                  Ачаалж байна...
-                </TableCell>
-              </TableRow>
-            )}
-            {error && (
-              <TableRow>
-                <TableCell
-                  colSpan={12}
-                  className="py-12 text-center font-medium text-destructive"
-                >
-                  {error.message}
-                </TableCell>
-              </TableRow>
-            )}
-            {!loading && !error && visibleAssets.length === 0 && (
-              <TableRow>
-                <TableCell
-                  colSpan={12}
-                  className="py-12 text-center font-medium text-black"
-                >
-                  Хөрөнгө олдсонгүй.
-                </TableCell>
-              </TableRow>
-            )}
             {!loading &&
-              !error &&
               visibleAssets.map((asset, index) => (
-                <TableRow key={asset.id} className="border-border">
-                  <TableCell className="w-12">
+                <TableRow
+                  key={asset.id}
+                  className={`bg-white shadow-sm hover:bg-gray-50`}
+                >
+                  {/* checkbox */}
+                  <TableCell className="py-2 rounded-l-md">
                     <input
                       type="checkbox"
                       checked={selectedIds.has(asset.id)}
                       onChange={() => toggleSelect(asset.id)}
-                      className="h-4 w-4 rounded border-border"
+                      className="h-4 w-4"
                     />
                   </TableCell>
-                  <TableCell className="font-medium text-black">
+
+                  {/* index */}
+                  <TableCell className="py-2 font-medium">
                     {index + 1}
                   </TableCell>
-                  <TableCell className="font-medium text-black">
+
+                  {/* ID */}
+                  <TableCell className="py-2 w-27">
                     <Link
                       href={`/assets/${asset.id}`}
-                      className="text-black hover:underline"
-                      title="Дэлгэрэнгүй үзэх, бүтэн түүх (бүртгэл, шилжүүлэлт, IT баталгаа г.м)"
+                      className="block truncate text-black hover:underline text-sm"
+                      title={asset.assetId}
                     >
-                      {asset.assetId}
-                    </Link>
-                    <Link
-                      href={`/assets/${asset.id}`}
-                      className="ml-2 text-xs text-muted-foreground hover:underline"
-                      title="Бүтэн түүх: бүртгэгдсэн, хэн рүү шилжсэн, IT админ баталсан г.м"
-                    >
-                      Түүх
+                      {formatAssetId(asset.assetId)}
                     </Link>
                   </TableCell>
-                  <TableCell className="font-medium text-black">
-                    {asset.category ?? asset.assetId}
+
+                  {/* name */}
+                  <TableCell className="py-2 truncate max-w-[160px]">
+                    {asset.category}
                   </TableCell>
-                  <TableCell className="font-medium text-black">
+
+                  {/* main category */}
+                  <TableCell className="py-2 truncate max-w-[140px]">
                     {asset.mainCategory ?? "—"}
                   </TableCell>
-                  <TableCell className="font-medium text-black">
-                    {asset.category ?? "—"}
+
+                  {/* subcategory */}
+                  <TableCell className="py-2 truncate max-w-[140px]">
+                    {asset.category}
                   </TableCell>
-                  <TableCell className="font-medium text-black">
+
+                  {/* status */}
+                  <TableCell className="py-2">
                     {getStatusBadge(asset.status)}
                   </TableCell>
-                  <TableCell className="font-medium text-black">
+
+                  {/* location */}
+                  <TableCell className="py-2 truncate max-w-[160px]">
                     {asset.location ?? "—"}
                   </TableCell>
-                  <TableCell className="font-medium text-black">
-                    {asset.assignedEmployeeName ??
-                      asset.assignedEmployeeId ??
-                      "—"}
+
+                  {/* employee */}
+                  <TableCell className="py-2 text-left pl-6 truncate max-w-[140px]">
+                    {formatName(asset.assignedEmployeeName)}
                   </TableCell>
-                  <TableCell className="text-right font-medium tabular-nums text-black">
+
+                  {/* price */}
+                  <TableCell className="py-2 text-center font-medium tabular-nums">
                     {asset.currentBookValue.toLocaleString()}
                   </TableCell>
-                  <TableCell className="text-right">
+
+                  {/* date */}
+                  <TableCell className="py-2 text-center text-[11px] text-muted-foreground">
+                    {new Date(asset.createdAt).toLocaleDateString("mn-MN")}
+                  </TableCell>
+
+                  {/* QR */}
+                  <TableCell className="py-2 text-center rounded-r-md">
                     <Button
                       variant="outline"
-                      size="xs"
-                      className="gap-1"
+                      size="sm"
+                      className="text-xs"
                       onClick={() => openQrForSingle(asset)}
                     >
-                      <QrCode className="h-3 w-3" />
                       QR харах
                     </Button>
                   </TableCell>

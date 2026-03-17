@@ -46,8 +46,10 @@ function looksLikeUuid(s: string): boolean {
 
 type Mode = "location" | "category" | "subcategory";
 
-/** Байршлын ID → нэр (ижил нэртэй олон байршил нэг slice болно) */
-type LocationIdToNameMap = Map<string, string>;
+type LocItem = { id: string; name: string; parentId?: string | null };
+
+/** Байршлын ID → үндсэн салбар нэр (parentId === null байгаа location-ийн нэр) */
+type LocationIdToRootNameMap = Map<string, string>;
 
 /** Category ID → эцэг категорийн нэр (category mode-д) */
 type CategoryParentMap = Map<string, string>;
@@ -59,16 +61,33 @@ export function AssetDistributionChart() {
 
   const [mode, setMode] = useState<Mode>("subcategory");
 
-  /* locationId → name (ID шиг нэртэйг харуулахгүй) */
-  const locationIdToName: LocationIdToNameMap = useMemo(() => {
+  const locationList = (locationsData?.locations ?? []) as LocItem[];
+
+  /* locationId → root location name (parentId null байгаа байршлын нэр). Байршлаар = зөвхөн салбараар. */
+  const locationIdToRootName: LocationIdToRootNameMap = useMemo(() => {
     const map = new Map<string, string>();
-    const list = locationsData?.locations ?? [];
-    list.forEach((loc) => {
-      const l = loc as { id: string; name: string };
-      if (l.name && !looksLikeUuid(l.name)) map.set(l.id, l.name);
+    const byId = new Map<string, LocItem>();
+    locationList.forEach((loc) => {
+      byId.set(loc.id, loc);
+    });
+    function getRootName(locId: string): string | null {
+      let current: string | null = locId;
+      const seen = new Set<string>();
+      while (current && !seen.has(current)) {
+        seen.add(current);
+        const loc = byId.get(current);
+        if (!loc || !loc.name || looksLikeUuid(loc.name)) return null;
+        if (loc.parentId == null) return loc.name;
+        current = loc.parentId;
+      }
+      return null;
+    }
+    locationList.forEach((loc) => {
+      const root = getRootName(loc.id);
+      if (root) map.set(loc.id, root);
     });
     return map;
-  }, [locationsData?.locations]);
+  }, [locationList]);
 
   /* subcategory id → parent category name (category mode-д нэрээр бүлэглэнэ) */
   const parentMap: CategoryParentMap = useMemo(() => {
@@ -117,18 +136,18 @@ export function AssetDistributionChart() {
 
       if (mode === "location") {
         const locId = asset.locationId;
-        const resolved = locId ? locationIdToName.get(locId) : null;
+        const rootName = locId ? locationIdToRootName.get(locId) : null;
         const path =
           typeof (asset as { locationPath?: string | null }).locationPath ===
           "string"
             ? (asset as { locationPath: string }).locationPath
             : null;
-        if (locId && resolved) {
-          key = resolved;
+        if (locId && rootName) {
+          key = rootName;
         } else if (path && !looksLikeUuid(path)) {
-          key = path;
+          key = path.split(" / ")[0] ?? path;
         } else {
-          key = "Тодорхойгүй";
+          key = "Гурван гол";
         }
       }
 
@@ -149,13 +168,17 @@ export function AssetDistributionChart() {
       color: COLORS[index % COLORS.length],
     }));
 
-    /* ID эсвэл Тодорхойгүй байвал chart/legend-д харуулахгүй */
-    entries = entries.filter(
-      (e) => e.name !== "Тодорхойгүй" && !looksLikeUuid(e.name),
-    );
+    /* Байршлаар: ижил нэртэй салбарууд нэг slice (root name-ээр бүлэглэгдсэн). ID шиг нэртэйг л харуулахгүй. */
+    if (mode === "location") {
+      entries = entries.filter((e) => !looksLikeUuid(e.name));
+    } else {
+      entries = entries.filter(
+        (e) => e.name !== "Тодорхойгүй" && !looksLikeUuid(e.name),
+      );
+    }
 
     return entries;
-  }, [assetsData?.assets, locationIdToName, parentMap, mode]);
+  }, [assetsData?.assets, locationIdToRootName, parentMap, mode]);
 
   return (
     <Card className="border shadow-sm">
