@@ -100,13 +100,11 @@ export function DashboardHeader() {
   return (
     <header className="flex h-14 items-center justify-between border-b bg-white px-6">
       <div className="flex min-w-0 items-center gap-6">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100">
             <Package className="h-4 w-4 text-gray-900" />
           </div>
-          <span className="text-lg font-semibold text-foreground">
-            AssetHub
-          </span>
+          <span className="h-14 ml-1 w-[0.5px] bg-gray-300" />
         </div>
 
         <div className="hidden px-2 md:block pl-32.25">
@@ -246,7 +244,7 @@ export function DashboardHeader() {
         <Button variant="outline" size="sm" className="h-8 gap-2">
           <UserIcon />
         </Button>
-        <img src={"2SVG.svg"} alt="" />
+        <img src={"2SVG.svg"} alt="" className="h-8 w-8 object-contain" />
       </div>
     </header>
   );

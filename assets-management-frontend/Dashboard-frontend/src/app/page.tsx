@@ -24,10 +24,10 @@ export default function DashboardPage() {
 
       <SidebarProvider
         className="min-h-svh"
-        defaultOpen={false}
+        defaultOpen={true}
         style={
           {
-            "--sidebar-width": "72px",
+            "--sidebar-width": "240px",
             "--sidebar-width-icon": "72px",
           } as React.CSSProperties
         }
