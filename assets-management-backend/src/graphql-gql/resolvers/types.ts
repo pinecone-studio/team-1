@@ -1,9 +1,10 @@
-import { getAssetById } from "@/db/assets/queries";
+import { getAssetById, getAssetsByIds } from "@/db/assets/queries";
 import { getLocationPath } from "@/db/locations";
 import { getEmployeeById } from "@/db/employees";
 import { getCategoryById, getSubcategories } from "@/db/categories";
 import type { AssetTimelineEvent } from "@/db/assetHistory";
 import type { DisposalRequest } from "@/db/disposalRequests";
+import { getPendingReturnRequestsByEventId } from "@/db/offboarding";
 import type { OffboardingEvent } from "@/db/offboarding";
 import {
   getFinancingByAssignment,
@@ -49,7 +50,10 @@ export const typeResolvers = {
       if (
         dbStatus === "PENDING_DISPOSAL" ||
         dbStatus === "DISPOSED" ||
-        dbStatus === "DISPOSAL_REQUESTED"
+        dbStatus === "DISPOSAL_REQUESTED" ||
+        dbStatus === "RETURNING" ||
+        dbStatus === "REPAIR_REQUESTED" ||
+        dbStatus === "IN_REPAIR"
       ) {
         return dbStatus;
       }
@@ -146,7 +150,22 @@ export const typeResolvers = {
   OffboardingEvent: {
     employee: (oe: OffboardingEvent) => getEmployeeById(oe.employeeId),
     initiatedBy: (oe: OffboardingEvent) => getEmployeeById(oe.initiatedBy),
+    assetsToReturn: async (oe: OffboardingEvent) => {
+      try {
+        const ids = JSON.parse(oe.assetIdsJson || "[]") as string[];
+        return ids.length ? await getAssetsByIds(ids) : [];
+      } catch {
+        return [];
+      }
+    },
+    pendingReturnRequests: (oe: OffboardingEvent) =>
+      getPendingReturnRequestsByEventId(oe.id),
   },
+  OffboardingReturnRequest: {
+    asset: (r: { assetId: string }) => getAssetById(r.assetId),
+    employee: (r: { employeeId: string }) => getEmployeeById(r.employeeId),
+  },
+  DataWipeTask: {},
   MaintenanceTicket: {
     repairCost: (mt: any) => safeNumber(mt.repairCost),
   },

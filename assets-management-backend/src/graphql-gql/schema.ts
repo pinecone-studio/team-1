@@ -160,7 +160,10 @@ export const typeDefs = /* GraphQL */ `
     AVAILABLE
     ASSIGNED
     IN_MAINTENANCE
+    RETURNING
     RETURNED
+    REPAIR_REQUESTED
+    IN_REPAIR
     DISPOSAL_REQUESTED
     DISPOSED
   }
@@ -297,6 +300,31 @@ export const typeDefs = /* GraphQL */ `
 
   # ─── Offboarding workflow ───────────────────────────────────────────────────
 
+  type DataWipeTask {
+    id: ID!
+    assetId: ID!
+    status: String!
+    createdAt: Float!
+    updatedAt: Float!
+  }
+
+  type OffboardingReturnRequest {
+    id: ID!
+    offboardingEventId: ID!
+    assetId: ID!
+    assignmentId: ID!
+    employeeId: ID!
+    conditionEmployee: String!
+    status: String!
+    conditionHr: String
+    photoR2Key: String
+    inspectedBy: ID
+    createdAt: Float!
+    updatedAt: Float!
+    asset: Asset
+    employee: Employee
+  }
+
   type OffboardingEvent {
     id: ID!
     employee: Employee
@@ -304,6 +332,9 @@ export const typeDefs = /* GraphQL */ `
     status: String!
     totalAssets: Int!
     returnedAssets: Int!
+    assetIdsJson: String!
+    pendingReturnRequests: [OffboardingReturnRequest!]!
+    deadline: Float
     completedAt: Float
     createdAt: Float!
     updatedAt: Float!
@@ -379,6 +410,7 @@ export const typeDefs = /* GraphQL */ `
     disposalRequest(id: ID!): DisposalRequest
     disposalRequests(status: String): [DisposalRequest!]!
     offboardingEvent(employeeId: ID!): OffboardingEvent
+    pendingReturnRequests(offboardingEventId: ID!): [OffboardingReturnRequest!]!
     searchAssets(
       filter: AssetSearchInput!
       pagination: PaginationInput
@@ -538,12 +570,31 @@ export const typeDefs = /* GraphQL */ `
 
     # ── Offboarding mutations ────────────────────────────────────────────
     startOffboarding(employeeId: ID!, initiatedBy: ID!): OffboardingEvent!
+    submitReturnRequest(
+      assetId: ID!
+      employeeId: ID!
+      condition: String!
+      conditionDetail: String
+      photoR2Key: String
+    ): OffboardingReturnRequest!
+    approveReturnRequest(
+      returnRequestId: ID!
+      conditionHr: String!
+      inspectedBy: ID!
+    ): Asset!
+    requestRepair(
+      returnRequestId: ID!
+      conditionHr: String!
+      photoR2Key: String
+      inspectedBy: ID!
+    ): Asset!
     completeAssetReturn(
       assetId: ID!
       employeeId: ID!
       condition: String!
       inspectedBy: ID!
     ): Asset!
+    createDataWipeTask(assetId: ID!): DataWipeTask!
 
     # ── Maintenance mutations ───────────────────────────────────────────
     createMaintenanceTicket(

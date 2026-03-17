@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CATEGORY_LABELS } from "./constants";
 import type { Asset } from "@/lib/types";
-import { Image } from "antd";
+import Image from "next/image";
 
 interface AssetCardProps {
   asset: Asset;
@@ -43,7 +43,7 @@ export function AssetCard({
             src={asset.imageUrl}
             alt={asset.assetId}
             // wrapperClassName-ийн оронд rootClassName ашиглав
-            rootClassName="w-full h-full"
+            className="w-full h-full"
             // Зургийг контейнертээ бүрэн дүүрч, харьцаа алдагдуулахгүй харагдуулна
             style={{
               width: "100%",

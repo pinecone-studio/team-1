@@ -3,11 +3,7 @@ import { getDb } from "../../client";
 import { getAssetById } from "../../assets/queries";
 import { writeAuditLog } from "../../auditLogger";
 import { createNotification } from "../../notifications";
-import {
-  assets,
-  assignments,
-  transfers,
-} from "@/schema";
+import { assets, assignments, employees, transfers } from "@/schema";
 
 export async function transferAsset(
   assetId: string,
@@ -17,6 +13,27 @@ export async function transferAsset(
   conditionNoted = "GOOD",
 ) {
   const db = await getDb();
+
+  const toEmployee = await db
+    .select({ status: employees.status })
+    .from(employees)
+    .where(eq(employees.id, toEmployeeId))
+    .get();
+
+  if (!toEmployee) {
+    throw new Error(`Employee ${toEmployeeId} not found`);
+  }
+  if (toEmployee.status === "TERMINATED") {
+    throw new Error(
+      "Cannot transfer asset to a terminated employee. Ажлаас гарсан ажилтанд шилжүүлэх боломжгүй.",
+    );
+  }
+  if (toEmployee.status === "OFFBOARDING") {
+    throw new Error(
+      "Cannot transfer asset to an employee in offboarding. Гарах процесс хийж буй ажилтанд шилжүүлэх боломжгүй.",
+    );
+  }
+
   const now = Date.now();
 
   const transferId = crypto.randomUUID();

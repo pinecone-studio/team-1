@@ -1,1 +1,0 @@
-ALTER TABLE `assignments` ADD `requestedByEmployeeId` text REFERENCES employees(id);

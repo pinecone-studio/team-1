@@ -103,7 +103,27 @@ query GetActiveOffboarding($employeeId: ID!) {
     status
     totalAssets
     returnedAssets
+    assetIdsJson
+    deadline
+    completedAt
     createdAt
+    assetsToReturn {
+      id
+      assetTag
+      serialNumber
+    }
+    pendingReturnRequests {
+      id
+      assetId
+      conditionEmployee
+      status
+      photoR2Key
+      asset {
+        id
+        assetTag
+        serialNumber
+      }
+    }
   }
 }
 

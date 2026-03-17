@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Check, X, Bell, Eye, ClipboardCheck, Trash2, LogOut, Send, UserPlus, ArrowRightLeft } from "lucide-react";
+import { Check, X, Bell, Eye, ClipboardCheck, Trash2, LogOut, Send, UserPlus, ArrowRightLeft, ChevronDown, ChevronUp } from "lucide-react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +40,10 @@ import {
   TransferAssetDocument,
   ReturnAssetDocument,
   AssignAssetDocument,
+  GetDashboardDocument,
+  UserRole,
+  CompleteAssetReturnDocument,
+  SubmitReturnRequestDocument,
 } from "@/gql/graphql";
 
 type AssignmentItem = {
@@ -86,6 +90,20 @@ export function DemoEmployeeContent({
   const [showRequestsDialog, setShowRequestsDialog] = useState(false);
   /** Илгээгдсэн шилжүүлэлт хүлээгдэж буй (цаад хүн хүлээн авах хүртэл) */
   const [pendingTransferSent, setPendingTransferSent] = useState<{ toName: string; assetTag: string } | null>(null);
+  /** Offboarding: буцааж өгөх хүсэлт — нэг хөрөнгийг сонгож нөхцөл оруулах */
+  const [showReturnRequestDialog, setShowReturnRequestDialog] = useState(false);
+  const [returnRequestAssignment, setReturnRequestAssignment] = useState<AssignmentItem | null>(null);
+  const [returnCondition, setReturnCondition] = useState("GOOD");
+  const [returnConditionDetail, setReturnConditionDetail] = useState("");
+  const [returnRequestSending, setReturnRequestSending] = useState(false);
+  /** Буцаах зааврыг уншсан, тэмдэглэсэн эсэх — тэмдэглээгүй бол илгээх товч идэвхгүй */
+  const [returnInstructionsRead, setReturnInstructionsRead] = useState(false);
+  /** Эвдрэлтэй үед оруулсан зураг (файл) — R2 upload байхгүй бол mock key илгээнэ */
+  const [returnPhotoFile, setReturnPhotoFile] = useState<File | null>(null);
+  /** Мэдэгдлийн "Дэлгэрэнгүй" нээгдсэн эсэх (notification id) */
+  const [expandedNotificationId, setExpandedNotificationId] = useState<string | null>(null);
+
+  const isDamagedCondition = ["DAMAGED", "BROKEN", "FAULTY", "DESTROYED"].includes(returnCondition);
 
   const { data: employeesData } = useQuery(EmployeesDocument, {
     fetchPolicy: "network-only",
@@ -106,12 +124,44 @@ export function DemoEmployeeContent({
   const [transferAssetMutation] = useMutation(TransferAssetDocument);
   const [returnAssetMutation] = useMutation(ReturnAssetDocument);
   const [assignAssetMutation] = useMutation(AssignAssetDocument);
+  const [completeAssetReturnMutation, { loading: completeReturnLoading }] = useMutation(CompleteAssetReturnDocument);
+  const [submitReturnRequestMutation, { loading: submitReturnRequestLoading }] = useMutation(SubmitReturnRequestDocument);
 
   const { data: offboardingData, refetch: refetchOffboarding } = useQuery(GetActiveOffboardingDocument, {
     variables: { employeeId: currentEmployeeId ?? "" },
     skip: !currentEmployeeId,
   });
   const activeOffboarding = offboardingData?.offboardingEvent ?? null;
+
+  const { data: dashboardData } = useQuery(GetDashboardDocument, {
+    variables: { role: UserRole.Employee, employeeId: currentEmployeeId ?? "" },
+    skip: !currentEmployeeId,
+    fetchPolicy: "network-only",
+  });
+  const OFFBOARDING_TITLE = "Ажлаас гарах — хөрөнгө буцаах";
+  const isOffboardingNotification = (n: { title?: string; message?: string }) =>
+    n.title === OFFBOARDING_TITLE ||
+    (typeof n.message === "string" && (n.message.includes("Буцаах эцсийн хугацаа") || n.message.includes("ажлаас гарах")));
+  /** Backend-аас ирсэн + backend ажиллахгүй үед 1 mock мэдэгдэл (демо харагдах байдал) */
+  const MOCK_OFFBOARDING: { id: string; title: string; message: string; type: string; isRead: boolean; createdAt: number } = {
+    id: "demo-mock-offboarding",
+    title: OFFBOARDING_TITLE,
+    message:
+      "Таны нэр дээр 1 хөрөнгө бүртгэгдсэн. Буцаах эцсийн хугацаа: 3 хоногийн дотор. Миний хөрөнгө хэсэгт орж буцаана уу.",
+    type: "WARNING",
+    isRead: false,
+    createdAt: Date.now(),
+  };
+  const notifications = useMemo(() => {
+    type N = { id: string; title: string; message: string; type?: string; isRead?: boolean; createdAt?: number };
+    const list = dashboardData?.dashboard?.employeeView?.notifications ?? [];
+    const fromApi = ([...list] as N[])
+      .filter((n) => isOffboardingNotification(n))
+      .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    if (fromApi.length > 0) return fromApi;
+    if (currentEmployeeId) return [MOCK_OFFBOARDING as N];
+    return [];
+  }, [dashboardData?.dashboard?.employeeView?.notifications, currentEmployeeId]);
 
   // 1. Хүлээгдэж буй хүсэлтүүд (PENDING болон ASSIGN_REQUESTED аль аль нь)
   const queryVars = { employeeId: currentEmployeeId ?? "" };
@@ -173,6 +223,18 @@ export function DemoEmployeeContent({
     });
     return list;
   }, [activeAssignments, pendingList]);
+
+  /** assetIdsJson-аас backend-аар ирсэн буцаах хөрөнгийн жагсаалт (assetsToReturn); байхгүй бол myAssetsList ашиглана */
+  const assetsToReturnList = useMemo(() => {
+    const fromEvent = (activeOffboarding as { assetsToReturn?: Array<{ id: string; assetTag?: string; serialNumber?: string }> } | null)?.assetsToReturn;
+    if (fromEvent?.length) return fromEvent.map((a) => ({ id: a.id, assetTag: a.assetTag ?? a.id, serialNumber: a.serialNumber ?? "—" }));
+    return null;
+  }, [activeOffboarding]);
+  /** HR шалгах хүлээгдэж буй хүсэлттэй хөрөнгийн ID-ууд (давхар илгээхгүй) */
+  const pendingReturnRequestAssetIds = useMemo(() => {
+    const list = (activeOffboarding as { pendingReturnRequests?: Array<{ assetId: string }> } | null)?.pendingReturnRequests ?? [];
+    return new Set(list.map((r) => r.assetId));
+  }, [activeOffboarding]);
 
   // Үйлдэл бүрийн дараа дараагийн хүсэлт рүү шилжих логик
   const handleActionComplete = async () => {
@@ -240,6 +302,44 @@ export function DemoEmployeeContent({
       toast.error("Устгах хүсэлт илгээхэд алдаа гарлаа.");
     } finally {
       setDisposalSending(false);
+    }
+  };
+
+  /** Offboarding: нэг хөрөнгийг нөхцөлөөр буцааж өгөх хүсэлт илгээх (HR шалгах хүртэл submitReturnRequest) */
+  const handleSubmitReturnRequest = async () => {
+    if (!returnRequestAssignment?.asset?.id || !currentEmployeeId || !returnCondition.trim()) {
+      toast.error("Нөхцөл сонгоно уу.");
+      return;
+    }
+    const conditionDetailToSend = returnConditionDetail.trim() || null;
+    const photoR2KeyToSend = returnPhotoFile ? `demo-photo-${Date.now()}-${returnPhotoFile.name}` : null;
+    setReturnRequestSending(true);
+    try {
+      const variables: {
+        assetId: string;
+        employeeId: string;
+        condition: string;
+        conditionDetail?: string | null;
+        photoR2Key?: string | null;
+      } = {
+        assetId: returnRequestAssignment.asset.id,
+        employeeId: currentEmployeeId,
+        condition: returnCondition,
+      };
+      if (conditionDetailToSend != null) variables.conditionDetail = conditionDetailToSend;
+      if (photoR2KeyToSend != null) variables.photoR2Key = photoR2KeyToSend;
+      await submitReturnRequestMutation({ variables });
+      toast.success(`${returnRequestAssignment.asset.assetTag ?? "Хөрөнгө"} буцааж өгөх хүсэлт илгээгдлээ. HR шалгана.`);
+      setShowReturnRequestDialog(false);
+      setReturnRequestAssignment(null);
+      setReturnCondition("GOOD");
+      setReturnConditionDetail("");
+      setReturnPhotoFile(null);
+      await Promise.all([refetchOffboarding(), refetchActive()]);
+    } catch (err) {
+      toast.error("Буцаах хүсэлт илгээхэд алдаа гарлаа.");
+    } finally {
+      setReturnRequestSending(false);
     }
   };
 
@@ -481,6 +581,177 @@ export function DemoEmployeeContent({
               &quot;Шинэ хүсэлт&quot; дээрээ хүлээн авах хүртэл хүлээгдэнэ.
             </p>
           </CardHeader>
+        </Card>
+      )}
+
+      {/* Ажлаас гарах — хөрөнгө буцаах: offboarding үед буцаах хүсэлт гаргах хэсэг */}
+      {activeOffboarding && (
+        <Card className="mt-6 border-amber-300 bg-amber-50/80">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold text-amber-900 flex items-center gap-2">
+              <LogOut className="h-4 w-4" /> Ажлаас гарах — хөрөнгө буцаах
+            </CardTitle>
+            <p className="text-sm text-amber-800">
+              Буцаах эцсийн хугацаа:{" "}
+              {(activeOffboarding as unknown as { deadline?: number }).deadline != null
+                ? new Date((activeOffboarding as unknown as { deadline: number }).deadline).toLocaleDateString("mn-MN", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })
+                : "—"}
+              . Хөрөнгө бүр дээр нөхцөлөө сонгоод &quot;Буцааж өгөх хүсэлт гаргах&quot; дараана уу.
+            </p>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Хөрөнгө</TableHead>
+                  <TableHead>Serial</TableHead>
+                  <TableHead>Үйлдэл</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {myAssetsList.map((assignment) => {
+                  const a = assignment as AssignmentItem;
+                  return (
+                    <TableRow key={a.id}>
+                      <TableCell className="font-medium">{a.asset?.assetTag ?? a.assetId}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{a.asset?.serialNumber ?? "—"}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 border-amber-600 text-amber-700 hover:bg-amber-100"
+                          onClick={() => {
+                            setReturnRequestAssignment(a);
+                            setReturnCondition("GOOD");
+                            setReturnConditionDetail("");
+                            setReturnPhotoFile(null);
+                            setReturnInstructionsRead(false);
+                            setShowReturnRequestDialog(true);
+                          }}
+                          disabled={completeReturnLoading}
+                        >
+                          <ClipboardCheck className="h-3.5 w-3.5" /> Буцааж өгөх хүсэлт гаргах
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+            {(activeOffboarding as unknown as { returnedAssets?: number; totalAssets?: number }).returnedAssets != null && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                Буцаасан: {(activeOffboarding as unknown as { returnedAssets: number }).returnedAssets} /{" "}
+                {(activeOffboarding as unknown as { totalAssets: number }).totalAssets}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Мэдэгдлүүд — гарчиг + ирсэн огноо, Дэлгэрэнгүй дарвал хөрөнгийн жагсаалт + буцаах товч */}
+      {notifications.length > 0 && !activeOffboarding && (
+        <Card className="mt-6 min-h-0 shrink-0 border-amber-200 bg-amber-50/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-medium text-amber-800 flex items-center gap-2">
+              <Bell className="h-4 w-4" /> Мэдэгдлүүд
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 min-h-[120px]">
+            <ul className="space-y-3">
+              {(notifications as Array<{ id: string; title: string; message: string; type?: string; isRead?: boolean; createdAt?: number }>).map((n) => {
+                const isExpanded = expandedNotificationId === n.id;
+                const receivedDate = n.createdAt != null ? new Date(n.createdAt) : null;
+                const dateLabel = receivedDate
+                  ? `${receivedDate.getFullYear()} оны ${receivedDate.getMonth() + 1} сарын ${receivedDate.getDate()}`
+                  : "";
+                return (
+                  <li
+                    key={n.id}
+                    className={`rounded-lg border p-4 text-sm min-h-0 overflow-visible ${n.isRead ? "border-gray-200 bg-white" : "border-amber-300 bg-amber-50"}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-medium text-foreground">{n.title}</p>
+                        {dateLabel && (
+                          <p className="mt-1 text-xs text-muted-foreground">Ирсэн огноо: {dateLabel}</p>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0 gap-1 text-amber-700 hover:text-amber-800"
+                        onClick={() => setExpandedNotificationId(isExpanded ? null : n.id)}
+                      >
+                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        Дэлгэрэнгүй
+                      </Button>
+                    </div>
+                    {isExpanded && (
+                      <div className="mt-4 space-y-4 border-t border-amber-200 pt-4">
+                        <p className="text-sm font-medium text-amber-900">
+                          Буцаах эцсийн хугацаа:{" "}
+                          {n.message.includes("Буцаах эцсийн хугацаа:")
+                            ? (n.message.split("Буцаах эцсийн хугацаа:")[1]?.split(".")[0]?.trim() ?? "—")
+                            : "—"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Хөрөнгийн жагсаалт — доорх хөрөнгө бүр дээр буцаах хүсэлт илгээнэ үү.</p>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Хөрөнгө</TableHead>
+                              <TableHead>Serial</TableHead>
+                              <TableHead>Үйлдэл</TableHead>
+                            </TableRow>
+                          </TableHeader>
+              <TableBody>
+                {(assetsToReturnList ?? myAssetsList.map((a) => ({ id: (a as AssignmentItem).assetId, assetTag: (a as AssignmentItem).asset?.assetTag ?? (a as AssignmentItem).assetId, serialNumber: (a as AssignmentItem).asset?.serialNumber ?? "—" }))).map((item) => {
+                  const canReturn = myAssetsList.some((m) => (m as AssignmentItem).assetId === item.id);
+                  const hasPendingRequest = pendingReturnRequestAssetIds.has(item.id);
+                  const assignmentForDialog = myAssetsList.find((m) => (m as AssignmentItem).assetId === item.id) as AssignmentItem | undefined;
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.assetTag}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{item.serialNumber}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 border-amber-600 text-amber-700 hover:bg-amber-100"
+                          onClick={() => {
+                            if (hasPendingRequest) return;
+                            setReturnRequestAssignment(
+                              assignmentForDialog ?? ({ id: item.id, assetId: item.id, assignedAt: 0, asset: { id: item.id, assetTag: item.assetTag, serialNumber: item.serialNumber } } as AssignmentItem),
+                            );
+                            setReturnCondition("GOOD");
+                            setReturnConditionDetail("");
+                            setReturnPhotoFile(null);
+                            setReturnInstructionsRead(false);
+                            setShowReturnRequestDialog(true);
+                          }}
+                          disabled={completeReturnLoading || submitReturnRequestLoading || !canReturn || hasPendingRequest}
+                        >
+                          <ClipboardCheck className="h-3.5 w-3.5" /> {hasPendingRequest ? "HR шалгах хүлээгдэж буй" : canReturn ? "Буцааж өгөх хүсэлт илгээх" : "Буцаасан"}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+                        </Table>
+                        {myAssetsList.length === 0 && (
+                          <p className="text-sm text-muted-foreground">Таны нэр дээр буцаах хөрөнгө бүртгэгдээгүй байна.</p>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
         </Card>
       )}
 
@@ -895,6 +1166,108 @@ export function DemoEmployeeContent({
             </Button>
             <Button onClick={handleTransferToEmployee} disabled={!transferToEmployeeId || transferSending}>
               {transferSending ? "Шилжүүлж байна..." : "Шилжүүлэх"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Offboarding: буцааж өгөх хүсэлт — нөхцөл оруулах */}
+      <Dialog
+        open={showReturnRequestDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowReturnRequestDialog(false);
+            setReturnRequestAssignment(null);
+            setReturnCondition("GOOD");
+            setReturnConditionDetail("");
+            setReturnInstructionsRead(false);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Буцааж өгөх хүсэлт гаргах</DialogTitle>
+            <DialogDescription>
+              {returnRequestAssignment?.asset?.assetTag ?? "Хөрөнгө"} — зааврыг уншиж, нөхцөлөө сонгоно уу.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-sm text-amber-900">
+              <p className="font-medium mb-2">Буцаах заавар</p>
+              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                <li>Хөрөнгийг цэвэр, бүрэн бүтэн буцаана.</li>
+                <li>Гэмтэл, дутуу байвал нөхцөл дээр нь тэмдэглэнэ.</li>
+                <li>Буцаасны дараа HR/IT шалгаж баталгаажуулна.</li>
+              </ul>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={returnInstructionsRead}
+                onChange={(e) => setReturnInstructionsRead(e.target.checked)}
+                className="rounded border-amber-600"
+              />
+              <span className="text-sm">Би буцаах зааврыг уншсан, дагаж байна.</span>
+            </label>
+            <div>
+              <label className="text-sm font-medium">Нөхцөл (condition) — заавал</label>
+              <Select
+                value={returnCondition}
+                onValueChange={(v) => {
+                  setReturnCondition(v);
+                  if (!["DAMAGED", "BROKEN", "FAULTY", "DESTROYED"].includes(v)) setReturnPhotoFile(null);
+                }}
+              >
+                <SelectTrigger className="mt-1 w-full">
+                  <SelectValue placeholder="Нөхцөл сонгоно уу" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="GOOD">GOOD — Сайн</SelectItem>
+                  <SelectItem value="DAMAGED">DAMAGED — Гэмтэлтэй</SelectItem>
+                  <SelectItem value="BROKEN">BROKEN — Эвдрэлтэй</SelectItem>
+                  <SelectItem value="FAULTY">FAULTY — Алдаатай</SelectItem>
+                  <SelectItem value="DESTROYED">DESTROYED — Устаж болсон</SelectItem>
+                  <SelectItem value="OTHER">OTHER — Бусад</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Нөхцөлийн дэлгэрэнгүй (заавал биш)</label>
+              <textarea
+                className="mt-1 w-full min-h-[60px] rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                placeholder="Нөхцөлөө товч тайлбарлана уу. HR шалгахад тусална."
+                value={returnConditionDetail}
+                onChange={(e) => setReturnConditionDetail(e.target.value)}
+              />
+            </div>
+            {isDamagedCondition && (
+              <div>
+                <label className="text-sm font-medium">Зураг оруулах (заавал биш)</label>
+                <p className="text-muted-foreground text-xs mt-0.5 mb-1">
+                  Эвдрэлтэй бол гэмтлийн зураг оруулбал HR/IT шалгахад тусална.
+                </p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="mt-1 w-full text-sm file:mr-2 file:rounded-md file:border-0 file:bg-amber-100 file:px-3 file:py-1.5 file:text-amber-800"
+                  onChange={(e) => setReturnPhotoFile(e.target.files?.[0] ?? null)}
+                />
+                {returnPhotoFile && (
+                  <p className="text-muted-foreground text-xs mt-1">{returnPhotoFile.name} сонгогдсон.</p>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowReturnRequestDialog(false)}>
+              Цуцлах
+            </Button>
+            <Button
+              onClick={handleSubmitReturnRequest}
+              disabled={!returnInstructionsRead || !returnCondition.trim() || returnRequestSending}
+              className="gap-2 bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {returnRequestSending ? "Илгээж байна..." : "Буцааж өгөх хүсэлт илгээх"}
             </Button>
           </DialogFooter>
         </DialogContent>
