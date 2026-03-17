@@ -50,6 +50,7 @@ import {
   GetActiveOffboardingDocument,
   ApproveReturnRequestDocument,
   RequestRepairDocument,
+  StartOffboardingDocument,
 } from "@/gql/graphql";
 import { cn } from "@/lib/utils";
 
@@ -114,29 +115,39 @@ export function DemoHRContent() {
   const [offboardDate, setOffboardDate] = useState<Date>(new Date());
   const [offboardDatePickerOpen, setOffboardDatePickerOpen] = useState(false);
   const [offboardSubmitting, setOffboardSubmitting] = useState(false);
-  const [selectedEmployeeForRequests, setSelectedEmployeeForRequests] = useState<string | null>(null);
+  const [selectedEmployeeForRequests, setSelectedEmployeeForRequests] =
+    useState<string | null>(null);
   const [showReturnRequestsModal, setShowReturnRequestsModal] = useState(false);
   /** Хүсэлт бүр дээр HR-ийн шалгасан нөхцөл (GOOD/FAIR/DAMAGED) */
-  const [hrConditionByRequestId, setHrConditionByRequestId] = useState<Record<string, string>>({});
+  const [hrConditionByRequestId, setHrConditionByRequestId] = useState<
+    Record<string, string>
+  >({});
   /** Эвдрэлтэй үед HR оруулсан зураг (requestId -> File) */
-  const [hrPhotoByRequestId, setHrPhotoByRequestId] = useState<Record<string, File | null>>({});
+  const [hrPhotoByRequestId, setHrPhotoByRequestId] = useState<
+    Record<string, File | null>
+  >({});
 
   const { data, loading, error, refetch } = useQuery(EmployeesDocument, {
     fetchPolicy: "network-only",
   });
 
-  const { data: offboardingRequestsData, refetch: refetchOffboardingRequests } = useQuery(
-    GetActiveOffboardingDocument,
-    {
+  const { data: offboardingRequestsData, refetch: refetchOffboardingRequests } =
+    useQuery(GetActiveOffboardingDocument, {
       variables: { employeeId: selectedEmployeeForRequests ?? "" },
-      skip: !selectedEmployeeForRequests || selectedEmployeeForRequests === "__mock__",
+      skip:
+        !selectedEmployeeForRequests ||
+        selectedEmployeeForRequests === "__mock__",
       fetchPolicy: "network-only",
-    },
+    });
+  const [approveReturnRequestMutation, { loading: approveLoading }] =
+    useMutation(ApproveReturnRequestDocument);
+  const [requestRepairMutation, { loading: repairLoading }] = useMutation(
+    RequestRepairDocument,
   );
-  const [approveReturnRequestMutation, { loading: approveLoading }] = useMutation(ApproveReturnRequestDocument);
-  const [requestRepairMutation, { loading: repairLoading }] = useMutation(RequestRepairDocument);
+  const [startOffboardingMutation] = useMutation(StartOffboardingDocument);
 
-  const pendingRequests = offboardingRequestsData?.offboardingEvent?.pendingReturnRequests ?? [];
+  const pendingRequests =
+    offboardingRequestsData?.offboardingEvent?.pendingReturnRequests ?? [];
 
   const employees = Array.isArray(data?.employees) ? data.employees : [];
   const activeEmployees = employees.filter(
@@ -146,6 +157,11 @@ export function DemoHRContent() {
     (e) => e.status === "TERMINATED" || e.status === "OFFBOARDING",
   );
   const employeesSorted = [...activeEmployees, ...terminatedEmployees];
+  const hrActorId =
+    employeesSorted.find((e) => e.role === "HR")?.id ??
+    employeesSorted.find((e) => e.role === "SUPER_ADMIN")?.id ??
+    employeesSorted[0]?.id ??
+    "";
   const selectedEmployeeName =
     selectedEmployeeForRequests &&
     employeesSorted.find((e) => e.id === selectedEmployeeForRequests)
@@ -164,7 +180,9 @@ export function DemoHRContent() {
           inspectedBy: "demo-hr",
         },
       });
-      toast.success("Буцаах хүсэлт зөвшөөрөгдөж, хөрөнгө боломжтой боллоо. IT data wipe даалгавар үүслээ.");
+      toast.success(
+        "Буцаах хүсэлт зөвшөөрөгдөж, хөрөнгө боломжтой боллоо. IT data wipe даалгавар үүслээ.",
+      );
       await refetchOffboardingRequests();
       await refetch();
     } catch (err) {
@@ -178,7 +196,9 @@ export function DemoHRContent() {
     photoFile: File | null,
   ) => {
     try {
-      const photoR2Key = photoFile ? `demo-hr-photo-${Date.now()}-${photoFile.name}` : null;
+      const photoR2Key = photoFile
+        ? `demo-hr-photo-${Date.now()}-${photoFile.name}`
+        : null;
       await requestRepairMutation({
         variables: {
           returnRequestId,
@@ -187,7 +207,9 @@ export function DemoHRContent() {
           inspectedBy: "demo-hr",
         },
       });
-      toast.success("Засварын хүсэлт IT руу илгээгдлээ. Хөрөнгийн төлөв: REPAIR_REQUESTED.");
+      toast.success(
+        "Засварын хүсэлт IT руу илгээгдлээ. Хөрөнгийн төлөв: REPAIR_REQUESTED.",
+      );
       setHrPhotoByRequestId((prev) => ({ ...prev, [returnRequestId]: null }));
       await refetchOffboardingRequests();
       await refetch();
@@ -201,38 +223,29 @@ export function DemoHRContent() {
       toast.error("Ажилтан сонгоно уу.");
       return;
     }
+    if (!hrActorId) {
+      toast.error("HR actor олдсонгүй (employees list хоосон байна).");
+      return;
+    }
 
     setOffboardSubmitting(true);
     try {
-      const res = await fetch(getWebhookOffboardUrl(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const res = await startOffboardingMutation({
+        variables: {
           employeeId: offboardEmployeeId,
+          initiatedBy: hrActorId,
           terminationDate: startOfDay(offboardDate),
-          initiatedBy: "demo-hr",
-        }),
+        },
       });
-
-      const json = (await res.json().catch(() => ({}))) as {
-        error?: string;
-        totalAssets?: number;
-      };
-
-      if (!res.ok) {
-        toast.error(json.error ?? `Алдаа: ${res.status}`);
-        return;
-      }
-
       toast.success(
-        `Ажлаас гарах процесс эхэллээ. ${json.totalAssets ?? 0} хөрөнгө буцаах шаардлагатай.`,
+        `Ажлаас гарах процесс эхэллээ. (Event: ${res.data?.startOffboarding?.id ?? "—"})`,
       );
       setOffboardOpen(false);
       setOffboardEmployeeId("");
       setOffboardDate(new Date());
       refetch();
     } catch (err) {
-      toast.error("Webhook дуудахад алдаа гарлаа.");
+      toast.error("Ажлаас гаргах процесст алдаа гарлаа.");
     } finally {
       setOffboardSubmitting(false);
     }
@@ -299,7 +312,9 @@ export function DemoHRContent() {
                 variant="outline"
                 onClick={() => {
                   setSelectedEmployeeForRequests(
-                    employeesSorted.length > 0 ? employeesSorted[0].id : "__mock__",
+                    employeesSorted.length > 0
+                      ? employeesSorted[0].id
+                      : "__mock__",
                   );
                   setShowReturnRequestsModal(true);
                 }}
@@ -448,11 +463,14 @@ export function DemoHRContent() {
             </DialogHeader>
             <div className="py-4 space-y-6">
               {!selectedEmployeeForRequests ? (
-                <p className="text-muted-foreground text-sm">Ажилтан сонгоогүй байна.</p>
+                <p className="text-muted-foreground text-sm">
+                  Ажилтан сонгоогүй байна.
+                </p>
               ) : selectedEmployeeForRequests === "__mock__" ? (
                 <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-4">
                   <p className="text-muted-foreground text-sm mb-4">
-                    Жишээ (mock). Нөхцөл сонгоод, эвдрэлтэй бол зураг оруулж, товчнуудыг туршина уу.
+                    Жишээ (mock). Нөхцөл сонгоод, эвдрэлтэй бол зураг оруулж,
+                    товчнуудыг туршина уу.
                   </p>
                   <Table>
                     <TableHeader>
@@ -468,43 +486,122 @@ export function DemoHRContent() {
                     </TableHeader>
                     <TableBody>
                       {[
-                        { id: "mock-ex-1", assetTag: "Laptop-001", serial: "SN-DEMO-01", conditionEmployee: "DAMAGED: Дэлгэц цуурсан", hasPhoto: true },
-                        { id: "mock-ex-2", assetTag: "Mouse-002", serial: "SN-DEMO-02", conditionEmployee: "GOOD", hasPhoto: false },
+                        {
+                          id: "mock-ex-1",
+                          assetTag: "Laptop-001",
+                          serial: "SN-DEMO-01",
+                          conditionEmployee: "DAMAGED: Дэлгэц цуурсан",
+                          hasPhoto: true,
+                        },
+                        {
+                          id: "mock-ex-2",
+                          assetTag: "Mouse-002",
+                          serial: "SN-DEMO-02",
+                          conditionEmployee: "GOOD",
+                          hasPhoto: false,
+                        },
                       ].map((row) => {
-                        const conditionHr = hrConditionByRequestId[row.id] ?? "GOOD";
+                        const conditionHr =
+                          hrConditionByRequestId[row.id] ?? "GOOD";
                         const isDamaged = conditionHr === "DAMAGED";
                         const photoFile = hrPhotoByRequestId[row.id] ?? null;
                         return (
                           <TableRow key={row.id} className="bg-white/80">
-                            <TableCell className="font-medium">{row.assetTag}</TableCell>
-                            <TableCell className="text-muted-foreground text-sm">{row.serial}</TableCell>
-                            <TableCell className="text-sm">{row.conditionEmployee}</TableCell>
+                            <TableCell className="font-medium">
+                              {row.assetTag}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-sm">
+                              {row.serial}
+                            </TableCell>
                             <TableCell className="text-sm">
-                              {row.hasPhoto ? <span className="text-amber-600 text-xs">Зураг байна</span> : "—"}
+                              {row.conditionEmployee}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {row.hasPhoto ? (
+                                <span className="text-amber-600 text-xs">
+                                  Зураг байна
+                                </span>
+                              ) : (
+                                "—"
+                              )}
                             </TableCell>
                             <TableCell>
-                              <Select value={conditionHr} onValueChange={(v) => setHrConditionByRequestId((prev) => ({ ...prev, [row.id]: v }))}>
-                                <SelectTrigger className="w-[120px] h-8"><SelectValue /></SelectTrigger>
+                              <Select
+                                value={conditionHr}
+                                onValueChange={(v) =>
+                                  setHrConditionByRequestId((prev) => ({
+                                    ...prev,
+                                    [row.id]: v,
+                                  }))
+                                }
+                              >
+                                <SelectTrigger className="w-[120px] h-8">
+                                  <SelectValue />
+                                </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="GOOD">GOOD — Сайн</SelectItem>
-                                  <SelectItem value="FAIR">FAIR — Дунд</SelectItem>
-                                  <SelectItem value="DAMAGED">DAMAGED — Эвдрэлтэй</SelectItem>
+                                  <SelectItem value="GOOD">
+                                    GOOD — Сайн
+                                  </SelectItem>
+                                  <SelectItem value="FAIR">
+                                    FAIR — Дунд
+                                  </SelectItem>
+                                  <SelectItem value="DAMAGED">
+                                    DAMAGED — Эвдрэлтэй
+                                  </SelectItem>
                                 </SelectContent>
                               </Select>
                             </TableCell>
                             <TableCell>
                               {isDamaged ? (
                                 <>
-                                  <input type="file" accept="image/*" className="text-xs file:mr-1 file:rounded file:border-0 file:bg-amber-100 file:px-2 file:py-0.5 file:text-xs" onChange={(e) => setHrPhotoByRequestId((prev) => ({ ...prev, [row.id]: e.target.files?.[0] ?? null }))} />
-                                  {photoFile && <span className="text-xs text-muted-foreground ml-1">{photoFile.name}</span>}
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="text-xs file:mr-1 file:rounded file:border-0 file:bg-amber-100 file:px-2 file:py-0.5 file:text-xs"
+                                    onChange={(e) =>
+                                      setHrPhotoByRequestId((prev) => ({
+                                        ...prev,
+                                        [row.id]: e.target.files?.[0] ?? null,
+                                      }))
+                                    }
+                                  />
+                                  {photoFile && (
+                                    <span className="text-xs text-muted-foreground ml-1">
+                                      {photoFile.name}
+                                    </span>
+                                  )}
                                 </>
-                              ) : "—"}
+                              ) : (
+                                "—"
+                              )}
                             </TableCell>
                             <TableCell className="flex flex-wrap gap-1">
                               {!isDamaged ? (
-                                <Button variant="outline" size="sm" className="gap-1 text-green-700 border-green-600 hover:bg-green-50" onClick={() => toast.info("Mock: Зөвшөөрөх → AVAILABLE + IT wipe.")}>Зөвшөөрөх (AVAILABLE + wipe)</Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1 text-green-700 border-green-600 hover:bg-green-50"
+                                  onClick={() =>
+                                    toast.info(
+                                      "Mock: Зөвшөөрөх → AVAILABLE + IT wipe.",
+                                    )
+                                  }
+                                >
+                                  Зөвшөөрөх (AVAILABLE + wipe)
+                                </Button>
                               ) : (
-                                <Button variant="outline" size="sm" className="gap-1 text-amber-700 border-amber-600 hover:bg-amber-50" onClick={() => toast.info("Mock: Засвар хүсэх → IT REPAIR_REQUESTED.")}>Засвар хүсэх (IT)</Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1 text-amber-700 border-amber-600 hover:bg-amber-50"
+                                  onClick={() =>
+                                    toast.info(
+                                      "Mock: Засвар хүсэх → IT REPAIR_REQUESTED.",
+                                    )
+                                  }
+                                >
+                                  Засвар хүсэх (IT)
+                                </Button>
                               )}
                             </TableCell>
                           </TableRow>
@@ -518,11 +615,26 @@ export function DemoHRContent() {
                   {pendingRequests.length > 0 ? (
                     <>
                       <div className="rounded-lg border border-green-200 bg-green-50/80 p-3 text-sm text-green-900">
-                        <p className="font-medium mb-1">Энэ ажилтнаас ирсэн буцаах хүсэлтүүд (бодит)</p>
+                        <p className="font-medium mb-1">
+                          Энэ ажилтнаас ирсэн буцаах хүсэлтүүд (бодит)
+                        </p>
                         <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-                          <li>Нөхцөл шалгаад «HR шалгасан нөхцөл»-д оруулна (GOOD/FAIR/DAMAGED).</li>
-                          <li><strong>Зөв (GOOD/FAIR)</strong> бол «Зөвшөөрөх» дарна → хүсэлт хүлээн авна, assignment хаагдана, asset status AVAILABLE, IT руу wipe даалгавар явна.</li>
-                          <li><strong>Эвдрэлтэй (DAMAGED)</strong> бол нөхцөл сонгоод «Эвдрэлтэй үед зураг»-аас зураг оруулж хадгална, «Засвар хүсэх» дарна → assignment хаагдана, asset status REPAIR_REQUESTED, IT руу засварын хүсэлт явна.</li>
+                          <li>
+                            Нөхцөл шалгаад «HR шалгасан нөхцөл»-д оруулна
+                            (GOOD/FAIR/DAMAGED).
+                          </li>
+                          <li>
+                            <strong>Зөв (GOOD/FAIR)</strong> бол «Зөвшөөрөх»
+                            дарна → хүсэлт хүлээн авна, assignment хаагдана,
+                            asset status AVAILABLE, IT руу wipe даалгавар явна.
+                          </li>
+                          <li>
+                            <strong>Эвдрэлтэй (DAMAGED)</strong> бол нөхцөл
+                            сонгоод «Эвдрэлтэй үед зураг»-аас зураг оруулж
+                            хадгална, «Засвар хүсэх» дарна → assignment
+                            хаагдана, asset status REPAIR_REQUESTED, IT руу
+                            засварын хүсэлт явна.
+                          </li>
                         </ul>
                       </div>
                       <Table>
@@ -538,108 +650,130 @@ export function DemoHRContent() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                        {pendingRequests.map((req) => {
-                          const conditionHr = hrConditionByRequestId[req.id] ?? "GOOD";
-                          const isDamaged = conditionHr === "DAMAGED";
-                          const photoFile = hrPhotoByRequestId[req.id] ?? null;
-                          return (
-                            <TableRow key={req.id}>
-                              <TableCell className="font-medium">
-                                {req.asset?.assetTag ?? req.assetId}
-                              </TableCell>
-                              <TableCell className="text-muted-foreground text-sm">
-                                {req.asset?.serialNumber ?? "—"}
-                              </TableCell>
-                              <TableCell className="text-sm">
-                                {req.conditionEmployee}
-                              </TableCell>
-                              <TableCell className="text-sm">
-                                {"photoR2Key" in req && req.photoR2Key ? (
-                                  <span className="text-amber-600 text-xs">Зураг байна</span>
-                                ) : (
-                                  "—"
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <Select
-                                  value={conditionHr}
-                                  onValueChange={(v) =>
-                                    setHrConditionByRequestId((prev) => ({ ...prev, [req.id]: v }))
-                                  }
-                                >
-                                  <SelectTrigger className="w-[120px] h-8">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="GOOD">GOOD — Сайн</SelectItem>
-                                    <SelectItem value="FAIR">FAIR — Дунд</SelectItem>
-                                    <SelectItem value="DAMAGED">DAMAGED — Эвдрэлтэй</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell>
-                                {isDamaged ? (
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="text-xs file:mr-1 file:rounded file:border-0 file:bg-amber-100 file:px-2 file:py-0.5 file:text-xs"
-                                    onChange={(e) =>
-                                      setHrPhotoByRequestId((prev) => ({
+                          {pendingRequests.map((req) => {
+                            const conditionHr =
+                              hrConditionByRequestId[req.id] ?? "GOOD";
+                            const isDamaged = conditionHr === "DAMAGED";
+                            const photoFile =
+                              hrPhotoByRequestId[req.id] ?? null;
+                            return (
+                              <TableRow key={req.id}>
+                                <TableCell className="font-medium">
+                                  {req.asset?.assetTag ?? req.assetId}
+                                </TableCell>
+                                <TableCell className="text-muted-foreground text-sm">
+                                  {req.asset?.serialNumber ?? "—"}
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {req.conditionEmployee}
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {"photoR2Key" in req && req.photoR2Key ? (
+                                    <span className="text-amber-600 text-xs">
+                                      Зураг байна
+                                    </span>
+                                  ) : (
+                                    "—"
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <Select
+                                    value={conditionHr}
+                                    onValueChange={(v) =>
+                                      setHrConditionByRequestId((prev) => ({
                                         ...prev,
-                                        [req.id]: e.target.files?.[0] ?? null,
+                                        [req.id]: v,
                                       }))
                                     }
-                                  />
-                                ) : (
-                                  "—"
-                                )}
-                                {photoFile && (
-                                  <span className="text-xs text-muted-foreground ml-1">
-                                    {photoFile.name}
-                                  </span>
-                                )}
-                              </TableCell>
-                              <TableCell className="flex flex-wrap gap-1">
-                                {!isDamaged ? (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="gap-1 text-green-700 border-green-600 hover:bg-green-50"
-                                    disabled={approveLoading || repairLoading}
-                                    onClick={() =>
-                                      handleApproveReturnRequest(req.id, conditionHr)
-                                    }
                                   >
-                                    Зөвшөөрөх (AVAILABLE + wipe)
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="gap-1 text-amber-700 border-amber-600 hover:bg-amber-50"
-                                    disabled={approveLoading || repairLoading}
-                                    onClick={() =>
-                                      handleRequestRepair(req.id, conditionHr, photoFile)
-                                    }
-                                  >
-                                    Засвар хүсэх (IT)
-                                  </Button>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
+                                    <SelectTrigger className="w-[120px] h-8">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="GOOD">
+                                        GOOD — Сайн
+                                      </SelectItem>
+                                      <SelectItem value="FAIR">
+                                        FAIR — Дунд
+                                      </SelectItem>
+                                      <SelectItem value="DAMAGED">
+                                        DAMAGED — Эвдрэлтэй
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </TableCell>
+                                <TableCell>
+                                  {isDamaged ? (
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="text-xs file:mr-1 file:rounded file:border-0 file:bg-amber-100 file:px-2 file:py-0.5 file:text-xs"
+                                      onChange={(e) =>
+                                        setHrPhotoByRequestId((prev) => ({
+                                          ...prev,
+                                          [req.id]: e.target.files?.[0] ?? null,
+                                        }))
+                                      }
+                                    />
+                                  ) : (
+                                    "—"
+                                  )}
+                                  {photoFile && (
+                                    <span className="text-xs text-muted-foreground ml-1">
+                                      {photoFile.name}
+                                    </span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="flex flex-wrap gap-1">
+                                  {!isDamaged ? (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="gap-1 text-green-700 border-green-600 hover:bg-green-50"
+                                      disabled={approveLoading || repairLoading}
+                                      onClick={() =>
+                                        handleApproveReturnRequest(
+                                          req.id,
+                                          conditionHr,
+                                        )
+                                      }
+                                    >
+                                      Зөвшөөрөх (AVAILABLE + wipe)
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="gap-1 text-amber-700 border-amber-600 hover:bg-amber-50"
+                                      disabled={approveLoading || repairLoading}
+                                      onClick={() =>
+                                        handleRequestRepair(
+                                          req.id,
+                                          conditionHr,
+                                          photoFile,
+                                        )
+                                      }
+                                    >
+                                      Засвар хүсэх (IT)
+                                    </Button>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
                     </>
                   ) : (
                     /* Бодит хүсэлт байхгүй үед бодит урсгалтай ижил UI (нөхцөл, зураг, товч) mock-оор */
                     <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-4">
                       <p className="text-sm font-medium text-amber-900 mb-1">
-                        {(selectedEmployeeName || "Энэ ажилтан")}-аас ирсэн буцаах хүсэлтүүд
+                        {selectedEmployeeName || "Энэ ажилтан"}-аас ирсэн буцаах
+                        хүсэлтүүд
                       </p>
                       <p className="text-muted-foreground text-xs mb-3">
-                        Одоогоор энэ ажилтан буцаах хүсэлт илгээгээгүй байна. Ажилтан Demo Employee хуудсаас «Буцааж өгөх хүсэлт илгээх» дарсны дараа энд харагдана. Доор жишээ (mock) — нөхцөл сонгоод товчнуудыг туршина уу.
+                        Одоогоор энэ ажилтан буцаах хүсэлт илгээгээгүй байна.
+                        Доор жишээ (mock) — нөхцөл сонгоод товчнуудыг туршина уу.
                       </p>
                       <Table>
                         <TableHeader>
@@ -670,17 +804,27 @@ export function DemoHRContent() {
                               hasPhoto: false,
                             },
                           ].map((row) => {
-                            const conditionHr = hrConditionByRequestId[row.id] ?? "GOOD";
+                            const conditionHr =
+                              hrConditionByRequestId[row.id] ?? "GOOD";
                             const isDamaged = conditionHr === "DAMAGED";
-                            const photoFile = hrPhotoByRequestId[row.id] ?? null;
+                            const photoFile =
+                              hrPhotoByRequestId[row.id] ?? null;
                             return (
                               <TableRow key={row.id} className="bg-white/80">
-                                <TableCell className="font-medium">{row.assetTag}</TableCell>
-                                <TableCell className="text-muted-foreground text-sm">{row.serial}</TableCell>
-                                <TableCell className="text-sm">{row.conditionEmployee}</TableCell>
+                                <TableCell className="font-medium">
+                                  {row.assetTag}
+                                </TableCell>
+                                <TableCell className="text-muted-foreground text-sm">
+                                  {row.serial}
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {row.conditionEmployee}
+                                </TableCell>
                                 <TableCell className="text-sm">
                                   {row.hasPhoto ? (
-                                    <span className="text-amber-600 text-xs">Зураг байна</span>
+                                    <span className="text-amber-600 text-xs">
+                                      Зураг байна
+                                    </span>
                                   ) : (
                                     "—"
                                   )}
@@ -689,16 +833,25 @@ export function DemoHRContent() {
                                   <Select
                                     value={conditionHr}
                                     onValueChange={(v) =>
-                                      setHrConditionByRequestId((prev) => ({ ...prev, [row.id]: v }))
+                                      setHrConditionByRequestId((prev) => ({
+                                        ...prev,
+                                        [row.id]: v,
+                                      }))
                                     }
                                   >
                                     <SelectTrigger className="w-[120px] h-8">
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="GOOD">GOOD — Сайн</SelectItem>
-                                      <SelectItem value="FAIR">FAIR — Дунд</SelectItem>
-                                      <SelectItem value="DAMAGED">DAMAGED — Эвдрэлтэй</SelectItem>
+                                      <SelectItem value="GOOD">
+                                        GOOD — Сайн
+                                      </SelectItem>
+                                      <SelectItem value="FAIR">
+                                        FAIR — Дунд
+                                      </SelectItem>
+                                      <SelectItem value="DAMAGED">
+                                        DAMAGED — Эвдрэлтэй
+                                      </SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </TableCell>
@@ -712,12 +865,15 @@ export function DemoHRContent() {
                                         onChange={(e) =>
                                           setHrPhotoByRequestId((prev) => ({
                                             ...prev,
-                                            [row.id]: e.target.files?.[0] ?? null,
+                                            [row.id]:
+                                              e.target.files?.[0] ?? null,
                                           }))
                                         }
                                       />
                                       {photoFile && (
-                                        <span className="text-xs text-muted-foreground ml-1">{photoFile.name}</span>
+                                        <span className="text-xs text-muted-foreground ml-1">
+                                          {photoFile.name}
+                                        </span>
                                       )}
                                     </>
                                   ) : (
@@ -730,7 +886,11 @@ export function DemoHRContent() {
                                       variant="outline"
                                       size="sm"
                                       className="gap-1 text-green-700 border-green-600 hover:bg-green-50"
-                                      onClick={() => toast.info("Mock: бодит хүсэлт байхгүй тул үйлдэл хийгдэхгүй. Зөвшөөрөх → AVAILABLE + IT wipe.")}
+                                      onClick={() =>
+                                        toast.info(
+                                          "Mock: бодит хүсэлт байхгүй тул үйлдэл хийгдэхгүй. Зөвшөөрөх → AVAILABLE + IT wipe.",
+                                        )
+                                      }
                                     >
                                       Зөвшөөрөх (AVAILABLE + wipe)
                                     </Button>
@@ -739,7 +899,11 @@ export function DemoHRContent() {
                                       variant="outline"
                                       size="sm"
                                       className="gap-1 text-amber-700 border-amber-600 hover:bg-amber-50"
-                                      onClick={() => toast.info("Mock: бодит хүсэлт байхгүй тул үйлдэл хийгдэхгүй. Засвар хүсэх → IT руу REPAIR_REQUESTED.")}
+                                      onClick={() =>
+                                        toast.info(
+                                          "Mock: бодит хүсэлт байхгүй тул үйлдэл хийгдэхгүй. Засвар хүсэх → IT руу REPAIR_REQUESTED.",
+                                        )
+                                      }
                                     >
                                       Засвар хүсэх (IT)
                                     </Button>

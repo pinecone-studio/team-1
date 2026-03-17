@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import { getDb } from "../../client";
 import { writeAuditLog } from "../../auditLogger";
 import { getAssetById } from "../../assets/queries";
@@ -13,6 +13,21 @@ export async function completeAssetReturn(
   const db = await getDb();
   const now = Date.now();
 
+  const inspector =
+    (await db
+      .select({ id: employees.id })
+      .from(employees)
+      .where(
+        or(
+          eq(employees.id, inspectedBy),
+          eq(employees.entraId, inspectedBy),
+          eq(employees.email, inspectedBy),
+        ),
+      )
+      .limit(1)
+      .get()) ?? null;
+  const actorId = inspector?.id ?? employeeId;
+
   const openAssignment = await db
     .select()
     .from(assignments)
@@ -24,11 +39,23 @@ export async function completeAssetReturn(
   if (openAssignment) {
     await db
       .update(assignments)
-      .set({ returnedAt: now, conditionAtReturn: condition, updatedAt: now })
+      .set({
+        returnedAt: now,
+        conditionAtReturn: condition,
+        status: "RETURNED",
+        updatedAt: now,
+      })
       .where(eq(assignments.id, openAssignment.id));
   }
 
-  const badConditions = ["DAMAGED", "BROKEN", "DESTROYED", "FAULTY"];
+  const badConditions = [
+    "DAMAGED",
+    "BROKEN",
+    "DESTROYED",
+    "FAULTY",
+    "NON_FUNCTIONAL",
+    "LOST",
+  ];
   const nextStatus = badConditions.includes(condition.toUpperCase())
     ? "DISPOSAL_REQUESTED"
     : "AVAILABLE";
@@ -42,7 +69,7 @@ export async function completeAssetReturn(
     "assets",
     assetId,
     "ASSET_RETURNED",
-    inspectedBy,
+    actorId,
     { status: "RETURNING" },
     { status: nextStatus, condition },
   );
@@ -77,7 +104,7 @@ export async function completeAssetReturn(
         "offboarding_events",
         event.id,
         "OFFBOARDING_COMPLETED",
-        inspectedBy,
+        actorId,
         { status: "IN_PROGRESS" },
         { status: "COMPLETED" },
       );

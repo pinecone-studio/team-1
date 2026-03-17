@@ -6,12 +6,17 @@ import {
   requestRepair,
 } from "@/db/offboarding";
 import { createDataWipeTask } from "@/db/dataWipeTasks/mutations/createDataWipeTask";
+import { updateDataWipeTask } from "@/db/dataWipeTasks/mutations/updateDataWipeTask";
 
 export const offboardingMutations = {
   startOffboarding: (
     _: unknown,
-    args: { employeeId: string; initiatedBy: string },
-  ) => startOffboarding(args.employeeId, args.initiatedBy),
+    args: { employeeId: string; initiatedBy: string; terminationDate?: number | null },
+  ) =>
+    startOffboarding(args.employeeId, args.initiatedBy, {
+      terminationDate:
+        args.terminationDate != null ? Number(args.terminationDate) : undefined,
+    }),
   submitReturnRequest: (
     _: unknown,
     args: {
@@ -71,4 +76,6 @@ export const offboardingMutations = {
     ),
   createDataWipeTask: (_: unknown, args: { assetId: string }) =>
     createDataWipeTask(args.assetId),
+  updateDataWipeTask: (_: unknown, args: { id: string; status: string }) =>
+    updateDataWipeTask(args.id, args.status),
 };
