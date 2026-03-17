@@ -1,16 +1,19 @@
-import { and, inArray, like } from "drizzle-orm";
+import { and, desc, inArray, like } from "drizzle-orm";
 
-import { getDb } from "../../client";
 import type { Asset } from "../types";
 import { assets } from "@/schema";
+import type { GraphQLContext } from "@/graphql-gql/context";
 
 export async function getAssets(
+  ctx: GraphQLContext,
   office?: string,
   categoryIds?: string[],
   subCategoryIds?: string[],
   locationIds?: string[],
+  limit = 50,
+  offset = 0,
 ): Promise<Asset[]> {
-  const db = await getDb();
+  const db = ctx.db;
   const conditions = [];
   if (office) {
     conditions.push(like(assets.locationId, `%${office}%`));
@@ -24,12 +27,14 @@ export async function getAssets(
   if (subCategoryIds && subCategoryIds.length > 0) {
     conditions.push(inArray(assets.categoryId, subCategoryIds));
   }
-  if (conditions.length === 0) {
-    return db.select().from(assets).all();
-  }
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
   return db
     .select()
     .from(assets)
-    .where(and(...conditions))
+    .where(whereClause)
+    .orderBy(desc(assets.createdAt))
+    .limit(limit)
+    .offset(offset)
     .all();
 }

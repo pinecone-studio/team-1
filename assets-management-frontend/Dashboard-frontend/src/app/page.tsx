@@ -13,6 +13,7 @@ import { DemoEmployeeContent } from "@/components/demo-employee/demo-employee";
 import { DemoITContent } from "@/components/demo-it/demo-it";
 import { DemoHRContent } from "@/components/demo-hr/demo-hr";
 import { AssetFilter } from "@/components/assets/asset-filter";
+import { QRCensusContent } from "@/components/qr/qr-census-content";
 
 export default function DashboardPage() {
   const [activeTitle, setActiveTitle] = useState("Хянах самбар");
@@ -21,7 +22,16 @@ export default function DashboardPage() {
     <div className="min-h-svh bg-muted/30">
       <DashboardHeader />
 
-      <SidebarProvider className="min-h-svh">
+      <SidebarProvider
+        className="min-h-svh"
+        defaultOpen={true}
+        style={
+          {
+            "--sidebar-width": "240px",
+            "--sidebar-width-icon": "72px",
+          } as React.CSSProperties
+        }
+      >
         <AppSidebar
           activeTitle={activeTitle}
           onSelect={setActiveTitle}
@@ -32,19 +42,21 @@ export default function DashboardPage() {
           {activeTitle === "Хянах самбар" ? <DashboardContent /> : null}
           {activeTitle === "Хөрөнгө" ? <AssetsContent /> : null}
           {activeTitle === "Эд Хөрөнгө" ? <AssetFilter /> : null}
-          {activeTitle === "Хөрөнгө хуваарилах" ? (
+          {/* {activeTitle === "Хөрөнгө хуваарилах" ? (
             <AssetAllocationContent />
           ) : null}
           {activeTitle === "Хөрөнгө шилжүүлэх" ? (
             <AssetTransferContent />
-          ) : null}
+          ) : null} */}
           {activeTitle === "Demo Ажилтан" ? <DemoEmployeeContent /> : null}
           {activeTitle === "Demo IT" ? <DemoITContent /> : null}
           {activeTitle === "Demo HR" ? <DemoHRContent /> : null}
+          {activeTitle === "QR тооллого" ? <QRCensusContent /> : null}
 
           {activeTitle !== "Хянах самбар" &&
           activeTitle !== "Хөрөнгө" &&
           activeTitle !== "Хөрөнгө хуваарилах" &&
+          activeTitle !== "QR тооллого" &&
           activeTitle !== "Ажилтан демо" &&
           activeTitle !== "IT демо" &&
           activeTitle !== "HR демо" ? (

@@ -181,7 +181,7 @@ export function AssetDistributionChart() {
   }, [assetsData?.assets, locationIdToRootName, parentMap, mode]);
 
   return (
-    <Card className="border shadow-sm">
+    <Card className="border shadow-sm min-w-[380px]">
       <CardHeader className="flex flex-row items-center gap-3 text-sm font-medium">
         <span>Хөрөнгийг</span>
 
@@ -216,7 +216,7 @@ export function AssetDistributionChart() {
       </CardHeader>
 
       <CardContent>
-        <div className="h-65 flex items-center">
+        <div className="h-80 min-h-[280px] flex items-center">
           {loading ? (
             <div className="w-full text-center text-sm text-muted-foreground">
               Уншиж байна...
@@ -249,7 +249,7 @@ export function AssetDistributionChart() {
               </div>
 
               {/* LEGEND */}
-              <div className="w-1/2 grid grid-cols-2 gap-x-8 gap-y-3 max-h-55 overflow-y-auto">
+              <div className="w-1/2 grid grid-cols-2 gap-x-8 gap-y-3 max-h-64 overflow-y-auto">
                 {chartData.map((item) => (
                   <div key={item.name} className="flex items-center gap-2">
                     <div

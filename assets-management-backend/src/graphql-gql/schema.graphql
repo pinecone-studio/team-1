@@ -398,11 +398,32 @@ type AuditLog {
   createdAt: Float!
 }
 
+type AssetKpis {
+  totalCount: Int!
+  totalValue: Float!
+  assignedCount: Int!
+  assignedValue: Float!
+  unassignedCount: Int!
+  unassignedValue: Float!
+  forSaleCount: Int!
+  forSaleValue: Float!
+  brokenCount: Int!
+  brokenValue: Float!
+}
+
 type Query {
   employees: [Employee!]!
   employee(id: ID!): Employee
-  assets(office: String, categoryIds: [ID!], subCategoryIds: [ID!], locationIds: [ID!]): [Asset!]!
+  assets(
+    office: String
+    categoryIds: [ID!]
+    subCategoryIds: [ID!]
+    locationIds: [ID!]
+    limit: Int
+    offset: Int
+  ): [Asset!]!
   asset(id: ID!): Asset
+  assetKpis(office: String): AssetKpis!
   assignments: [Assignment!]!
   employeeAssignments(employeeId: ID!, status: String): [Assignment!]!
   purchaseRequests(status: PurchaseRequestStatus): [PurchaseRequest!]!

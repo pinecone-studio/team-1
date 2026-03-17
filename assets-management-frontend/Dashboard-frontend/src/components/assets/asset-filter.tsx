@@ -41,7 +41,11 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AssetFormDialog } from "./asset-form-dialog";
 import { AssetTransferDialog } from "./asset-transfer-dialog";
+<<<<<<< 89-location-filter
 import { Search, Filter } from "lucide-react";
+=======
+import { AssetDetailContent } from "./asset-detail-content";
+>>>>>>> main
 
 /** A4 хуудсан дээр 7 багана, ~4 эгнээ (хэвлэх layout-тай таарна) */
 const QR_TILES_PER_A4_PAGE = 28;
@@ -149,6 +153,7 @@ export function AssetFilter() {
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [showQrDialog, setShowQrDialog] = useState(false);
   const [qrAssets, setQrAssets] = useState<Asset[]>([]);
+  const [detailAssetId, setDetailAssetId] = useState<string | null>(null);
   const [assignEmployeeId, setAssignEmployeeId] = useState<string>("");
   const [assigning, setAssigning] = useState(false);
   // "" = бүх төлөв (filter хийгдээгүй)
@@ -159,14 +164,30 @@ export function AssetFilter() {
   const [statusFilter, setStatusFilter] = useState("");
   const selectAllRef = useRef<HTMLInputElement>(null);
   const qrPrintRef = useRef<HTMLDivElement | null>(null);
+<<<<<<< 89-location-filter
   const [expandedColumn, setExpandedColumn] = useState<string | null>(null);
+=======
+  const qrPages = useMemo(() => {
+    const pages: Asset[][] = [];
+    for (let i = 0; i < qrAssets.length; i += QR_TILES_PER_A4_PAGE) {
+      pages.push(qrAssets.slice(i, i + QR_TILES_PER_A4_PAGE));
+    }
+    return pages.length > 0 ? pages : [[]];
+  }, [qrAssets]);
+
+  const assetsQueryVariables = useMemo(
+    () => ({
+      office: undefined as undefined,
+      categoryIds: undefined as undefined,
+      subCategoryIds: undefined as undefined,
+      locationIds: undefined as undefined,
+    }),
+    [],
+  );
+>>>>>>> main
   const { data, loading, error, refetch } = useQuery(GetAssetsDocument, {
-    variables: {
-      office: undefined,
-      categoryIds: undefined,
-      subCategoryIds: undefined,
-      locationIds: undefined,
-    },
+    variables: assetsQueryVariables,
+    fetchPolicy: "cache-first",
   });
   const { data: categoriesData } = useQuery(CategoriesDocument);
   const { data: employeesData } = useQuery(EmployeesDocument);
@@ -330,7 +351,7 @@ export function AssetFilter() {
           </div>`;
       })
       .join("");
-    const printWindow = window.open("", "_blank", "width=1024,height=768");
+    const printWindow = window.open("", "_blank", "width=1424,height=768");
     if (!printWindow) return;
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -730,6 +751,7 @@ export function AssetFilter() {
       </Dialog>
 
       <Dialog open={showQrDialog} onOpenChange={setShowQrDialog}>
+<<<<<<< 89-location-filter
         <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>QR код хэвлэх / PDF болгох</DialogTitle>
@@ -800,11 +822,89 @@ export function AssetFilter() {
                       <span className="mt-0.5 text-[10px] text-muted-foreground text-center truncate w-full leading-tight">
                         {label}
                       </span>
+=======
+        <DialogContent className="max-w-7xl w-[98vw] max-h-[92vh] flex flex-col overflow-hidden">
+          <div className="flex flex-col flex-1 min-h-0">
+            <DialogHeader className="shrink-0">
+              <DialogTitle>QR код хэвлэх / PDF болгох</DialogTitle>
+              <DialogDescription>
+                Сонгосон хөрөнгийн QR кодуудыг A4 хэмжээтэй хуудсан дээр харах,
+                хэвлэх эсвэл browser-ийн `Print → Save as PDF`-ээр PDF болгон
+                хадгалах боломжтой.
+              </DialogDescription>
+            </DialogHeader>
+            {qrAssets.length > 1 && (
+              <p className="text-sm text-muted-foreground mt-1 shrink-0">
+                Нийт <strong>{qrAssets.length}</strong> хөрөнгө · 1 A4 хуудасанд{" "}
+                <strong>{QR_TILES_PER_A4_PAGE}</strong> ширхэг · нийт A4 дээр{" "}
+                <strong>
+                  {Math.ceil(qrAssets.length / QR_TILES_PER_A4_PAGE)}
+                </strong>{" "}
+                хуудас гарна.
+              </p>
+            )}
+            <div
+              ref={qrPrintRef}
+              className="mt-4 bg-white p-4 border border-border rounded-lg shadow-sm flex-1 min-h-0 overflow-auto"
+            >
+              <div className="space-y-6 py-2">
+                {qrPages.map((pageAssets, pageIndex) => {
+                  const pageNumber = pageIndex + 1;
+                  return (
+                    <div key={pageNumber} className="mx-auto w-fit">
+                      <div className="mb-2 text-xs text-muted-foreground">
+                        A4 · Хуудас {pageNumber} / {qrPages.length}
+                      </div>
+                      <div className="w-[794px] h-[1123px] bg-white border border-border shadow-sm rounded-md overflow-hidden print:shadow-none print:border-0 print:rounded-none print:break-after-page last:print:break-after-auto">
+                        <div className="h-full w-full p-8">
+                          <div className="grid grid-cols-7 grid-rows-4 gap-2 h-full">
+                            {Array.from(
+                              { length: QR_TILES_PER_A4_PAGE },
+                              (_, i) => pageAssets[i] ?? null,
+                            ).map((asset, index) => {
+                              if (!asset) {
+                                return (
+                                  <div
+                                    key={`empty-${pageNumber}-${index}`}
+                                    className="rounded-md border border-transparent"
+                                  />
+                                );
+                              }
+                              const qrUrl =
+                                typeof window !== "undefined"
+                                  ? `${window.location.origin}/assets/${asset.id}`
+                                  : `/assets/${asset.id}`;
+                              const label =
+                                asset.assetId ||
+                                asset.serialNumber ||
+                                `#${pageIndex * QR_TILES_PER_A4_PAGE + index + 1}`;
+                              return (
+                                <div
+                                  key={asset.id}
+                                  className="flex flex-col items-center justify-center rounded-md border border-border/60 bg-white p-2 min-h-0"
+                                >
+                                  <img
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
+                                      qrUrl,
+                                    )}`}
+                                    alt={`${label} QR`}
+                                    className="h-16 w-16 rounded bg-white object-contain shrink-0"
+                                  />
+                                  <span className="mt-1 text-[10px] text-muted-foreground text-center truncate w-full leading-tight">
+                                    {label}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+>>>>>>> main
                     </div>
                   );
                 })}
               </div>
-            )}
+            </div>
           </div>
           <DialogFooter className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between shrink-0">
             <div className="flex gap-2 justify-end">
@@ -823,13 +923,14 @@ export function AssetFilter() {
               </Button>
             </div>
           </DialogFooter>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs text-muted-foreground shrink-0">
             PDF болгох бол доорх <b>“PDF файл болгох”</b> товчийг дарж, нээгдсэн
             цонхноос <b>Save as PDF</b> сонгоно уу.
           </div>
         </DialogContent>
       </Dialog>
 
+<<<<<<< 89-location-filter
       <div className="rounded-md  overflow-hidden font-inter ">
         <Table className="table-fixed w-full  border-separate border-spacing-y-2">
           {/* HEADER */}
@@ -866,6 +967,107 @@ export function AssetFilter() {
                 Он сар
               </TableHead>
               <TableHead className="text-white text-center w-[90px]">
+=======
+      <Dialog
+        open={!!detailAssetId}
+        onOpenChange={(open) => !open && setDetailAssetId(null)}
+      >
+        <DialogContent className="max-w-6xl w-[98vw] max-h-[92vh] flex flex-col overflow-hidden p-6 rounded-xl">
+          <DialogTitle className="sr-only">Хөрөнгийн дэлгэрэнгүй</DialogTitle>
+          <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1">
+            {detailAssetId && (
+              <AssetDetailContent
+                assetId={detailAssetId}
+                className=""
+                onSaved={() => refetch()}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <div className="rounded-md border border-border overflow-hidden min-h-[520px]">
+        <Table className="table-fixed w-full">
+          <TableHeader>
+            <TableRow className="border-0 bg-sky-800 hover:bg-sky-800 h-11">
+              <TableHead className="w-12 h-11 font-medium border-0 text-white align-middle">
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    ref={selectAllRef}
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={selectAll}
+                    className="h-4 w-4 rounded border-2 border-white bg-transparent text-white focus:ring-white focus:ring-offset-0 focus:ring-2"
+                  />
+                </label>
+              </TableHead>
+              <TableHead className="h-11 font-medium border-0 text-white align-middle w-12">
+                <span className="flex items-center gap-1">
+                  № <FilterIcon />
+                </span>
+              </TableHead>
+              <TableHead className="h-11 font-medium border-0 text-white align-middle min-w-[100px]">
+                <span className="flex items-center gap-1">
+                  Хөрөнгийн ID <FilterIcon />
+                </span>
+              </TableHead>
+              <TableHead className="h-11 font-medium border-0 text-white align-middle min-w-[100px]">
+                <span className="flex items-center gap-1">
+                  Хөрөнгийн нэр <FilterIcon />
+                </span>
+              </TableHead>
+              <TableHead className="h-11 font-medium border-0 text-white align-middle min-w-[80px]">
+                <span className="flex items-center gap-1">
+                  Ангилал <FilterIcon />
+                </span>
+              </TableHead>
+              <TableHead className="h-11 font-medium border-0 text-white align-middle min-w-[80px]">
+                <span className="flex items-center gap-1">
+                  Дэд ангилал <FilterIcon />
+                </span>
+              </TableHead>
+              <TableHead className="h-11 font-medium border-0 text-white w-[140px] min-w-[140px] p-1 align-middle">
+                <Select
+                  value={statusFilter || "all"}
+                  onValueChange={(v) => setStatusFilter(v === "all" ? "" : v)}
+                >
+                  <SelectTrigger className="h-8 w-full cursor-pointer border-0 bg-transparent text-white hover:bg-white/10 focus:ring-0 focus:ring-offset-0 gap-1 px-2  [&>svg]:text-white">
+                    <span className="flex items-center gap-1">
+                      Төлөв
+                      <FilterIcon className="h-3 w-3 " />
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent
+                    position="popper"
+                    align="start"
+                    sideOffset={4}
+                    className="z-[100] max-h-[var(--radix-select-content-available-height)]"
+                  >
+                    <SelectItem value="all">Бүгд</SelectItem>
+                    <SelectItem value="ASSIGNED">Эзэмшигчтэй</SelectItem>
+                    <SelectItem value="AVAILABLE">Эзэмшигчгүй</SelectItem>
+                    <SelectItem value="FOR_SALE">Зарж болох</SelectItem>
+                    <SelectItem value="DAMAGED">Эвдрэлтэй</SelectItem>
+                  </SelectContent>
+                </Select>
+              </TableHead>
+              <TableHead className="h-11 font-medium border-0 text-white align-middle min-w-[90px]">
+                <span className="flex items-center gap-1">
+                  Байршил <FilterIcon />
+                </span>
+              </TableHead>
+              <TableHead className="h-11 font-medium border-0 text-white align-middle min-w-[90px]">
+                <span className="flex items-center gap-1">
+                  Эзэмшигч <FilterIcon />
+                </span>
+              </TableHead>
+              <TableHead className="h-11 font-medium text-right border-0 text-white align-middle w-24">
+                <span className="flex items-center justify-end gap-1">
+                  Үнэ (₮) <FilterIcon />
+                </span>
+              </TableHead>
+              <TableHead className="h-11 font-medium text-right border-0 text-white align-middle w-14">
+>>>>>>> main
                 QR
               </TableHead>
             </TableRow>
@@ -873,14 +1075,52 @@ export function AssetFilter() {
 
           {/* BODY */}
           <TableBody>
+<<<<<<< 89-location-filter
+=======
+            {loading && (
+              <TableRow className="h-32">
+                <TableCell
+                  colSpan={12}
+                  className="h-32 py-12 text-center font-medium text-black align-middle"
+                >
+                  Ачаалж байна...
+                </TableCell>
+              </TableRow>
+            )}
+            {error && (
+              <TableRow className="h-32">
+                <TableCell
+                  colSpan={12}
+                  className="h-32 py-12 text-center font-medium text-destructive align-middle"
+                >
+                  {error.message}
+                </TableCell>
+              </TableRow>
+            )}
+            {!loading && !error && visibleAssets.length === 0 && (
+              <TableRow className="h-32">
+                <TableCell
+                  colSpan={12}
+                  className="h-32 py-12 text-center font-medium text-black align-middle"
+                >
+                  Хөрөнгө олдсонгүй.
+                </TableCell>
+              </TableRow>
+            )}
+>>>>>>> main
             {!loading &&
               visibleAssets.map((asset, index) => (
+<<<<<<< 89-location-filter
                 <TableRow
                   key={asset.id}
                   className={`bg-white shadow-sm hover:bg-gray-50`}
                 >
                   {/* checkbox */}
                   <TableCell className="py-2 rounded-l-md">
+=======
+                <TableRow key={asset.id} className="border-border h-12">
+                  <TableCell className="w-12 py-2 align-middle">
+>>>>>>> main
                     <input
                       type="checkbox"
                       checked={selectedIds.has(asset.id)}
@@ -888,6 +1128,7 @@ export function AssetFilter() {
                       className="h-4 w-4"
                     />
                   </TableCell>
+<<<<<<< 89-location-filter
 
                   {/* index */}
                   <TableCell className="py-2 font-medium">
@@ -947,6 +1188,53 @@ export function AssetFilter() {
 
                   {/* QR */}
                   <TableCell className="py-2 text-center rounded-r-md">
+=======
+                  <TableCell className="font-medium text-black py-2 align-middle">
+                    {index + 1}
+                  </TableCell>
+                  <TableCell className="font-medium text-black py-2 align-middle">
+                    <button
+                      type="button"
+                      onClick={() => setDetailAssetId(asset.id)}
+                      className="text-black hover:underline text-left"
+                      title="Дэлгэрэнгүй үзэх, бүтэн түүх (бүртгэл, шилжүүлэлт, IT баталгаа г.м)"
+                    >
+                      {asset.assetId}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDetailAssetId(asset.id)}
+                      className="ml-2 text-xs text-muted-foreground hover:underline"
+                      title="Бүтэн түүх: бүртгэгдсэн, хэн рүү шилжсэн, IT админ баталсан г.м"
+                    >
+                      Түүх
+                    </button>
+                  </TableCell>
+                  <TableCell className="font-medium text-black py-2 align-middle">
+                    {asset.category ?? asset.assetId}
+                  </TableCell>
+                  <TableCell className="font-medium text-black py-2 align-middle">
+                    {asset.mainCategory ?? "—"}
+                  </TableCell>
+                  <TableCell className="font-medium text-black py-2 align-middle">
+                    {asset.category ?? "—"}
+                  </TableCell>
+                  <TableCell className="font-medium text-black py-2 align-middle">
+                    {getStatusBadge(asset.status)}
+                  </TableCell>
+                  <TableCell className="font-medium text-black py-2 align-middle">
+                    {asset.location ?? "—"}
+                  </TableCell>
+                  <TableCell className="font-medium text-black py-2 align-middle">
+                    {asset.assignedEmployeeName ??
+                      asset.assignedEmployeeId ??
+                      "—"}
+                  </TableCell>
+                  <TableCell className="text-right font-medium tabular-nums text-black py-2 align-middle">
+                    {asset.currentBookValue.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right py-2 align-middle">
+>>>>>>> main
                     <Button
                       variant="outline"
                       size="sm"

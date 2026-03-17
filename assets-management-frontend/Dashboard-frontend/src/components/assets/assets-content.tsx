@@ -26,18 +26,17 @@ type LocationFromApi = {
   type: string;
 };
 const LOCATION_TYPES = ["branch", "roomType", "section", "room"] as const;
-function getLeafIdsUnder(
+
+/** Root + бүх доод байршлын ID-ууд (asset.locationId аль ч түвшинд байж болно) */
+function getAllIdsUnder(
   locId: string,
-  locations: LocationFromApi[],
   childrenByParent: Map<string | null, LocationFromApi[]>,
 ): string[] {
-  const loc = locations.find((l) => l.id === locId);
-  if (!loc) return [];
-  if (loc.type === "room") return [locId];
   const children = childrenByParent.get(locId) ?? [];
-  return children.flatMap((c) =>
-    getLeafIdsUnder(c.id, locations, childrenByParent),
+  const descendantIds = children.flatMap((c) =>
+    getAllIdsUnder(c.id, childrenByParent),
   );
+  return [locId, ...descendantIds];
 }
 
 export function AssetsContent() {
@@ -75,17 +74,16 @@ export function AssetsContent() {
   const resolvedLocationIdsForApi = useMemo(() => {
     const selected = filterState.locationIds;
     if (selected.size === 0) return undefined;
-    const leafIds = new Set<string>();
+    const ids = new Set<string>();
     selected.forEach((id) =>
-      getLeafIdsUnder(id, locationTree.list, locationTree.byParent).forEach(
-        (lid) => leafIds.add(lid),
-      ),
+      getAllIdsUnder(id, locationTree.byParent).forEach((lid) => ids.add(lid)),
     );
-    return Array.from(leafIds);
+    return Array.from(ids);
   }, [filterState.locationIds, locationTree]);
-  const { data, loading, error, refetch } = useQuery(GetAssetsDocument, {
-    variables: {
-      office: undefined,
+
+  const assetsQueryVariables = useMemo(
+    () => ({
+      office: undefined as undefined,
       categoryIds:
         filterState.category.size > 0
           ? Array.from(filterState.category)
@@ -95,7 +93,16 @@ export function AssetsContent() {
           ? Array.from(filterState.subCategory)
           : undefined,
       locationIds: resolvedLocationIdsForApi,
-    },
+    }),
+    [
+      filterState.category,
+      filterState.subCategory,
+      resolvedLocationIdsForApi,
+    ],
+  );
+  const { data, loading, error, refetch } = useQuery(GetAssetsDocument, {
+    variables: assetsQueryVariables,
+    fetchPolicy: "cache-first",
   });
   const { data: categoriesData } = useQuery(CategoriesDocument);
   const [deleteAssetMutation] = useMutation(DeleteAssetDocument);
@@ -223,10 +230,11 @@ export function AssetsContent() {
     return map;
   }, [locationTree.list]);
 
-  /** Нэрээр нэгтгэсэн байршлын сонголт — нэг нэр нэг checkbox (ижил нэртэй бүх ID орно) */
+  /** Зөвхөн root байршлууд (parentId === null), нэрээр нэгтгэсэн — нэг нэр нэг checkbox */
   const locationOptionsByName = useMemo(() => {
+    const roots = locationTree.list.filter((loc) => loc.parentId === null);
     const byName = new Map<string, string[]>();
-    locationTree.list.forEach((loc) => {
+    roots.forEach((loc) => {
       const n = loc.name;
       if (!byName.has(n)) byName.set(n, []);
       byName.get(n)!.push(loc.id);

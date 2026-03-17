@@ -1,11 +1,9 @@
 "use client";
 
-import { Package, UserCheck, UserX, DollarSign, Wrench } from "lucide-react";
-import { useMemo } from "react";
+import { Package, UserCheck, Wrench } from "lucide-react";
 import { useQuery } from "@apollo/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { GetAssetsDocument, AssetFieldsFragmentDoc } from "@/gql/graphql";
-import { useFragment } from "@/gql/fragment-masking";
+import { GetAssetKpisDocument } from "@/gql/graphql";
 
 const formatMoney = (value: number) =>
   `${new Intl.NumberFormat("mn-MN").format(value)}₮`;
@@ -13,101 +11,67 @@ const formatMoney = (value: number) =>
 const formatPercent = (value: number) => `${Math.round(value)}%`;
 
 export function KPICards() {
-  const { data: assetsData, loading: assetsLoading } =
-    useQuery(GetAssetsDocument);
+  const { data, loading: assetsLoading } = useQuery(GetAssetKpisDocument);
 
-  const kpiData = useMemo(() => {
-    const assets = assetsData?.assets ?? [];
+  const kpis = data?.assetKpis;
+  const totalAssets = kpis?.totalCount ?? 0;
+  const totalValue = kpis?.totalValue ?? 0;
+  const assignedPercent =
+    totalAssets > 0 ? ((kpis?.assignedCount ?? 0) / totalAssets) * 100 : 0;
+  const unassignedPercent =
+    totalAssets > 0 ? ((kpis?.unassignedCount ?? 0) / totalAssets) * 100 : 0;
+  const sellablePercent =
+    totalAssets > 0 ? ((kpis?.forSaleCount ?? 0) / totalAssets) * 100 : 0;
+  const brokenPercent =
+    totalAssets > 0 ? ((kpis?.brokenCount ?? 0) / totalAssets) * 100 : 0;
 
-    const sumValue = (items: typeof assets) =>
-      items.reduce((acc, a) => {
-        const asset = useFragment(AssetFieldsFragmentDoc, a);
-        return acc + (asset.currentBookValue ?? asset.purchaseCost ?? 0);
-      }, 0);
-
-    const totalAssets = assets.length;
-    const totalValue = sumValue(assets);
-
-    const assignedAssets = assets.filter((a) => {
-      const asset = useFragment(AssetFieldsFragmentDoc, a);
-      return !!asset.assignedTo;
-    });
-
-    const unassignedAssets = assets.filter((a) => {
-      const asset = useFragment(AssetFieldsFragmentDoc, a);
-      return !asset.assignedTo;
-    });
-
-    const sellableAssets = assets.filter((a) => {
-      const asset = useFragment(AssetFieldsFragmentDoc, a);
-      return asset.status === "AVAILABLE";
-    });
-
-    const brokenAssets = assets.filter((a) => {
-      const asset = useFragment(AssetFieldsFragmentDoc, a);
-      return asset.status === "IN_REPAIR" || asset.status === "DAMAGED";
-    });
-
-    const assignedPercent =
-      totalAssets > 0 ? (assignedAssets.length / totalAssets) * 100 : 0;
-
-    const unassignedPercent =
-      totalAssets > 0 ? (unassignedAssets.length / totalAssets) * 100 : 0;
-
-    const sellablePercent =
-      totalAssets > 0 ? (sellableAssets.length / totalAssets) * 100 : 0;
-
-    const brokenPercent =
-      totalAssets > 0 ? (brokenAssets.length / totalAssets) * 100 : 0;
-
-    return [
-      {
-        title: "Нийт хөрөнгө",
-        value: formatMoney(totalValue),
-        subtitle: "100%",
-        progress: 100,
-        icon: Package,
-        iconBorder: "border-sky-400",
-        iconColor: "text-sky-400",
-      },
-      {
-        title: "Эзэмшигчтэй",
-        value: formatMoney(sumValue(assignedAssets)),
-        subtitle: formatPercent(assignedPercent),
-        progress: assignedPercent,
-        icon: UserCheck,
-        iconBorder: "border-green-400",
-        iconColor: "text-green-400",
-      },
-      {
-        title: "Эзэмшигчгүй",
-        value: formatMoney(sumValue(unassignedAssets)),
-        subtitle: formatPercent(unassignedPercent),
-        progress: unassignedPercent,
-        icon: UserCheck,
-        iconBorder: "border-orange-400",
-        iconColor: "text-orange-400",
-      },
-      {
-        title: "Зарж болох",
-        value: formatMoney(sumValue(sellableAssets)),
-        subtitle: formatPercent(sellablePercent),
-        progress: sellablePercent,
-        icon: UserCheck,
-        iconBorder: "border-yellow-400",
-        iconColor: "text-yellow-400",
-      },
-      {
-        title: "Эвдрэлтэй",
-        value: formatMoney(sumValue(brokenAssets)),
-        subtitle: formatPercent(brokenPercent),
-        progress: brokenPercent,
-        icon: Wrench,
-        iconBorder: "border-red-400",
-        iconColor: "text-red-400",
-      },
-    ];
-  }, [assetsData?.assets]);
+  const kpiData = [
+    {
+      title: "Нийт хөрөнгө",
+      value: formatMoney(totalValue),
+      subtitle: "100%",
+      progress: 100,
+      icon: Package,
+      iconBorder: "border-sky-400",
+      iconColor: "text-sky-400",
+    },
+    {
+      title: "Эзэмшигчтэй",
+      value: formatMoney(kpis?.assignedValue ?? 0),
+      subtitle: formatPercent(assignedPercent),
+      progress: assignedPercent,
+      icon: UserCheck,
+      iconBorder: "border-green-400",
+      iconColor: "text-green-400",
+    },
+    {
+      title: "Эзэмшигчгүй",
+      value: formatMoney(kpis?.unassignedValue ?? 0),
+      subtitle: formatPercent(unassignedPercent),
+      progress: unassignedPercent,
+      icon: UserCheck,
+      iconBorder: "border-orange-400",
+      iconColor: "text-orange-400",
+    },
+    {
+      title: "Зарж болох",
+      value: formatMoney(kpis?.forSaleValue ?? 0),
+      subtitle: formatPercent(sellablePercent),
+      progress: sellablePercent,
+      icon: UserCheck,
+      iconBorder: "border-yellow-400",
+      iconColor: "text-yellow-400",
+    },
+    {
+      title: "Эвдрэлтэй",
+      value: formatMoney(kpis?.brokenValue ?? 0),
+      subtitle: formatPercent(brokenPercent),
+      progress: brokenPercent,
+      icon: Wrench,
+      iconBorder: "border-red-400",
+      iconColor: "text-red-400",
+    },
+  ];
 
   return (
     <div className="space-y-6">

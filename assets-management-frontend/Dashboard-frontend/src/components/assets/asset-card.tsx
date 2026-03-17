@@ -42,14 +42,9 @@ export function AssetCard({
           <Image
             src={asset.imageUrl}
             alt={asset.assetId}
-            // wrapperClassName-ийн оронд rootClassName ашиглав
-            className="w-full h-full"
-            // Зургийг контейнертээ бүрэн дүүрч, харьцаа алдагдуулахгүй харагдуулна
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-            }}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 280px"
             loading="lazy"
           />
         ) : (

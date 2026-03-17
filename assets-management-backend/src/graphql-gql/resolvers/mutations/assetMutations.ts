@@ -11,6 +11,8 @@ import { getAssetById } from "@/db/assets/queries";
 import { getFirstEmployeeId } from "@/db/employees/queries/getEmployees";
 import { writeAuditLog } from "@/db/auditLogger";
 import { ensureLocationId } from "@/db/locations";
+import { bumpAssetsCacheVersion } from "@/graphql-gql/cache/assetsListCache";
+import type { GraphQLContext } from "@/graphql-gql/context";
 
 type AssetCreateInput = {
   assetTag: string;
@@ -66,7 +68,7 @@ const buildAssetUpdate = (input: AssetUpdateInput) => {
 };
 
 export const assetMutations = {
-  createAsset: async (_: unknown, args: { input: AssetCreateInput }) => {
+  createAsset: async (_: unknown, args: { input: AssetCreateInput }, ctx: GraphQLContext) => {
     const input = args.input;
     const mainCategoryId =
       input.mainCategory?.trim() ?
@@ -77,7 +79,7 @@ export const assetMutations = {
       input.mainCategory ?? null
     );
     const locationIdResolved = await ensureLocationId(input.locationId);
-    return createAsset({
+    const created = await createAsset({
       assetTag: input.assetTag,
       serialNumber: input.serialNumber,
       status: input.status ?? undefined,
@@ -90,8 +92,10 @@ export const assetMutations = {
       mainCategoryId: mainCategoryId ?? undefined,
       categoryId,
     } as Parameters<typeof createAsset>[0]);
+    await bumpAssetsCacheVersion(ctx);
+    return created;
   },
-  updateAsset: async (_: unknown, args: { id: string; input: AssetUpdateInput }) => {
+  updateAsset: async (_: unknown, args: { id: string; input: AssetUpdateInput }, ctx: GraphQLContext) => {
     const input = args.input;
     const updates = buildAssetUpdate(input);
     if (input.locationId !== undefined) {
@@ -122,18 +126,20 @@ export const assetMutations = {
         updates as Record<string, unknown>,
       );
     }
+    await bumpAssetsCacheVersion(ctx);
     return updated;
   },
-  deleteAsset: async (_: unknown, args: { id: string }) => {
+  deleteAsset: async (_: unknown, args: { id: string }, ctx: GraphQLContext) => {
     const hasArchiveEnv =
       !!process.env.R2_S3_API &&
       !!process.env.R2_ACCESS_KEY_ID &&
       !!process.env.R2_SECRET_ACCESS_KEY &&
       !!process.env.ARCHIVE_BUCKET_NAME;
-    if (!hasArchiveEnv) {
-      return deleteAssetById(args.id);
-    }
-    return deleteAndArchiveAsset(args.id);
+    const ok = !hasArchiveEnv
+      ? await deleteAssetById(args.id)
+      : await deleteAndArchiveAsset(args.id);
+    await bumpAssetsCacheVersion(ctx);
+    return ok;
   },
   updateAssetCategory: async (_: unknown, args: { assetId: string; categoryId: string }) => {
     const categoryId = await ensureCategoryId(args.categoryId);

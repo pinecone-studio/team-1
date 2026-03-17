@@ -3,6 +3,10 @@ import { makeExecutableSchema } from "@graphql-tools/schema";
 import { typeDefs, resolvers } from "@/graphql-gql";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { drizzle } from "drizzle-orm/d1";
+import * as dbSchema from "@/schema";
+import type { GraphQLContext } from "@/graphql-gql/context";
 export const runtime = "nodejs";
 
 const schema = makeExecutableSchema({
@@ -15,6 +19,13 @@ const { handleRequest } = Yoga.createYoga({
   graphqlEndpoint: "/api/graphql",
   fetchAPI: { Response, Request },
   maskedErrors: false,
+  context: async (): Promise<GraphQLContext> => {
+    const { env } = await getCloudflareContext({ async: true });
+    return {
+      env: env as any,
+      db: drizzle(env.DB, { schema: dbSchema }),
+    };
+  },
 });
 
 type RouteContext = { params: Promise<{}> };
