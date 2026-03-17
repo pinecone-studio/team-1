@@ -2,11 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { getDb } from "../../client";
 import { writeAuditLog } from "../../auditLogger";
 import { getAssetById } from "../../assets/queries";
-import {
-  assets,
-  assignments,
-  offboardingEvents,
-} from "@/schema";
+import { assets, assignments, employees, offboardingEvents } from "@/schema";
 
 export async function completeAssetReturn(
   assetId: string,
@@ -47,7 +43,7 @@ export async function completeAssetReturn(
     assetId,
     "ASSET_RETURNED",
     inspectedBy,
-    { status: "RETURNED" },
+    { status: "RETURNING" },
     { status: nextStatus, condition },
   );
 
@@ -72,6 +68,11 @@ export async function completeAssetReturn(
       .where(eq(offboardingEvents.id, event.id));
 
     if (allDone) {
+      await db
+        .update(employees)
+        .set({ status: "TERMINATED", updatedAt: now })
+        .where(eq(employees.id, event.employeeId));
+
       await writeAuditLog(
         "offboarding_events",
         event.id,

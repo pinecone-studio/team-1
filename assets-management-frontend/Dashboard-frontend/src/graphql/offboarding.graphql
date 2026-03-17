@@ -7,6 +7,8 @@ query GetOffboardingEvent($employeeId: ID!) {
     status
     totalAssets
     returnedAssets
+    assetIdsJson
+    deadline
     completedAt
     createdAt
     employee {
@@ -20,6 +22,11 @@ query GetOffboardingEvent($employeeId: ID!) {
       firstName
       lastName
     }
+    assetsToReturn {
+      id
+      assetTag
+      serialNumber
+    }
   }
 }
 
@@ -31,8 +38,33 @@ mutation StartOffboarding($employeeId: ID!, $initiatedBy: ID!) {
   }
 }
 
+mutation SubmitReturnRequest($assetId: ID!, $employeeId: ID!, $condition: String!, $conditionDetail: String, $photoR2Key: String) {
+  submitReturnRequest(assetId: $assetId, employeeId: $employeeId, condition: $condition, conditionDetail: $conditionDetail, photoR2Key: $photoR2Key) {
+    id
+    assetId
+    status
+    conditionEmployee
+  }
+}
+
 mutation CompleteAssetReturn($assetId: ID!, $employeeId: ID!, $condition: String!, $inspectedBy: ID!) {
   completeAssetReturn(assetId: $assetId, employeeId: $employeeId, condition: $condition, inspectedBy: $inspectedBy) {
+    id
+    assetTag
+    status
+  }
+}
+
+mutation ApproveReturnRequest($returnRequestId: ID!, $conditionHr: String!, $inspectedBy: ID!) {
+  approveReturnRequest(returnRequestId: $returnRequestId, conditionHr: $conditionHr, inspectedBy: $inspectedBy) {
+    id
+    assetTag
+    status
+  }
+}
+
+mutation RequestRepair($returnRequestId: ID!, $conditionHr: String!, $photoR2Key: String, $inspectedBy: ID!) {
+  requestRepair(returnRequestId: $returnRequestId, conditionHr: $conditionHr, photoR2Key: $photoR2Key, inspectedBy: $inspectedBy) {
     id
     assetTag
     status

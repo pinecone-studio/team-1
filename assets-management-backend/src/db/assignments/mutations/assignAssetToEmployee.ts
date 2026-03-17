@@ -3,11 +3,7 @@ import { getDb } from "../../client";
 import { getAssetById } from "../../assets/queries";
 import { writeAuditLog } from "../../auditLogger";
 import { createNotification } from "../../notifications";
-import {
-  assets,
-  assignmentFinancing,
-  assignments,
-} from "@/schema";
+import { assets, assignmentFinancing, assignments, employees } from "@/schema";
 
 export async function assignAssetToEmployee(
   assetId: string,
@@ -23,6 +19,27 @@ export async function assignAssetToEmployee(
   requestedByEmployeeId?: string,
 ) {
   const db = await getDb();
+
+  const employee = await db
+    .select({ status: employees.status })
+    .from(employees)
+    .where(eq(employees.id, employeeId))
+    .get();
+
+  if (!employee) {
+    throw new Error(`Employee ${employeeId} not found`);
+  }
+  if (employee.status === "TERMINATED") {
+    throw new Error(
+      "Cannot assign asset to a terminated employee. Ажлаас гарсан ажилтанд хөрөнгө оноох боломжгүй.",
+    );
+  }
+  if (employee.status === "OFFBOARDING") {
+    throw new Error(
+      "Cannot assign asset to an employee in offboarding. Гарах процесс хийж буй ажилтанд хөрөнгө оноох боломжгүй.",
+    );
+  }
+
   const now = Date.now();
   const assignmentId = crypto.randomUUID();
 

@@ -1,9 +1,1 @@
-query GetActiveOffboarding($employeeId: ID!) {
-  offboardingEvent(employeeId: $employeeId) {
-    id
-    status
-    totalAssets
-    returnedAssets
-    createdAt
-  }
-}
+# GetActiveOffboarding is defined in assets.graphql with assetsToReturn

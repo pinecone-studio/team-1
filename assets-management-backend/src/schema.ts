@@ -468,12 +468,64 @@ export const offboardingEvents = sqliteTable(
     status: text().default("IN_PROGRESS").notNull(),
     totalAssets: integer().default(0).notNull(),
     returnedAssets: integer().default(0).notNull(),
+    assetIdsJson: text().default("[]").notNull(),
+    deadline: integer(),
     completedAt: integer(),
     ...timestamps,
   },
   (t) => ({
     employeeIdx: index("offboarding_events_employee_idx").on(t.employeeId),
     statusIdx: index("offboarding_events_status_idx").on(t.status),
+  }),
+);
+
+/** Ажилтан буцаах хүсэлт илгээсэн, HR шалгах хүртэл хадгалагдах. */
+export const offboardingReturnRequests = sqliteTable(
+  "offboarding_return_requests",
+  {
+    id: text().primaryKey().notNull(),
+    offboardingEventId: text()
+      .notNull()
+      .references(() => offboardingEvents.id),
+    assetId: text()
+      .notNull()
+      .references(() => assets.id),
+    assignmentId: text()
+      .notNull()
+      .references(() => assignments.id),
+    employeeId: text()
+      .notNull()
+      .references(() => employees.id),
+    conditionEmployee: text().notNull(),
+    status: text().default("PENDING_HR").notNull(),
+    conditionHr: text(),
+    photoR2Key: text(),
+    inspectedBy: text().references(() => employees.id),
+    ...timestamps,
+  },
+  (t) => ({
+    eventIdx: index("offboarding_return_requests_event_idx").on(
+      t.offboardingEventId,
+    ),
+    assetIdx: index("offboarding_return_requests_asset_idx").on(t.assetId),
+    statusIdx: index("offboarding_return_requests_status_idx").on(t.status),
+  }),
+);
+
+/** IT-д өгөгдөл цэвэрлэлт хийх даалгавар (HR approve хийсний дараа) */
+export const dataWipeTasks = sqliteTable(
+  "data_wipe_tasks",
+  {
+    id: text().primaryKey().notNull(),
+    assetId: text()
+      .notNull()
+      .references(() => assets.id),
+    status: text().default("PENDING").notNull(),
+    ...timestamps,
+  },
+  (t) => ({
+    assetIdx: index("data_wipe_tasks_asset_idx").on(t.assetId),
+    statusIdx: index("data_wipe_tasks_status_idx").on(t.status),
   }),
 );
 

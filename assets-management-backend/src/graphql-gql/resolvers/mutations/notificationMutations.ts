@@ -1,7 +1,4 @@
-import {
-  createNotification,
-  markNotificationAsRead,
-} from "@/db/notifications";
+import { createNotification, markNotificationAsRead } from "@/db/notifications";
 
 export const notificationMutations = {
   sendNotification: (_: unknown, args: { input: any }) =>
