@@ -5,9 +5,6 @@ import { KPICards } from "@/components/kpi-cards";
 import { AssetDistributionChart } from "@/components/charts/asset-distribution-chart";
 import { AssetDepreciationChart } from "@/components/charts/asset-depreciation-chart";
 import { RecentActivities } from "@/components/recent-activities";
-import { AssetRequestsTable } from "./charts/asset-request";
-
-
 
 export function DashboardContent() {
   return (
@@ -19,10 +16,6 @@ export function DashboardContent() {
           <AssetDistributionChart />
           <RecentActivities />
         </div>
-         <div className="space-y-6">
-      {/* бусад хэсгүүд */}
-      <AssetRequestsTable />
-    </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
           {/* <AssetDepreciationChart /> */}
@@ -31,6 +24,3 @@ export function DashboardContent() {
     </div>
   );
 }
-
-
-
