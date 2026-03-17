@@ -1,61 +1,111 @@
 "use client";
 
-import { Monitor, Laptop, FileCheck } from "lucide-react";
+import {
+  UserPlus,
+  RotateCcw,
+  ArrowLeftRight,
+  ClipboardCheck,
+} from "lucide-react";
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { AssignmentsDocument } from "@/gql/graphql";
 
-const getRelativeTime = (timestamp: number) => {
-  const diffMs = Date.now() - timestamp;
-  const diffMinutes = Math.floor(diffMs / 60000);
-  if (diffMinutes < 1) return "Дөнгөж сая";
-  if (diffMinutes < 60) return `${diffMinutes} минутын өмнө`;
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours} цагийн өмнө`;
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays} өдрийн өмнө`;
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+import {
+  AssignmentsDocument,
+  type AssignmentFieldsFragment,
+} from "@/gql/graphql";
+
+type ActivityType = "assigned" | "returned" | "transferred" | "verified";
+
+/* DATE FORMATTER */
+const formatDateTime = (timestamp: number) => {
+  const date = new Date(timestamp);
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+
+  return `${year}/${month}/${day} ${hour}:${minute}`;
 };
 
-const pickActivityIcon = (type: "assigned" | "returned") => {
-  if (type === "returned") {
-    return { icon: Monitor, iconBg: "bg-emerald-100", iconColor: "text-emerald-600" };
+/* ICON PICKER */
+const pickActivityIcon = (type: ActivityType) => {
+  switch (type) {
+    case "assigned":
+      return {
+        icon: UserPlus,
+        iconColor: "text-green-500",
+      };
+
+    case "returned":
+      return {
+        icon: RotateCcw,
+        iconColor: "text-orange-500",
+      };
+
+    case "transferred":
+      return {
+        icon: ArrowLeftRight,
+        iconColor: "text-blue-500",
+      };
+
+    case "verified":
+      return {
+        icon: ClipboardCheck,
+        iconColor: "text-blue-500",
+      };
+
+    default:
+      return {
+        icon: UserPlus,
+        iconColor: "text-gray-500",
+      };
   }
-  return { icon: Laptop, iconBg: "bg-blue-100", iconColor: "text-blue-600" };
 };
 
 export function RecentActivities() {
-  const { data: assignmentsData, loading } = useQuery(AssignmentsDocument);
+  const { data: assignmentsData, loading } = useQuery(AssignmentsDocument, {});
 
   const activities = useMemo(() => {
-    const assignments = assignmentsData?.assignments ?? [];
+    const raw = assignmentsData?.assignments ?? [];
+    const assignments = raw as AssignmentFieldsFragment[];
+
     const sorted = [...assignments].sort((a, b) => {
       const timeA = a.returnedAt ?? a.assignedAt;
       const timeB = b.returnedAt ?? b.assignedAt;
       return timeB - timeA;
     });
 
-    return sorted.slice(0, 8).map((assignment) => {
+    return sorted.slice(0, 20).map((assignment) => {
       const employeeName = assignment.employee
         ? `${assignment.employee.firstName} ${assignment.employee.lastName}`.trim()
         : "Тодорхойгүй";
-      const assetName = assignment.asset?.category ?? "Хөрөнгө";
-      const code = assignment.asset?.assetTag ?? assignment.assetId;
-      const isReturned = Boolean(assignment.returnedAt);
-      const timeStamp = assignment.returnedAt ?? assignment.assignedAt;
-      const type = isReturned ? "returned" : "assigned";
 
-      const title = isReturned
-        ? `${assetName}-г ${employeeName} буцаан өгсөн`
-        : `${assetName}-г ${employeeName}-д хуваарилсан`;
+      const asset =
+        assignment.asset as { category?: string } | null | undefined;
+      const assetName = asset?.category ?? "Хөрөнгө";
+
+      const timeStamp = assignment.returnedAt ?? assignment.assignedAt;
+
+      let type: ActivityType = "assigned";
+      if (assignment.returnedAt) type = "returned";
+
+      let title = `${assetName}-г ${employeeName}-д хуваарилсан`;
+      if (type === "returned") {
+        title = `${assetName}-г ${employeeName} буцаан өгсөн`;
+      }
+
+      const time = formatDateTime(timeStamp);
 
       return {
         id: assignment.id,
         title,
-        code,
-        time: getRelativeTime(timeStamp),
+        time,
         ...pickActivityIcon(type),
       };
     });
@@ -63,14 +113,15 @@ export function RecentActivities() {
 
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base font-medium">
+      <CardHeader>
+        <CardTitle className="text-lg font-semibold">
           Сүүлд хийгдсэн үйлдлүүд
         </CardTitle>
       </CardHeader>
+
       <CardContent className="p-0">
-        <ScrollArea className="h-[280px] px-6">
-          <div className="space-y-4 py-2">
+        <ScrollArea className="h-[320px] px-6">
+          <div className="space-y-5 py-2">
             {loading ? (
               <div className="py-8 text-center text-sm text-muted-foreground">
                 Уншиж байна...
@@ -80,31 +131,28 @@ export function RecentActivities() {
                 Өгөгдөл алга
               </div>
             ) : (
-              activities.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="flex items-start gap-3 rounded-lg"
-                >
-                  <div
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${activity.iconBg}`}
-                  >
-                    <activity.icon className={`h-4 w-4 ${activity.iconColor}`} />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <p className="text-sm font-medium leading-tight text-foreground">
-                      {activity.title}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs font-normal">
-                        {activity.code}
-                      </Badge>
+              activities.map((activity) => {
+                const Icon = activity.icon;
+                return (
+                  <div key={activity.id} className="flex items-start gap-3">
+                    <div className="flex h-6 w-6 items-center justify-center">
+                      <Icon
+                        className={`h-5 w-5 ${activity.iconColor}`}
+                      />
+                    </div>
+
+                    <div className="flex flex-col">
+                      <p className="text-sm font-medium text-foreground">
+                        {activity.title}
+                      </p>
+
                       <span className="text-xs text-muted-foreground">
                         {activity.time}
                       </span>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </ScrollArea>

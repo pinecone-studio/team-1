@@ -333,6 +333,8 @@ export const typeDefs = /* GraphQL */ `
     totalAssets: Int!
     returnedAssets: Int!
     assetIdsJson: String!
+    """Буцаах ёстой asset-ууд (assetIdsJson-аас resolve)."""
+    assetsToReturn: [Asset!]!
     pendingReturnRequests: [OffboardingReturnRequest!]!
     deadline: Float
     completedAt: Float

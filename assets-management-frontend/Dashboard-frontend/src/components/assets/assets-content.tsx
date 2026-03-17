@@ -195,7 +195,14 @@ export function AssetsContent() {
   const removeFilterTag = (group: FilterGroup, value: string) => {
     setFilterState((prev) => {
       const next = { ...prev, [group]: new Set(prev[group]) };
-      next[group].delete(value);
+      if (group === "locationIds" && value.startsWith("locationName:")) {
+        const name = value.slice("locationName:".length);
+        locationTree.list
+          .filter((loc) => loc.name === name)
+          .forEach((loc) => next.locationIds.delete(loc.id));
+      } else {
+        next[group].delete(value);
+      }
       return next;
     });
   };
@@ -216,64 +223,34 @@ export function AssetsContent() {
     return map;
   }, [locationTree.list]);
 
-  /** Group locations by name so same name shows once; each option has name + all ids with that name */
-  const locationStepOptions = useMemo(() => {
-    const { list } = locationTree;
-    const selectedIds = filterState.locationIds;
-    const roots = (locationTree.byParent.get(null) ?? [])
-      .slice()
+  /** Нэрээр нэгтгэсэн байршлын сонголт — нэг нэр нэг checkbox (ижил нэртэй бүх ID орно) */
+  const locationOptionsByName = useMemo(() => {
+    const byName = new Map<string, string[]>();
+    locationTree.list.forEach((loc) => {
+      const n = loc.name;
+      if (!byName.has(n)) byName.set(n, []);
+      byName.get(n)!.push(loc.id);
+    });
+    return Array.from(byName.entries())
+      .map(([name, ids]) => ({ name, ids }))
       .sort((a, b) => a.name.localeCompare(b.name));
-    const step2 = list
-      .filter(
-        (l) =>
-          l.type === "roomType" &&
-          (selectedIds.size === 0 ||
-            (l.parentId && selectedIds.has(l.parentId))),
-      )
-      .sort((a, b) => a.name.localeCompare(b.name));
-    const step3 = list
-      .filter(
-        (l) =>
-          l.type === "section" &&
-          (selectedIds.size === 0 ||
-            (l.parentId && selectedIds.has(l.parentId))),
-      )
-      .sort((a, b) => a.name.localeCompare(b.name));
-    const step4 = list
-      .filter(
-        (l) =>
-          l.type === "room" &&
-          (selectedIds.size === 0 ||
-            (l.parentId && selectedIds.has(l.parentId))),
-      )
-      .sort((a, b) => a.name.localeCompare(b.name));
-    const groupByName = (
-      locs: LocationFromApi[],
-    ): { name: string; ids: string[] }[] => {
-      const byName = new Map<string, string[]>();
-      locs.forEach((loc) => {
-        const n = loc.name;
-        if (!byName.has(n)) byName.set(n, []);
-        byName.get(n)!.push(loc.id);
-      });
-      return Array.from(byName.entries())
-        .map(([name, ids]) => ({ name, ids }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-    };
-    return [
-      { label: "Салбар", options: groupByName(roots) },
-      { label: "Төрөл", options: groupByName(step2) },
-      { label: "Хэсэг", options: groupByName(step3) },
-      { label: "Өрөө", options: groupByName(step4) },
-    ];
-  }, [locationTree, filterState.locationIds]);
+  }, [locationTree.list]);
 
   const activeTags: { group: FilterGroup; value: string; label: string }[] = [
-    ...Array.from(filterState.locationIds).map((value) => ({
-      group: "locationIds" as FilterGroup,
-      value,
-      label: `Байршил: ${locationNameById.get(value) ?? value}`,
-    })),
+    /* Байршил: нэрээр нэг tag (олон ID нэг нэр дор) */
+    ...(() => {
+      const byName = new Map<string, string[]>();
+      filterState.locationIds.forEach((id) => {
+        const name = locationNameById.get(id) ?? id;
+        if (!byName.has(name)) byName.set(name, []);
+        byName.get(name)!.push(id);
+      });
+      return Array.from(byName.entries()).map(([name, ids]) => ({
+        group: "locationIds" as FilterGroup,
+        value: `locationName:${name}`,
+        label: `Байршил: ${name}`,
+      }));
+    })(),
     ...Array.from(filterState.category).map((value) => ({
       group: "category" as FilterGroup,
       value,
@@ -293,32 +270,25 @@ export function AssetsContent() {
         <div className="mt-4 space-y-6">
           <div>
             <p className="text-sm font-semibold text-foreground">
-              Байршил (4 алхам)
+              Байршил (нэрээр)
             </p>
-            {locationStepOptions.map((step, idx) => (
-              <div key={idx} className="mt-3">
-                <p className="text-xs font-medium text-muted-foreground">
-                  {step.label}
-                </p>
-                <div className="mt-1.5 space-y-1.5 max-h-32 overflow-y-auto">
-                  {step.options.map((opt) => (
-                    <label
-                      key={opt.name + opt.ids[0]}
-                      className="flex items-center gap-2 text-sm text-muted-foreground"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={opt.ids.some((id) =>
-                          filterState.locationIds.has(id),
-                        )}
-                        onChange={() => toggleFilterLocationByIds(opt.ids)}
-                      />
-                      {opt.name}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ))}
+            <div className="mt-1.5 space-y-1.5 max-h-48 overflow-y-auto">
+              {locationOptionsByName.map((opt) => (
+                <label
+                  key={opt.name}
+                  className="flex items-center gap-2 text-sm text-muted-foreground"
+                >
+                  <input
+                    type="checkbox"
+                    checked={opt.ids.some((id) =>
+                      filterState.locationIds.has(id),
+                    )}
+                    onChange={() => toggleFilterLocationByIds(opt.ids)}
+                  />
+                  {opt.name}
+                </label>
+              ))}
+            </div>
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">Ангилал</p>
