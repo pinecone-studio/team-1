@@ -60,9 +60,7 @@ export default function DashboardPage() {
           activeTitle !== "Ажилтан демо" &&
           activeTitle !== "IT демо" &&
           activeTitle !== "HR демо" ? (
-            <div className="min-h-0 flex flex-1 overflow-auto p-6">
-              <div className="w-full rounded-xl bg-white" />
-            </div>
+            <div className="min-h-0 flex flex-1 overflow-auto p-6"></div>
           ) : null}
         </SidebarInset>
       </SidebarProvider>

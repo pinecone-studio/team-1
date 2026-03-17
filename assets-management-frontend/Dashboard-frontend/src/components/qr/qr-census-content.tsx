@@ -1,17 +1,32 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Box, Check, Clock, X } from "lucide-react";
 
 export function QRCensusContent() {
+  const [isStartOpen, setIsStartOpen] = useState(false);
+  const [scope, setScope] = useState("");
+  const [department, setDepartment] = useState("");
+  const [category, setCategory] = useState("");
+
   return (
     <div className="flex min-h-0 flex-1 flex-col p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-semibold text-foreground">
           Хөрөнгийн тооллого
         </h1>
-        <Button className="gap-2 bg-foreground text-background hover:bg-foreground/90">
+        <Button
+          className="gap-2 bg-foreground text-background hover:bg-foreground/90"
+          onClick={() => setIsStartOpen(true)}
+        >
           <span className="text-lg leading-none">+</span>
           Тооллого эхлүүлэх
         </Button>
@@ -156,6 +171,97 @@ export function QRCensusContent() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={isStartOpen} onOpenChange={setIsStartOpen}>
+        <DialogContent className="max-w-xl rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-semibold text-foreground">
+              Тооллого эхлүүлэх
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Тооллогын нэрийг оруулна уу
+              </label>
+              <input
+                placeholder="1-р улирлын тооллого"
+                className="h-12 w-full rounded-xl border border-border bg-slate-50 px-4 text-base outline-none focus:border-slate-400"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Цар хүрээ сонгох
+              </label>
+              <select
+                value={scope}
+                onChange={(event) => {
+                  setScope(event.target.value);
+                  setDepartment("");
+                  setCategory("");
+                }}
+                className="h-12 w-full appearance-none rounded-xl border border-border bg-slate-50 px-4 text-base outline-none focus:border-slate-400"
+              >
+                <option value="">Сонгоно уу</option>
+                <option value="org">Байгууллага бүхэлдээ</option>
+                <option value="department">Алба хэлтэсээр</option>
+                <option value="category">Ангиллаар</option>
+              </select>
+            </div>
+
+            {scope === "department" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  Алба хэлтэс сонгох
+                </label>
+                <select
+                  value={department}
+                  onChange={(event) => setDepartment(event.target.value)}
+                  className="h-12 w-full appearance-none rounded-xl border border-border bg-slate-50 px-4 text-base outline-none focus:border-slate-400"
+                >
+                  <option value="">Сонгоно уу</option>
+                  <option value="marketing">Маркетингийн алба</option>
+                  <option value="finance">Санхүүгийн алба</option>
+                  <option value="training">Сургалтын алба</option>
+                </select>
+              </div>
+            )}
+
+            {scope === "category" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  Ангилал сонгох
+                </label>
+                <select
+                  value={category}
+                  onChange={(event) => setCategory(event.target.value)}
+                  className="h-12 w-full appearance-none rounded-xl border border-border bg-slate-50 px-4 text-base outline-none focus:border-slate-400"
+                >
+                  <option value="">Сонгоно уу</option>
+                  <option value="it-equipment">IT тоног төхөөрөмж</option>
+                  <option value="furniture">Тавилга</option>
+                  <option value="appliances">Цахилгаан хэрэгсэл</option>
+                </select>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                variant="outline"
+                className="h-11 px-6"
+                onClick={() => setIsStartOpen(false)}
+              >
+                Цуцлах
+              </Button>
+              <Button className="h-11 bg-slate-900 px-6 text-white hover:bg-slate-800">
+                Тооллого эхлүүлэх
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

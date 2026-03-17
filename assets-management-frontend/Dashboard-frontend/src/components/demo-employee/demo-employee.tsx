@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { AssetDetailContent } from "@/components/assets/asset-detail-content";
 import {
   EmployeesDocument,
   GetEmployeeAssignmentsDocument,
@@ -79,6 +80,7 @@ export function DemoEmployeeContent({
   const [isChecked, setIsChecked] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentItem | null>(null);
+  const [detailAssetId, setDetailAssetId] = useState<string | null>(null);
   const [disposalReason, setDisposalReason] = useState("");
   const [disposalSending, setDisposalSending] = useState(false);
   const [transferToEmployeeId, setTransferToEmployeeId] = useState<string>("");
@@ -87,7 +89,6 @@ export function DemoEmployeeContent({
   const [showTransferDialog, setShowTransferDialog] = useState(false);
   const [showItTransferDialog, setShowItTransferDialog] = useState(false);
   const [showOffboardingModal, setShowOffboardingModal] = useState(false);
-  const [showRequestsDialog, setShowRequestsDialog] = useState(false);
   /** Илгээгдсэн шилжүүлэлт хүлээгдэж буй (цаад хүн хүлээн авах хүртэл) */
   const [pendingTransferSent, setPendingTransferSent] = useState<{ toName: string; assetTag: string } | null>(null);
   /** Offboarding: буцааж өгөх хүсэлт — нэг хөрөнгийг сонгож нөхцөл оруулах */
@@ -436,7 +437,7 @@ export function DemoEmployeeContent({
     employeesData?.employees && employeesData.employees.length > 0 && !currentEmployeeId;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-auto p-6">
+    <div className="flex min-h-[calc(100svh-56px)] flex-1 flex-col p-6 pb-10">
       {employeeNotFound && (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           Демо ажилтан олдсонгүй: <strong>{DEMO_EMPLOYEE_EMAIL}</strong> имэйлтэй ажилтан өгөгдлийн санд байх ёстой.
@@ -463,29 +464,206 @@ export function DemoEmployeeContent({
               Offboarding эхэлсэн
             </Badge>
           )}
-          <div className="relative">
-            <Button
-              variant="outline"
-              size="icon"
-              className="rounded-full"
-              onClick={() => {
-                if (pendingList.length === 0) {
-                  toast.info("Танд одоогоор шинэ хүсэлт байхгүй байна.");
-                  return;
-                }
-                setShowRequestsDialog(true);
-              }}
-            >
-              <Bell className="h-5 w-5" />
-              {pendingList.length > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] text-white font-bold">
-                  {pendingList.length}
-                </span>
-              )}
-            </Button>
-          </div>
+          <div className="relative" />
         </div>
       </div>
+
+      {/* Танд ирсэн хүсэлтүүд */}
+      <Card className="mt-6 border-border bg-card">
+        <CardHeader>
+          <CardTitle className="text-base font-semibold">
+            Танд ирсэн хүсэлтүүд
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/40">
+                <TableHead>№</TableHead>
+                <TableHead>Хөрөнгийн нэр</TableHead>
+                <TableHead>Серийн дугаар</TableHead>
+                <TableHead>Илгээгч</TableHead>
+                <TableHead>Шилжүүлгийн төрөл</TableHead>
+                <TableHead>Баталгаажуулах</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pendingList.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={6}
+                    className="h-20 text-center text-muted-foreground"
+                  >
+                    Танд ирсэн хүсэлт алга байна.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                pendingList.map((pending, index) => {
+                  const a = pending as AssignmentItem;
+                  const requestedByName = a.requestedBy
+                    ? [a.requestedBy.firstName, a.requestedBy.lastName]
+                        .filter(Boolean)
+                        .join(" ") || "—"
+                    : "—";
+                  return (
+                    <TableRow key={a.id}>
+                      <TableCell className="font-semibold">
+                        {index + 1}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {a.asset?.assetTag ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        {a.asset?.serialNumber ?? "—"}
+                      </TableCell>
+                      <TableCell>{requestedByName}</TableCell>
+                      <TableCell>Хөрөнгө шилжүүлэх</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                            onClick={() => {
+                              setIsChecked(false);
+                              setIsDialogOpen(true);
+                            }}
+                          >
+                            Нөхцөл шалгах
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                            onClick={() => {
+                              setIsDialogOpen(false);
+                              setSelectedAssignment(a);
+                            }}
+                          >
+                            Модел харах
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                            onClick={() => handleApprove(a.id)}
+                            disabled={!isChecked || updatingStatus}
+                          >
+                            Хүлээн авах
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-rose-300 text-rose-700 hover:bg-rose-50"
+                            onClick={() => handleReject(a.id)}
+                            disabled={updatingStatus}
+                          >
+                            Татгалзах
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Миний хөрөнгүүд */}
+      <Card className="mt-6 border-border bg-card">
+        <CardHeader>
+          <CardTitle className="text-base font-semibold">
+            Миний хөрөнгүүд
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-sky-800 text-white hover:bg-sky-800">
+                <TableHead className="w-10 text-white">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-white bg-transparent"
+                  />
+                </TableHead>
+                <TableHead className="text-white">№</TableHead>
+                <TableHead className="text-white">Хөрөнгийн ID</TableHead>
+                <TableHead className="text-white">Серийн дугаар</TableHead>
+                <TableHead className="text-white">Төлөв</TableHead>
+                <TableHead className="text-white">Байршил</TableHead>
+                <TableHead className="text-white">Эзэмшигч</TableHead>
+                <TableHead className="text-white">Үнэ (₮)</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {myAssetsList.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={8}
+                    className="h-24 text-center text-muted-foreground"
+                  >
+                    Бүртгэлтэй хөрөнгө байхгүй.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                myAssetsList.map((assignment, index) => (
+                  <TableRow key={assignment.id}>
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-slate-300"
+                      />
+                    </TableCell>
+                    <TableCell className="font-semibold">{index + 1}</TableCell>
+                    <TableCell>
+                      <button
+                        className="text-left font-medium text-slate-900 hover:underline"
+                        onClick={() =>
+                          setDetailAssetId(
+                            assignment.asset?.id ?? assignment.assetId,
+                          )
+                        }
+                      >
+                        {assignment.asset?.assetTag ?? "—"}
+                      </button>
+                    </TableCell>
+                    <TableCell>
+                      {assignment.asset?.serialNumber ?? "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="secondary"
+                        className="bg-emerald-50 text-emerald-700 border-emerald-200"
+                      >
+                        Эзэмшигчтэй
+                      </Badge>
+                    </TableCell>
+                    <TableCell>—</TableCell>
+                    <TableCell>—</TableCell>
+                    <TableCell>—</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Dialog
+        open={!!detailAssetId}
+        onOpenChange={(open) => !open && setDetailAssetId(null)}
+      >
+        <DialogContent className="max-w-6xl w-[98vw] max-h-[92vh] flex flex-col overflow-hidden p-6 rounded-xl">
+          <DialogTitle className="sr-only">Хөрөнгийн дэлгэрэнгүй</DialogTitle>
+          <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1">
+            {detailAssetId && (
+              <AssetDetailContent assetId={detailAssetId} className="" />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Гарах (Offboarding) modal — хөрөнгө болон төлбөрийн үлдэгдэл */}
       <Dialog open={showOffboardingModal} onOpenChange={setShowOffboardingModal}>
@@ -755,190 +933,6 @@ export function DemoEmployeeContent({
         </Card>
       )}
 
-      {/* 2. Шинэ хүсэлт — хүлээн авагч тал: таны руу шилжүүлсэн бүх хүсэлт энд харагдана (modal) */}
-      <Dialog open={showRequestsDialog} onOpenChange={setShowRequestsDialog}>
-        <DialogContent className="max-w-xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base font-medium text-amber-800">
-              <Bell className="h-4 w-4" /> Шинэ хүсэлт ({pendingList.length})
-            </DialogTitle>
-            <DialogDescription>
-              Таны руу шилжүүлсэн бүх хөрөнгийн хүсэлт. Хүсэлт бүр дээр нөхцөл
-              шалгаж, хүлээн авах эсвэл татгалзах боломжтой.
-            </DialogDescription>
-          </DialogHeader>
-          {pendingList.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">
-              {currentEmployeeId
-                ? "Танд одоогоор шинэ хүсэлт байхгүй байна."
-                : "Ажилтны мэдээлэл ачаалж байна..."}
-            </p>
-          ) : (
-            <div className="space-y-3 mt-2">
-              {pendingList.map((pending) => {
-                const a = pending as AssignmentItem;
-                const requestedByName = a.requestedBy
-                  ? [a.requestedBy.firstName, a.requestedBy.lastName]
-                      .filter(Boolean)
-                      .join(" ") || "—"
-                  : "—";
-                const isCurrent = currentPending && currentPending.id === a.id;
-                return (
-                  <div
-                    key={a.id}
-                    className="flex flex-col justify-between gap-4 rounded-lg border border-amber-200 bg-white p-4 sm:flex-row sm:items-center shadow-sm"
-                  >
-                    <div className="space-y-1">
-                      <p className="font-bold text-lg text-foreground">
-                        {a.asset?.assetTag}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Serial: {a.asset?.serialNumber || "N/A"} | Олгосон:{" "}
-                        {new Date(a.assignedAt).toLocaleDateString()}
-                        {requestedByName && (
-                          <>
-                            {" "}
-                            | Хэн явуулсан: {requestedByName}
-                          </>
-                        )}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      {!isCurrent ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedAssignment(a);
-                            setIsChecked(false);
-                            setIsDialogOpen(true);
-                          }}
-                          className="gap-2"
-                        >
-                          <Eye className="h-4 w-4" /> Нөхцөл шалгах
-                        </Button>
-                      ) : !isChecked ? (
-                        <Button
-                          onClick={() => setIsDialogOpen(true)}
-                          className="gap-2 bg-amber-500 hover:bg-amber-600 text-white"
-                        >
-                          <Eye className="h-4 w-4" /> Нөхцөл шалгах
-                        </Button>
-                      ) : (
-                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 py-2 px-3 gap-1">
-                          <ClipboardCheck className="h-4 w-4" /> Шалгасан
-                        </Badge>
-                      )}
-
-                      <Button
-                        onClick={() => handleApprove(a.id)}
-                        variant="outline"
-                        disabled={!isChecked || updatingStatus}
-                        className="gap-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 disabled:opacity-30"
-                      >
-                        <Check className="h-4 w-4" /> Хүлээн авах
-                      </Button>
-                      <Button
-                        onClick={() => handleReject(a.id)}
-                        variant="destructive"
-                        disabled={updatingStatus}
-                        className="disabled:opacity-30"
-                      >
-                        <X className="h-4 w-4" /> Татгалзах
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* 3. Миний эзэмшиж буй хөрөнгө (идэвхтэй + хүлээгдэж буй) */}
-      <Card className="mt-6 border-border bg-card">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">
-            Миний эзэмшиж буй хөрөнгө
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Идэвхтэй болон таны руу шилжүүлсэн хүлээгдэж буй хөрөнгө энд харагдана.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Serial Number</TableHead>
-                <TableHead>Нэр</TableHead>
-                <TableHead>Огноо</TableHead>
-                <TableHead>Төлөв</TableHead>
-                <TableHead>Хэн явуулсан</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {myAssetsList.length > 0 ? (
-                myAssetsList.map((assignment) => {
-                  const isPending = assignment.status !== "ACTIVE";
-                  const a = assignment as AssignmentItem;
-                  const requestedByName = a.requestedBy
-                    ? [a.requestedBy.firstName, a.requestedBy.lastName].filter(Boolean).join(" ") || "—"
-                    : "—";
-                  return (
-                    <TableRow
-                      key={assignment.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => setSelectedAssignment(assignment as AssignmentItem)}
-                    >
-                      <TableCell className="font-mono text-xs">
-                        {assignment.asset?.serialNumber || "N/A"}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {assignment.asset?.assetTag}
-                      </TableCell>
-                      <TableCell>
-                        {new Date(assignment.assignedAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        {isPending ? (
-                          <Badge
-                            variant="secondary"
-                            className="bg-amber-50 text-amber-700 border-amber-200"
-                          >
-                            Хүлээгдэж буй
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant="secondary"
-                            className="bg-emerald-50 text-emerald-700 border-emerald-100"
-                          >
-                            Идэвхтэй
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {isPending ? requestedByName : "—"}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    {(activeLoading || pendingLoading)
-                      ? "Ачаалж байна..."
-                      : "Бүртгэлтэй хөрөнгө байхгүй."}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
 
       {/* 4. Нөхцөл шалгах Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
