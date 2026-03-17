@@ -1,5 +1,3 @@
-import type { AssetCategory } from "@/lib/types";
-
 export const MAIN_CATEGORY_OPTIONS = [
   { value: "shiree", label: "IT тоног төхөөрөмж" },
   { value: "sandal", label: "Тавилга" },

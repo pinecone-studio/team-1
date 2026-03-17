@@ -13,6 +13,7 @@ import { DemoEmployeeContent } from "@/components/demo-employee/demo-employee";
 import { DemoITContent } from "@/components/demo-it/demo-it";
 import { DemoHRContent } from "@/components/demo-hr/demo-hr";
 import { AssetFilter } from "@/components/assets/asset-filter";
+import { QRCensusContent } from "@/components/qr/qr-census-content";
 
 export default function DashboardPage() {
   const [activeTitle, setActiveTitle] = useState("Хянах самбар");
@@ -21,7 +22,16 @@ export default function DashboardPage() {
     <div className="min-h-svh bg-muted/30">
       <DashboardHeader />
 
-      <SidebarProvider className="min-h-svh">
+      <SidebarProvider
+        className="min-h-svh"
+        defaultOpen={false}
+        style={
+          {
+            "--sidebar-width": "72px",
+            "--sidebar-width-icon": "72px",
+          } as React.CSSProperties
+        }
+      >
         <AppSidebar
           activeTitle={activeTitle}
           onSelect={setActiveTitle}
@@ -41,10 +51,12 @@ export default function DashboardPage() {
           {activeTitle === "Demo Ажилтан" ? <DemoEmployeeContent /> : null}
           {activeTitle === "Demo IT" ? <DemoITContent /> : null}
           {activeTitle === "Demo HR" ? <DemoHRContent /> : null}
+          {activeTitle === "QR тооллого" ? <QRCensusContent /> : null}
 
           {activeTitle !== "Хянах самбар" &&
           activeTitle !== "Хөрөнгө" &&
           activeTitle !== "Хөрөнгө хуваарилах" &&
+          activeTitle !== "QR тооллого" &&
           activeTitle !== "Ажилтан демо" &&
           activeTitle !== "IT демо" &&
           activeTitle !== "HR демо" ? (
