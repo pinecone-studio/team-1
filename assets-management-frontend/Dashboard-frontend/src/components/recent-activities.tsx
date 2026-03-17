@@ -1,6 +1,11 @@
 "use client";
 
-import { UserPlus, RotateCcw } from "lucide-react";
+import {
+  UserPlus,
+  RotateCcw,
+  ArrowLeftRight,
+  ClipboardCheck,
+} from "lucide-react";
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client";
 
@@ -9,9 +14,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { AssignmentsDocument } from "@/gql/graphql";
 
-type ActivityType = "assigned" | "returned";
+type ActivityType = "assigned" | "returned" | "transferred" | "verified";
 
-/* ----- DATE FORMATTER ----- */
+/* DATE FORMATTER */
 const formatDateTime = (timestamp: number) => {
   const date = new Date(timestamp);
 
@@ -25,22 +30,43 @@ const formatDateTime = (timestamp: number) => {
   return `${year}/${month}/${day} ${hour}:${minute}`;
 };
 
+/* ICON PICKER */
 const pickActivityIcon = (type: ActivityType) => {
-  if (type === "returned") {
-    return {
-      icon: RotateCcw,
-      iconColor: "text-orange-500",
-    };
-  }
+  switch (type) {
+    case "assigned":
+      return {
+        icon: UserPlus,
+        iconColor: "text-green-500",
+      };
 
-  return {
-    icon: UserPlus,
-    iconColor: "text-green-500",
-  };
+    case "returned":
+      return {
+        icon: RotateCcw,
+        iconColor: "text-orange-500",
+      };
+
+    case "transferred":
+      return {
+        icon: ArrowLeftRight,
+        iconColor: "text-blue-500",
+      };
+
+    case "verified":
+      return {
+        icon: ClipboardCheck,
+        iconColor: "text-blue-500",
+      };
+
+    default:
+      return {
+        icon: UserPlus,
+        iconColor: "text-gray-500",
+      };
+  }
 };
 
 export function RecentActivities() {
-  const { data: assignmentsData, loading } = useQuery(AssignmentsDocument);
+  const { data: assignmentsData, loading } = useQuery(AssignmentsDocument, {});
 
   const activities = useMemo(() => {
     const assignments = assignmentsData?.assignments ?? [];
@@ -58,15 +84,27 @@ export function RecentActivities() {
 
       const assetName = assignment.asset?.category ?? "Хөрөнгө";
 
-      const isReturned = Boolean(assignment.returnedAt);
-
       const timeStamp = assignment.returnedAt ?? assignment.assignedAt;
 
-      const type: ActivityType = isReturned ? "returned" : "assigned";
+      let type: ActivityType = "assigned";
 
-      const title = isReturned
-        ? `${assetName}-г ${employeeName} буцаан өгсөн`
-        : `${assetName}-г ${employeeName}-д хуваарилсан`;
+      if (assignment.returnedAt) type = "returned";
+      if (assignment.transferredAt) type = "transferred";
+      if (assignment.verifiedAt) type = "verified";
+
+      let title = `${assetName}-г ${employeeName}-д хуваарилсан`;
+
+      if (type === "returned") {
+        title = `${assetName}-г ${employeeName} буцаан өгсөн`;
+      }
+
+      if (type === "transferred") {
+        title = `${assetName}-г ${employeeName} шилжүүлсэн`;
+      }
+
+      if (type === "verified") {
+        title = `${assetName} тооллого баталгаажуулсан`;
+      }
 
       const time = formatDateTime(timeStamp);
 
