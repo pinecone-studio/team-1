@@ -1,0 +1,18 @@
+query GetDataWipeTasks($status: String) {
+  dataWipeTasks(status: $status) {
+    id
+    assetId
+    status
+    createdAt
+    updatedAt
+  }
+}
+
+mutation UpdateDataWipeTask($id: ID!, $status: String!) {
+  updateDataWipeTask(id: $id, status: $status) {
+    id
+    status
+    updatedAt
+  }
+}
+

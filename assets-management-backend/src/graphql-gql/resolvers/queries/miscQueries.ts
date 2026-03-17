@@ -1,6 +1,6 @@
 import { getDb } from "@/db/client";
 import { and, eq, desc } from "drizzle-orm";
-import { auditLogs, maintenanceTickets } from "@/schema";
+import { auditLogs, dataWipeTasks, maintenanceTickets } from "@/schema";
 
 export const miscQueries = {
   auditLogs: async (
@@ -27,5 +27,13 @@ export const miscQueries = {
       query = query.where(eq(maintenanceTickets.status, args.status)) as any;
     }
     return query.all();
+  },
+  dataWipeTasks: async (_: unknown, args: { status?: string }) => {
+    const db = await getDb();
+    let q = db.select().from(dataWipeTasks).orderBy(desc(dataWipeTasks.createdAt));
+    if (args.status?.trim()) {
+      q = q.where(eq(dataWipeTasks.status, args.status.trim())) as typeof q;
+    }
+    return q.all();
   },
 };
