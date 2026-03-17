@@ -122,7 +122,7 @@ export function DemoHRContent() {
   const [hrPhotoByRequestId, setHrPhotoByRequestId] = useState<Record<string, File | null>>({});
 
   const { data, loading, error, refetch } = useQuery(EmployeesDocument, {
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first",
   });
 
   const { data: offboardingRequestsData, refetch: refetchOffboardingRequests } = useQuery(
@@ -130,7 +130,7 @@ export function DemoHRContent() {
     {
       variables: { employeeId: selectedEmployeeForRequests ?? "" },
       skip: !selectedEmployeeForRequests || selectedEmployeeForRequests === "__mock__",
-      fetchPolicy: "network-only",
+      fetchPolicy: "cache-first",
     },
   );
   const [approveReturnRequestMutation, { loading: approveLoading }] = useMutation(ApproveReturnRequestDocument);

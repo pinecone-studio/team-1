@@ -32,6 +32,7 @@ import {
   GetDashboardDocument,
   ApproveDisposalDocument,
   RejectDisposalDocument,
+  UpdateMaintenanceTicketDocument,
   EmployeesDocument,
   UserRole,
 } from "@/gql/graphql";
@@ -86,26 +87,26 @@ export function DemoITContent({
 
   const { data: disposalsData } = useQuery(
     GetActiveDisposalsDocument,
-    { fetchPolicy: "network-only" },
+    { fetchPolicy: "cache-first" },
   );
   const { data: employeesData } = useQuery(EmployeesDocument);
   const demoApproverId = employeesData?.employees?.[DEMO_IT_APPROVER_INDEX]?.id ?? "";
 
   const { data: allDisposalsData } = useQuery(GetDisposalRequestsDocument, {
     variables: { status: undefined },
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first",
   });
   const allDisposals = allDisposalsData?.disposalRequests ?? [];
 
   const { data: maintenanceData } = useQuery(GetMaintenanceTicketsDocument, {
     variables: { status: undefined },
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first",
   });
   const allMaintenanceTickets = (maintenanceData?.maintenanceTickets ?? []) as MaintenanceItem[];
 
   const { data: dashboardData } = useQuery(GetDashboardDocument, {
     variables: { role: UserRole.ItAdmin },
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first",
   });
   const itNotifications =
     (dashboardData?.dashboard?.itView?.notifications ?? []) as Array<{
@@ -133,6 +134,16 @@ export function DemoITContent({
       refetchQueries: [
         { query: GetActiveDisposalsDocument },
         { query: GetDisposalRequestsDocument, variables: { status: undefined } },
+        { query: GetDashboardDocument, variables: { role: UserRole.ItAdmin } },
+      ],
+    },
+  );
+
+  const [updateMaintenanceTicket, { loading: updatingMaintenance }] = useMutation(
+    UpdateMaintenanceTicketDocument,
+    {
+      refetchQueries: [
+        { query: GetMaintenanceTicketsDocument, variables: { status: undefined } },
         { query: GetDashboardDocument, variables: { role: UserRole.ItAdmin } },
       ],
     },
@@ -199,6 +210,8 @@ export function DemoITContent({
                 {itNotifications.map((n) => {
                   const disposalId = n.link?.match(/\/disposal\/([^/]+)/)?.[1];
                   const isDisposal = Boolean(disposalId);
+                  const maintenanceId = n.link?.match(/\/maintenance\/([^/]+)/)?.[1];
+                  const isMaintenance = Boolean(maintenanceId);
                   return (
                     <div
                       key={n.id}
@@ -214,13 +227,19 @@ export function DemoITContent({
                           Илгээсэн огноо: {new Date(n.createdAt).toLocaleString()}
                         </p>
                       )}
-                      {isDisposal && (
+                      {(isDisposal || isMaintenance) && (
                         <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
                           <Button
                             size="sm"
                             className="gap-1.5 bg-green-600 hover:bg-green-700 text-white"
-                            onClick={() => disposalId && handleApprove(disposalId)}
-                            disabled={approving || rejecting}
+                            onClick={() => {
+                              if (disposalId) handleApprove(disposalId);
+                              if (maintenanceId)
+                                updateMaintenanceTicket({
+                                  variables: { id: maintenanceId, status: "IN_PROGRESS" },
+                                });
+                            }}
+                            disabled={approving || rejecting || updatingMaintenance}
                           >
                             <Check className="h-3.5 w-3.5" /> Accept
                           </Button>
@@ -228,8 +247,14 @@ export function DemoITContent({
                             size="sm"
                             variant="outline"
                             className="gap-1.5 border-rose-600 text-rose-600 hover:bg-rose-50"
-                            onClick={() => disposalId && handleReject(disposalId)}
-                            disabled={approving || rejecting}
+                            onClick={() => {
+                              if (disposalId) handleReject(disposalId);
+                              if (maintenanceId)
+                                updateMaintenanceTicket({
+                                  variables: { id: maintenanceId, status: "CLOSED" },
+                                });
+                            }}
+                            disabled={approving || rejecting || updatingMaintenance}
                           >
                             <X className="h-3.5 w-3.5" /> Decline
                           </Button>
@@ -344,6 +369,7 @@ export function DemoITContent({
                   <TableHead>Ноцтой байдал</TableHead>
                   <TableHead>Төлөв</TableHead>
                   <TableHead>Огноо</TableHead>
+                  <TableHead className="text-right">Үйлдэл</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -372,6 +398,37 @@ export function DemoITContent({
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {new Date(t.createdAt).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {t.status === "OPEN" ? (
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            className="gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() =>
+                              updateMaintenanceTicket({
+                                variables: { id: t.id, status: "IN_PROGRESS" },
+                              })
+                            }
+                            disabled={updatingMaintenance}
+                          >
+                            <Check className="h-3.5 w-3.5" /> Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 border-rose-600 text-rose-600 hover:bg-rose-50"
+                            onClick={() =>
+                              updateMaintenanceTicket({
+                                variables: { id: t.id, status: "CLOSED" },
+                              })
+                            }
+                            disabled={updatingMaintenance}
+                          >
+                            <X className="h-3.5 w-3.5" /> Decline
+                          </Button>
+                        </div>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))}

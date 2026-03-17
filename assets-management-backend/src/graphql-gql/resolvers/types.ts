@@ -15,13 +15,13 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { assignments, categories } from "@/schema";
 
-const safeNumber = (val: any) => {
+const safeNumber = (val: unknown) => {
   if (val === null || val === undefined || val === "") return null;
   const num = Number(val);
   return isNaN(num) ? null : num;
 };
 
-const safeFloat = (val: any) => {
+const safeFloat = (val: unknown) => {
   if (val === null || val === undefined || val === "") return null;
   const num = parseFloat(val.toString());
   return isNaN(num) ? null : num;
@@ -83,17 +83,22 @@ export const typeResolvers = {
     },
     locationPath: (asset: { locationId?: string | null }) =>
       getLocationPath(asset.locationId),
-    purchaseCost: (asset: any) => safeNumber(asset.purchaseCost),
-    currentBookValue: (asset: any) => safeNumber(asset.currentBookValue),
-    purchaseDate: (asset: any) => safeNumber(asset.purchaseDate),
+    purchaseCost: (asset: unknown) =>
+      safeNumber((asset as { purchaseCost?: unknown }).purchaseCost),
+    currentBookValue: (asset: unknown) =>
+      safeNumber((asset as { currentBookValue?: unknown }).currentBookValue),
+    purchaseDate: (asset: unknown) =>
+      safeNumber((asset as { purchaseDate?: unknown }).purchaseDate),
   },
   Assignment: {
     employee: (assignment: { employeeId: string }) =>
       getEmployeeById(assignment.employeeId),
     asset: (assignment: { assetId: string }) =>
       getAssetById(assignment.assetId),
-    assignedAt: (assignment: any) => safeNumber(assignment.assignedAt),
-    returnedAt: (assignment: any) => safeNumber(assignment.returnedAt),
+    assignedAt: (assignment: unknown) =>
+      safeNumber((assignment as { assignedAt?: unknown }).assignedAt),
+    returnedAt: (assignment: unknown) =>
+      safeNumber((assignment as { returnedAt?: unknown }).returnedAt),
     buyoutPolicy: (assignment: { buyoutPolicyId?: string }) =>
       assignment.buyoutPolicyId
         ? getBuyoutPolicyById(assignment.buyoutPolicyId)
@@ -117,18 +122,24 @@ export const typeResolvers = {
     },
   },
   AssignmentFinancing: {
-    assignedValue: (f: any) => safeNumber(f.assignedValue),
-    paymentPlanMonths: (f: any) => safeNumber(f.paymentPlanMonths),
-    interestRate: (f: any) => safeFloat(f.interestRate),
-    monthlyPayment: (f: any) => safeNumber(f.monthlyPayment),
-    totalPayment: (f: any) => safeNumber(f.totalPayment),
+    assignedValue: (f: unknown) =>
+      safeNumber((f as { assignedValue?: unknown }).assignedValue),
+    paymentPlanMonths: (f: unknown) =>
+      safeNumber((f as { paymentPlanMonths?: unknown }).paymentPlanMonths),
+    interestRate: (f: unknown) =>
+      safeFloat((f as { interestRate?: unknown }).interestRate),
+    monthlyPayment: (f: unknown) =>
+      safeNumber((f as { monthlyPayment?: unknown }).monthlyPayment),
+    totalPayment: (f: unknown) =>
+      safeNumber((f as { totalPayment?: unknown }).totalPayment),
     payments: (f: { id: string }) => getPaymentsByFinancing(f.id),
   },
   AssignmentPayment: {
-    amount: (p: any) => safeNumber(p.amount),
-    dueDate: (p: any) => safeNumber(p.dueDate),
-    paidAt: (p: any) => safeNumber(p.paidAt),
-    createdAt: (p: any) => safeNumber(p.createdAt),
+    amount: (p: unknown) => safeNumber((p as { amount?: unknown }).amount),
+    dueDate: (p: unknown) => safeNumber((p as { dueDate?: unknown }).dueDate),
+    paidAt: (p: unknown) => safeNumber((p as { paidAt?: unknown }).paidAt),
+    createdAt: (p: unknown) =>
+      safeNumber((p as { createdAt?: unknown }).createdAt),
   },
   Category: {
     subcategories: (category: { id: string }) => getSubcategories(category.id),
@@ -167,13 +178,17 @@ export const typeResolvers = {
   },
   DataWipeTask: {},
   MaintenanceTicket: {
-    repairCost: (mt: any) => safeNumber(mt.repairCost),
+    repairCost: (mt: unknown) =>
+      safeNumber((mt as { repairCost?: unknown }).repairCost),
   },
   PurchaseOrder: {
-    totalCost: (po: any) => safeNumber(po.totalCost) ?? 0,
+    totalCost: (po: unknown) =>
+      safeNumber((po as { totalCost?: unknown }).totalCost) ?? 0,
   },
   PurchaseRequest: {
-    purchaseCost: (pr: any) => safeNumber(pr.purchaseCost),
-    purchaseDate: (pr: any) => safeNumber(pr.purchaseDate),
+    purchaseCost: (pr: unknown) =>
+      safeNumber((pr as { purchaseCost?: unknown }).purchaseCost),
+    purchaseDate: (pr: unknown) =>
+      safeNumber((pr as { purchaseDate?: unknown }).purchaseDate),
   },
 };

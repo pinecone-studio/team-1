@@ -1,6 +1,6 @@
 # Queries (fragments: see fragments.graphql)
-query GetAssets($office: String, $categoryIds: [ID!], $subCategoryIds: [ID!], $locationIds: [ID!]) {
-  assets(office: $office, categoryIds: $categoryIds, subCategoryIds: $subCategoryIds, locationIds: $locationIds) {
+query GetAssets($office: String, $categoryIds: [ID!], $subCategoryIds: [ID!], $locationIds: [ID!], $limit: Int, $offset: Int) {
+  assets(office: $office, categoryIds: $categoryIds, subCategoryIds: $subCategoryIds, locationIds: $locationIds, limit: $limit, offset: $offset) {
     ...AssetFields
   }
 }
@@ -65,6 +65,16 @@ query GetAssetKpis($office: String) {
     forSaleValue
     brokenCount
     brokenValue
+  }
+}
+
+mutation UpdateMaintenanceTicket($id: ID!, $status: String!, $repairCost: Int, $resolvedAt: Float) {
+  updateMaintenanceTicket(id: $id, status: $status, repairCost: $repairCost, resolvedAt: $resolvedAt) {
+    id
+    status
+    repairCost
+    resolvedAt
+    updatedAt
   }
 }
 

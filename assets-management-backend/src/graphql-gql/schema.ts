@@ -534,6 +534,8 @@ export const typeDefs = /* GraphQL */ `
     deleteEmployee(id: ID!): Boolean!
     createAsset(input: AssetCreateInput!): Asset!
     updateAsset(id: ID!, input: AssetUpdateInput!): Asset
+  bulkUpdateAssets(assetIds: [ID!]!, input: AssetUpdateInput!): [Asset!]!
+  smartBulkMoveAssets(assetIds: [String!]!, toLocationId: String!, reason: String): [Asset!]!
     deleteAsset(id: ID!): Boolean!
     assignAsset(
       assetId: ID!

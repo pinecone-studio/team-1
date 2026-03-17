@@ -4,7 +4,7 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import { useMutation } from "@apollo/client";
 import Link from "next/link";
 import { Plus, ArrowRightLeft, Undo2, QrCode } from "lucide-react";
-import { useQuery } from "@apollo/client";
+import { useApolloClient, useQuery } from "@apollo/client";
 import {
   GetAssetsDocument,
   CategoriesDocument,
@@ -115,6 +115,7 @@ function getStatusBadge(status: string) {
 
 export function AssetFilter() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectAllLoading, setSelectAllLoading] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showTransferDialog, setShowTransferDialog] = useState(false);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
@@ -144,6 +145,7 @@ export function AssetFilter() {
     }),
     [],
   );
+  const apollo = useApolloClient();
   const { data, loading, error, refetch } = useQuery(GetAssetsDocument, {
     variables: assetsQueryVariables,
     fetchPolicy: "cache-first",
@@ -457,15 +459,90 @@ export function AssetFilter() {
     });
   };
 
-  const selectAll = () => {
-    if (selectedIds.size === assets.length) {
+  const selectAll = async () => {
+    // If anything selected -> clear.
+    if (selectedIds.size > 0) {
       setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(assets.map((a) => a.id)));
+      return;
+    }
+
+    // Otherwise: fetch ALL pages for current backend filters (limit/offset loop),
+    // then apply the current statusFilter client-side.
+    setSelectAllLoading(true);
+    try {
+      const pageSize = 50; // backend max limit
+      let offset = 0;
+      const all: Asset[] = [];
+
+      while (true) {
+        const res = await apollo.query({
+          query: GetAssetsDocument,
+          variables: { ...assetsQueryVariables, limit: pageSize, offset },
+          fetchPolicy: "network-only",
+        });
+        const pageData = res.data?.assets ?? [];
+        if (pageData.length === 0) break;
+
+        // reuse existing mapper by temporarily stitching into `data` shape is heavy;
+        // instead, map minimal fields here (same mapping logic as above).
+        const mappedPage = (pageData as any[]).map((a) => {
+          const categoryName = typeof a.category === "string" ? a.category : "";
+          const rawLocationPath = (a.locationPath ?? "").trim();
+          const friendlyLocation =
+            rawLocationPath && !/^[0-9a-f-]{20,}$/i.test(rawLocationPath)
+              ? rawLocationPath
+              : a.locationId
+                ? (locationPathById.get(a.locationId) ?? undefined)
+                : undefined;
+          return {
+            id: a.id,
+            assetId: a.assetTag,
+            category: categoryName as Asset["category"],
+            mainCategory: mainCategoryBySubName.get(categoryName),
+            location: friendlyLocation,
+            serialNumber: a.serialNumber,
+            purchaseCost: a.purchaseCost ?? 0,
+            residualValue: 0,
+            usefulLife: 0,
+            purchaseDate: a.purchaseDate
+              ? new Date(a.purchaseDate).toISOString()
+              : new Date().toISOString(),
+            currentBookValue: a.currentBookValue ?? a.purchaseCost ?? 0,
+            status: a.status as Asset["status"],
+            assignedEmployeeId: a.assignedTo ?? undefined,
+            assignedEmployeeName: a.assignedTo
+              ? employeeNameById.get(a.assignedTo)
+              : undefined,
+            imageUrl: a.imageUrl ?? undefined,
+            notes: a.notes ?? undefined,
+            createdAt: new Date(a.createdAt).toISOString(),
+            updatedAt: new Date(a.updatedAt).toISOString(),
+          } satisfies Asset;
+        });
+        all.push(...mappedPage);
+
+        if (pageData.length < pageSize) break;
+        offset += pageSize;
+      }
+
+      const filtered =
+        !statusFilter || statusFilter === "all"
+          ? all
+          : all.filter((a) => {
+              const s = (a.status ?? "").toUpperCase().replace(/-/g, "_");
+              return s === statusFilter.toUpperCase();
+            });
+
+      setSelectedIds(new Set(filtered.map((a) => a.id)));
+      toast.success(`Нийт ${filtered.length} хөрөнгө сонголоо.`);
+    } catch (e) {
+      toast.error("Бүгдийг сонгоход алдаа гарлаа.");
+    } finally {
+      setSelectAllLoading(false);
     }
   };
 
-  const allSelected = assets.length > 0 && selectedIds.size === assets.length;
+  const allSelected = visibleAssets.length > 0 && selectedIds.size === visibleAssets.length;
   const someSelected = selectedIds.size > 0;
 
   useEffect(() => {
@@ -845,6 +922,7 @@ export function AssetFilter() {
                     type="checkbox"
                     checked={allSelected}
                     onChange={selectAll}
+                    disabled={selectAllLoading}
                     className="h-4 w-4 rounded border-2 border-white bg-transparent text-white focus:ring-white focus:ring-offset-0 focus:ring-2"
                   />
                 </label>

@@ -1,7 +1,7 @@
 import type { GraphQLContext } from "@/graphql-gql/context";
 
 export async function getAssetsCacheVersion(ctx: GraphQLContext) {
-  const kv = (ctx.env as any).MY_CACHE as
+  const kv = (ctx.env as unknown as { MY_CACHE?: unknown }).MY_CACHE as
     | { get(key: string): Promise<string | null> }
     | undefined;
   if (!kv) return 1;
@@ -11,7 +11,7 @@ export async function getAssetsCacheVersion(ctx: GraphQLContext) {
 }
 
 export async function bumpAssetsCacheVersion(ctx: GraphQLContext) {
-  const kv = (ctx.env as any).MY_CACHE as
+  const kv = (ctx.env as unknown as { MY_CACHE?: unknown }).MY_CACHE as
     | {
         get(key: string): Promise<string | null>;
         put(key: string, value: string): Promise<void>;
@@ -47,7 +47,7 @@ export async function assetsListCacheKey(ctx: GraphQLContext, args: {
 }
 
 export function getAssetsListCache(ctx: GraphQLContext) {
-  return (ctx.env as any).MY_CACHE as
+  return (ctx.env as unknown as { MY_CACHE?: unknown }).MY_CACHE as
     | {
         get(key: string): Promise<string | null>;
         put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;

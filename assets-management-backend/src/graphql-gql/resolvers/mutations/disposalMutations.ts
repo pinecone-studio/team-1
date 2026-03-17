@@ -5,9 +5,11 @@ import {
   uploadDataWipeCertificate as uploadDataWipeCertificateDb,
   completeDisposal as completeDisposalDb,
 } from "@/db/disposalRequests";
+import type { GraphQLContext } from "@/graphql-gql/context";
+import { bumpCacheVersion } from "@/graphql-gql/cache/queryCache";
 
 export const disposalMutations = {
-  requestDisposal: (
+  requestDisposal: async (
     _: unknown,
     args: {
       assetId: string;
@@ -15,30 +17,53 @@ export const disposalMutations = {
       method: string;
       reason?: string | null;
     },
-  ) =>
-    requestDisposalDb(
+    ctx: GraphQLContext,
+  ) => {
+    const res = await requestDisposalDb(
       args.assetId,
       args.requestedBy,
       args.method,
       args.reason ?? undefined,
-    ),
-  approveDisposal: (
+    );
+    await bumpCacheVersion(ctx, "disposals:cache_version");
+    await bumpCacheVersion(ctx, "dashboard:cache_version");
+    return res;
+  },
+  approveDisposal: async (
     _: unknown,
     args: {
       id: string;
       approvedBy: string;
       stage: "IT_APPROVED" | "FINANCE_APPROVED";
     },
-  ) => approveDisposalRequest(args.id, args.approvedBy, args.stage),
-  rejectDisposal: (
+    ctx: GraphQLContext,
+  ) => {
+    const res = await approveDisposalRequest(args.id, args.approvedBy, args.stage);
+    await bumpCacheVersion(ctx, "disposals:cache_version");
+    await bumpCacheVersion(ctx, "dashboard:cache_version");
+    return res;
+  },
+  rejectDisposal: async (
     _: unknown,
     args: { id: string; rejectedBy: string; reason?: string | null },
-  ) => rejectDisposalRequest(args.id, args.rejectedBy, args.reason ?? undefined),
-  uploadDataWipeCertificate: (
+    ctx: GraphQLContext,
+  ) => {
+    const res = await rejectDisposalRequest(args.id, args.rejectedBy, args.reason ?? undefined);
+    await bumpCacheVersion(ctx, "disposals:cache_version");
+    await bumpCacheVersion(ctx, "dashboard:cache_version");
+    return res;
+  },
+  uploadDataWipeCertificate: async (
     _: unknown,
     args: { id: string; fileKey: string; uploadedBy: string },
-  ) => uploadDataWipeCertificateDb(args.id, args.fileKey, args.uploadedBy),
-  completeDisposal: (
+    ctx: GraphQLContext,
+  ) => {
+    const res = await uploadDataWipeCertificateDb(args.id, args.fileKey, args.uploadedBy);
+    await bumpCacheVersion(ctx, "disposals:cache_version");
+    await bumpCacheVersion(ctx, "dashboard:cache_version");
+    return res;
+  },
+  completeDisposal: async (
     _: unknown,
     args: {
       id: string;
@@ -46,11 +71,16 @@ export const disposalMutations = {
       writeOffValue?: number | null;
       recipient?: string | null;
     },
-  ) =>
-    completeDisposalDb(
+    ctx: GraphQLContext,
+  ) => {
+    const res = await completeDisposalDb(
       args.id,
       args.certifiedBy,
       args.writeOffValue ?? undefined,
       args.recipient ?? undefined,
-    ),
+    );
+    await bumpCacheVersion(ctx, "disposals:cache_version");
+    await bumpCacheVersion(ctx, "dashboard:cache_version");
+    return res;
+  },
 };

@@ -1,5 +1,10 @@
 import { getAssets, getAssetById, getAssetKpis } from "@/db/assets/queries";
 import { searchAssetsDB } from "@/db/assets/queries/searchAssets";
+import type {
+  AssetSearchFilter,
+  PaginationInput,
+  SortInput,
+} from "@/db/assets/queries/searchAssets";
 import { getAssetHistory } from "@/db/assetHistory";
 import {
   assetsListCacheKey,
@@ -74,7 +79,7 @@ export const assetQueries = {
   },
   searchAssets: (
     _: unknown,
-    args: { filter: any; pagination?: any; sort?: any },
+    args: { filter: AssetSearchFilter; pagination?: PaginationInput; sort?: SortInput },
   ) => searchAssetsDB(args.filter, args.pagination, args.sort),
   assetHistory: (_: unknown, args: { assetId: string }) =>
     getAssetHistory(args.assetId),

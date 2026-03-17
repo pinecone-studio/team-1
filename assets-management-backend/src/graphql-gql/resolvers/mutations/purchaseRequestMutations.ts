@@ -10,6 +10,9 @@ import {
   buildPurchaseRequestEmail,
   buildPurchaseRequestSummaryEmail,
 } from "@/app/lib/email";
+import type { GraphQLContext } from "@/graphql-gql/context";
+import { bumpCacheVersion } from "@/graphql-gql/cache/queryCache";
+import { bumpAssetsCacheVersion } from "@/graphql-gql/cache/assetsListCache";
 
 export const purchaseRequestMutations = {
   createPurchaseRequest: async (
@@ -23,6 +26,7 @@ export const purchaseRequestMutations = {
       requesterEmployeeId: string;
       requesterEmail: string;
     },
+    ctx: GraphQLContext,
   ) => {
     const token = crypto.randomUUID();
     const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
@@ -64,6 +68,8 @@ export const purchaseRequestMutations = {
       html,
     });
 
+    await bumpCacheVersion(ctx, "purchase:cache_version");
+    await bumpCacheVersion(ctx, "dashboard:cache_version");
     return request!;
   },
   createPurchaseRequestBatch: async (
@@ -79,6 +85,7 @@ export const purchaseRequestMutations = {
       requesterEmployeeId: string;
       requesterEmail: string;
     },
+    ctx: GraphQLContext,
   ) => {
     if (!args.items.length) {
       throw new Error("Items are required");
@@ -129,6 +136,8 @@ export const purchaseRequestMutations = {
 
         if (request) results.push(request);
       }
+      await bumpCacheVersion(ctx, "purchase:cache_version");
+      await bumpCacheVersion(ctx, "dashboard:cache_version");
       return results;
     }
 
@@ -165,11 +174,14 @@ export const purchaseRequestMutations = {
       html,
     });
 
+    await bumpCacheVersion(ctx, "purchase:cache_version");
+    await bumpCacheVersion(ctx, "dashboard:cache_version");
     return requests;
   },
   approvePurchaseRequest: async (
     _: unknown,
     args: { token: string; approverEmail: string },
+    ctx: GraphQLContext,
   ) => {
     const requests = await getPurchaseRequestsByToken(args.token);
     if (!requests.length) throw new Error("Request not found");
@@ -193,11 +205,15 @@ export const purchaseRequestMutations = {
       args.approverEmail,
     );
 
+    await bumpCacheVersion(ctx, "purchase:cache_version");
+    await bumpCacheVersion(ctx, "dashboard:cache_version");
+    await bumpAssetsCacheVersion(ctx);
     return updated[0];
   },
   declinePurchaseRequest: async (
     _: unknown,
     args: { token: string; approverEmail: string },
+    ctx: GraphQLContext,
   ) => {
     const requests = await getPurchaseRequestsByToken(args.token);
     if (!requests.length) throw new Error("Request not found");
@@ -208,6 +224,8 @@ export const purchaseRequestMutations = {
       args.approverEmail,
     );
 
+    await bumpCacheVersion(ctx, "purchase:cache_version");
+    await bumpCacheVersion(ctx, "dashboard:cache_version");
     return updated[0];
   },
 };

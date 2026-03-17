@@ -13,6 +13,8 @@ import { writeAuditLog } from "@/db/auditLogger";
 import { ensureLocationId } from "@/db/locations";
 import { bumpAssetsCacheVersion } from "@/graphql-gql/cache/assetsListCache";
 import type { GraphQLContext } from "@/graphql-gql/context";
+import { assetMovements, assets } from "@/schema";
+import { eq, inArray } from "drizzle-orm";
 
 type AssetCreateInput = {
   assetTag: string;
@@ -128,6 +130,134 @@ export const assetMutations = {
     }
     await bumpAssetsCacheVersion(ctx);
     return updated;
+  },
+  bulkUpdateAssets: async (
+    _: unknown,
+    args: { assetIds: string[]; input: AssetUpdateInput },
+    ctx: GraphQLContext,
+  ) => {
+    const ids = (args.assetIds ?? []).filter(Boolean);
+    if (ids.length === 0) return [];
+
+    const input = args.input ?? {};
+    const updates = buildAssetUpdate(input);
+
+    // Resolve location/category ids the same way as single update
+    if (input.locationId !== undefined) {
+      updates.locationId =
+        (await ensureLocationId(input.locationId)) ??
+        input.locationId ??
+        undefined;
+    }
+    if (input.mainCategory != null && input.mainCategory.trim()) {
+      updates.mainCategoryId = await ensureMainCategoryId(
+        input.mainCategory.trim(),
+      );
+    }
+    if (input.category != null) {
+      updates.categoryId = await ensureCategoryId(
+        input.category,
+        input.mainCategory ?? null,
+      );
+    }
+
+    if (Object.keys(updates).length === 0) {
+      // Nothing to update; just return current rows
+      if (ids.length === 1) {
+        const row = await getAssetById(ids[0]);
+        return row ? [row] : [];
+      }
+      // Fallback: select by ids
+      const rows = await ctx.db.select().from(assets).where(inArray(assets.id, ids)).all();
+      return rows;
+    }
+
+    // Smart routing: single vs bulk (one SQL either way)
+    let updatedRows: unknown[] = [];
+    if (ids.length === 1) {
+      updatedRows = await ctx.db
+        .update(assets)
+        .set({ ...(updates as Record<string, unknown>), updatedAt: Date.now() })
+        .where(eq(assets.id, ids[0]))
+        .returning();
+    } else {
+      updatedRows = await ctx.db
+        .update(assets)
+        .set({ ...(updates as Record<string, unknown>), updatedAt: Date.now() })
+        .where(inArray(assets.id, ids))
+        .returning();
+    }
+
+    // Cache version bump exactly once
+    await bumpAssetsCacheVersion(ctx);
+    return updatedRows;
+  },
+  smartBulkMoveAssets: async (
+    _: unknown,
+    args: { assetIds: string[]; toLocationId: string; reason?: string | null },
+    ctx: GraphQLContext,
+  ) => {
+    const assetIds = (args.assetIds ?? []).filter(Boolean);
+    if (assetIds.length === 0) return [];
+
+    const toLocationIdResolved =
+      (await ensureLocationId(args.toLocationId)) ?? args.toLocationId;
+    if (!toLocationIdResolved?.trim()) return [];
+
+    // Need current locationId for movement history; ensure we have fromLocationId.
+    const currentRows = await ctx.db
+      .select({ id: assets.id, locationId: assets.locationId })
+      .from(assets)
+      .where(inArray(assets.id, assetIds))
+      .all();
+
+    const byId = new Map(currentRows.map((r) => [r.id, r]));
+    const now = Date.now();
+    const movedBy = (await getFirstEmployeeId()) ?? "";
+
+    const movements = assetIds
+      .map((id) => {
+        const row = byId.get(id);
+        const fromLocationId = row?.locationId;
+        if (!fromLocationId) return null;
+        return {
+          id: crypto.randomUUID(),
+          assetId: id,
+          fromLocationId,
+          toLocationId: toLocationIdResolved,
+          movedBy,
+          reason: args.reason ?? null,
+          movedAt: now,
+        };
+      })
+      .filter(Boolean) as Array<{
+      id: string;
+      assetId: string;
+      fromLocationId: string;
+      toLocationId: string;
+      movedBy: string;
+      reason: string | null;
+      movedAt: number;
+    }>;
+
+    // Batch: 1 update + N inserts (single D1 transaction style)
+    await ctx.db.batch([
+      ctx.db
+        .update(assets)
+        .set({ locationId: toLocationIdResolved, updatedAt: now })
+        .where(inArray(assets.id, assetIds)),
+      ...movements.map((m) => ctx.db.insert(assetMovements).values(m)),
+    ]);
+
+    // bump cache version exactly once
+    await bumpAssetsCacheVersion(ctx);
+
+    // Return updated assets without join duplication
+    return ctx.db
+      .select()
+      .from(assets)
+      .where(inArray(assets.id, assetIds))
+      .all();
   },
   deleteAsset: async (_: unknown, args: { id: string }, ctx: GraphQLContext) => {
     const hasArchiveEnv =

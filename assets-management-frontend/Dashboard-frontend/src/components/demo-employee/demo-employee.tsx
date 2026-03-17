@@ -35,6 +35,7 @@ import {
   EmployeesDocument,
   GetEmployeeAssignmentsDocument,
   RequestDisposalDocument,
+  CreateMaintenanceTicketDocument,
   GetActiveOffboardingDocument,
   StartOffboardingDocument,
   TransferAssetDocument,
@@ -120,6 +121,8 @@ export function DemoEmployeeContent({
     UpdateAssignmentStatusDocument,
   );
   const [requestDisposalMutation] = useMutation(RequestDisposalDocument);
+  const [createMaintenanceTicketMutation, { loading: maintenanceSending }] =
+    useMutation(CreateMaintenanceTicketDocument);
   const [startOffboardingMutation, { loading: offboardingStarting }] = useMutation(StartOffboardingDocument);
   const [transferAssetMutation] = useMutation(TransferAssetDocument);
   const [returnAssetMutation] = useMutation(ReturnAssetDocument);
@@ -405,27 +408,28 @@ export function DemoEmployeeContent({
   };
 
   const handleTransferToIt = async () => {
-    if (!selectedAssignment?.asset?.id || !currentEmployeeId || !transferToEmployeeId) {
-      toast.error("IT ажилтан сонгоно уу.");
+    if (!selectedAssignment?.asset?.id || !currentEmployeeId) {
+      toast.error("Хөрөнгө/ажилтан олдсонгүй.");
       return;
     }
     setTransferSending(true);
     try {
-      await transferAssetMutation({
+      await createMaintenanceTicketMutation({
         variables: {
           assetId: selectedAssignment.asset.id,
-          fromEmployeeId: currentEmployeeId,
-          toEmployeeId: transferToEmployeeId,
-          reason: "IT ажилтан руу шилжүүлсэн",
+          reporterId: currentEmployeeId,
+          description:
+            (disposalReason || "").trim() || "IT руу илгээсэн хүсэлт (Demo)",
+          severity: "MEDIUM",
         },
       });
-      toast.success("Хөрөнгө IT ажилтан руу амжилттай шилжүүлэгдлээ.");
+      toast.success("IT руу хүсэлт амжилттай илгээгдлээ (засварын дуудлага).");
       setShowItTransferDialog(false);
       setTransferToEmployeeId("");
       setSelectedAssignment(null);
       refetchActive();
     } catch (err) {
-      toast.error("IT руу шилжүүлэхэд алдаа гарлаа.");
+      toast.error("IT руу хүсэлт илгээхэд алдаа гарлаа.");
     } finally {
       setTransferSending(false);
     }
@@ -1040,9 +1044,9 @@ export function DemoEmployeeContent({
                   setTransferToEmployeeId("");
                   setShowItTransferDialog(true);
                 }}
-                disabled={transferSending}
+                disabled={transferSending || maintenanceSending}
               >
-                <Send className="h-3.5 w-3.5" /> IT ажилтан руу явуулах
+                <Send className="h-3.5 w-3.5" /> IT руу хүсэлт илгээх
               </Button>
               <Button
                 variant="outline"
@@ -1094,31 +1098,20 @@ export function DemoEmployeeContent({
       <Dialog open={showItTransferDialog} onOpenChange={setShowItTransferDialog}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>IT ажилтан сонгох</DialogTitle>
+            <DialogTitle>IT руу хүсэлт илгээх</DialogTitle>
             <DialogDescription>
-              Хөрөнгийг ямар IT ажилтан руу шилжүүлэх вэ?
+              Энэ нь IT талд “Засварын дуудлага” болж очно. IT тал Accept/Decline хийнэ.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Select value={transferToEmployeeId || undefined} onValueChange={setTransferToEmployeeId}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="IT ажилтан сонгоно уу" />
-              </SelectTrigger>
-              <SelectContent>
-                {otherEmployees.map((emp) => (
-                  <SelectItem key={emp.id} value={emp.id}>
-                    {emp.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="py-4 text-sm text-muted-foreground">
+            Тайлбар: өмнөх талбар дээрх “Устгах шалтгаан” хэсгийг хүсэлтийн тайлбар болгон ашиглана.
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setShowItTransferDialog(false)}>
               Цуцлах
             </Button>
-            <Button onClick={handleTransferToIt} disabled={!transferToEmployeeId || transferSending}>
-              {transferSending ? "Шилжүүлж байна..." : "Шилжүүлэх"}
+            <Button onClick={handleTransferToIt} disabled={transferSending || maintenanceSending}>
+              {transferSending || maintenanceSending ? "Илгээж байна..." : "Илгээх"}
             </Button>
           </DialogFooter>
         </DialogContent>
