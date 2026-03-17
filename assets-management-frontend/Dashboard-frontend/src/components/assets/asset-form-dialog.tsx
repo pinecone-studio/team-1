@@ -8,6 +8,7 @@ import {
   Check,
   Sparkles,
   RotateCcw,
+  Upload,
 } from "lucide-react";
 import { useMutation, useQuery } from "@apollo/client";
 import { toast } from "sonner";
@@ -49,6 +50,7 @@ import {
   SUB_ROOM_TYPES,
   FINAL_ROOM_OPTIONS,
 } from "./constants";
+import { CsvUploadDialog } from "./csv-upload-dialog";
 
 type LocationFromApi = {
   id: string;
@@ -76,6 +78,7 @@ export function AssetFormDialog({
   mode = "create",
   initialAsset = null,
 }: AssetFormDialogProps) {
+  const [showCsvUploadDialog, setShowCsvUploadDialog] = useState(false);
   const [assetId, setAssetId] = useState("");
   const [subCategory, setSubCategory] = useState("");
   const [mainCategory, setMainCategory] = useState("");
@@ -664,6 +667,7 @@ export function AssetFormDialog({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-white sm:max-w-[760px] rounded-3xl p-8 shadow-xl mb-6 max-h-[85vh] overflow-y-auto">
         <DialogHeader className="mb-6 relative">
@@ -676,7 +680,17 @@ export function AssetFormDialog({
               : "Системд шинэ хөрөнгө бүртгэх"}
           </DialogDescription>
           {mode === "create" && (
-            <div className="absolute right-0 top-0 flex gap-2">
+            <div className="absolute right-0 top-0 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => setShowCsvUploadDialog(true)}
+              >
+                <Upload size={14} />
+                CSV Хуулах
+              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -1143,5 +1157,11 @@ export function AssetFormDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <CsvUploadDialog
+      open={showCsvUploadDialog}
+      onOpenChange={setShowCsvUploadDialog}
+      onAddAssets={onAddAssets}
+    />
+    </>
   );
 }

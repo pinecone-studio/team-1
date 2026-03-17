@@ -48,22 +48,22 @@ const menuItems = [
     title: "Эд Хөрөнгө",
     icon: Package,
   },
-  {
-    title: "Хөрөнгө хуваарилах",
-    icon: UserCheck,
-  },
-  {
-    title: "Хөрөнгө шилжүүлэх",
-    icon: ArrowLeftRight,
-  },
+  // {
+  //   title: "Хөрөнгө хуваарилах",
+  //   icon: UserCheck,
+  // },
+  // {
+  //   title: "Хөрөнгө шилжүүлэх",
+  //   icon: ArrowLeftRight,
+  // },
   {
     title: "QR тооллого",
     icon: QrCode,
   },
-  {
-    title: "Ажлаас гарах",
-    icon: UserMinus,
-  },
+  // {
+  //   title: "Ажлаас гарах",
+  //   icon: UserMinus,
+  // },
   {
     title: "Тайлан",
     icon: FileText,
