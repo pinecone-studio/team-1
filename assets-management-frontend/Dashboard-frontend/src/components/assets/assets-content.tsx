@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { useMutation, useQuery } from "@apollo/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +14,7 @@ import {
 } from "@/gql/graphql";
 import type { Asset, AssetCategory } from "@/lib/types";
 import { AssetFormDialog } from "./asset-form-dialog";
+import { CsvUploadDialog } from "./csv-upload-dialog";
 import { AssetsGrid, type FilterGroup } from "./assets-grid";
 import { AssetsSearchBar } from "./assets-search-bar";
 import { CATEGORY_LABELS } from "./constants";
@@ -46,6 +47,7 @@ export function AssetsContent() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [assetItems, setAssetItems] = useState<Asset[]>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showCsvUploadDialog, setShowCsvUploadDialog] = useState(false);
   const [editAsset, setEditAsset] = useState<Asset | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [qrAssets, setQrAssets] = useState<Asset[]>([]);
@@ -336,15 +338,37 @@ export function AssetsContent() {
               Компанийн бүх эд хөрөнгийг удирдаж, хянах
             </p>
           </div>
-          <Button className="gap-2" onClick={() => setShowAddDialog(true)}>
-            <Plus className="h-4 w-4" />
-            Шинэ хөрөнгө нэмэх
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setShowCsvUploadDialog(true)}
+            >
+              <Upload className="h-4 w-4" />
+              CSV Хуулах
+            </Button>
+            <Button className="gap-2" onClick={() => setShowAddDialog(true)}>
+              <Plus className="h-4 w-4" />
+              Шинэ хөрөнгө нэмэх
+            </Button>
+          </div>
         </div>
 
         <AssetFormDialog
           open={showAddDialog}
           onOpenChange={setShowAddDialog}
+          onAddAssets={(assets) => {
+            setAssetItems((prev) => [...assets, ...prev]);
+            refetch().then(() => {
+              setAssetItems((prev) =>
+                prev.filter((item) => !assets.some((a) => a.id === item.id)),
+              );
+            });
+          }}
+        />
+        <CsvUploadDialog
+          open={showCsvUploadDialog}
+          onOpenChange={setShowCsvUploadDialog}
           onAddAssets={(assets) => {
             setAssetItems((prev) => [...assets, ...prev]);
             refetch().then(() => {

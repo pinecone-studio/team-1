@@ -9,7 +9,7 @@ import {
 } from "@apollo/client";
 
 const graphqlEndpoint =
-  process.env.NEXT_PUBLIC_GRAPHQL_URL ?? "/api/graphql";
+  process.env.NEXT_PUBLIC_GRAPHQL_URL ?? "http://localhost:3000/api/graphql";
 
 const client = new ApolloClient({
   link: new HttpLink({ uri: graphqlEndpoint }),
