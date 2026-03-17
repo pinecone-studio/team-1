@@ -12,10 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  CreateAssetDocument,
-  type AssetFieldsFragment,
-} from "@/gql/graphql";
+import { CreateAssetDocument, type AssetFieldsFragment } from "@/gql/graphql";
 import type { Asset } from "@/lib/types";
 
 type CsvUploadDialogProps = {
@@ -171,7 +168,7 @@ export function CsvUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="bg-white sm:max-w-[500px] rounded-3xl p-8 shadow-xl mb-6">
+      <DialogContent className="bg-white sm:max-w-125 rounded-3xl p-8 shadow-xl mb-6">
         <DialogHeader className="mb-4">
           <DialogTitle className="text-[24px] font-semibold">
             CSV файлаар хөрөнгө хуулах
