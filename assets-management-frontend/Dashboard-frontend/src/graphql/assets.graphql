@@ -53,6 +53,21 @@ query GetLocations {
   }
 }
 
+query GetAssetKpis($office: String) {
+  assetKpis(office: $office) {
+    totalCount
+    totalValue
+    assignedCount
+    assignedValue
+    unassignedCount
+    unassignedValue
+    forSaleCount
+    forSaleValue
+    brokenCount
+    brokenValue
+  }
+}
+
 query GetActiveDisposals {
   disposalRequests(status: "PENDING") {
     id

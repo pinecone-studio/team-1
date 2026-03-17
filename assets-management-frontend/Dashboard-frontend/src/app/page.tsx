@@ -32,12 +32,12 @@ export default function DashboardPage() {
           {activeTitle === "Хянах самбар" ? <DashboardContent /> : null}
           {activeTitle === "Хөрөнгө" ? <AssetsContent /> : null}
           {activeTitle === "Эд Хөрөнгө" ? <AssetFilter /> : null}
-          {activeTitle === "Хөрөнгө хуваарилах" ? (
+          {/* {activeTitle === "Хөрөнгө хуваарилах" ? (
             <AssetAllocationContent />
           ) : null}
           {activeTitle === "Хөрөнгө шилжүүлэх" ? (
             <AssetTransferContent />
-          ) : null}
+          ) : null} */}
           {activeTitle === "Demo Ажилтан" ? <DemoEmployeeContent /> : null}
           {activeTitle === "Demo IT" ? <DemoITContent /> : null}
           {activeTitle === "Demo HR" ? <DemoHRContent /> : null}

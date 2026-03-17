@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Check, ShieldCheck, History, Search, X, Eye } from "lucide-react";
+import { Check, ShieldCheck, History, Search, X, Eye, Wrench, Bell } from "lucide-react";
 import { useQuery, useMutation } from "@apollo/client";
 
 import { Badge } from "@/components/ui/badge";
@@ -23,13 +23,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import {
   GetActiveDisposalsDocument,
   GetDisposalRequestsDocument,
+  GetMaintenanceTicketsDocument,
+  GetDashboardDocument,
   ApproveDisposalDocument,
   RejectDisposalDocument,
   EmployeesDocument,
+  UserRole,
 } from "@/gql/graphql";
 
 const DISPOSAL_STATUS_LABELS: Record<string, string> = {
@@ -53,6 +57,26 @@ type DisposalItem = {
 
 const DEMO_IT_APPROVER_INDEX = 0;
 
+type MaintenanceItem = {
+  id: string;
+  assetId: string;
+  reporterId: string;
+  description: string;
+  severity: string;
+  status: string;
+  repairCost?: number | null;
+  resolvedAt?: number | null;
+  createdAt: number;
+  updatedAt: number;
+};
+
+const MAINTENANCE_STATUS_LABELS: Record<string, string> = {
+  OPEN: "Нээлттэй",
+  IN_PROGRESS: "Хийгдэж буй",
+  RESOLVED: "Шийдвэрлэгдсэн",
+  CLOSED: "Хаагдсан",
+};
+
 export function DemoITContent({
   title = "IT Хяналтын самбар",
 }: {
@@ -73,12 +97,33 @@ export function DemoITContent({
   });
   const allDisposals = allDisposalsData?.disposalRequests ?? [];
 
+  const { data: maintenanceData } = useQuery(GetMaintenanceTicketsDocument, {
+    variables: { status: undefined },
+    fetchPolicy: "network-only",
+  });
+  const allMaintenanceTickets = (maintenanceData?.maintenanceTickets ?? []) as MaintenanceItem[];
+
+  const { data: dashboardData } = useQuery(GetDashboardDocument, {
+    variables: { role: UserRole.ItAdmin },
+    fetchPolicy: "network-only",
+  });
+  const itNotifications =
+    (dashboardData?.dashboard?.itView?.notifications ?? []) as Array<{
+      id: string;
+      title: string;
+      message: string;
+      type?: string;
+      link?: string | null;
+      createdAt?: number;
+    }>;
+
   const [approveDisposal, { loading: approving }] = useMutation(
     ApproveDisposalDocument,
     {
       refetchQueries: [
         { query: GetActiveDisposalsDocument },
         { query: GetDisposalRequestsDocument, variables: { status: undefined } },
+        { query: GetDashboardDocument, variables: { role: UserRole.ItAdmin } },
       ],
     },
   );
@@ -88,6 +133,7 @@ export function DemoITContent({
       refetchQueries: [
         { query: GetActiveDisposalsDocument },
         { query: GetDisposalRequestsDocument, variables: { status: undefined } },
+        { query: GetDashboardDocument, variables: { role: UserRole.ItAdmin } },
       ],
     },
   );
@@ -125,18 +171,78 @@ export function DemoITContent({
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-auto p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <ScrollArea className="h-full min-h-0 flex-1 w-full">
+      <div className="flex flex-col gap-4 p-6 pb-10 min-h-full">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between shrink-0">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
           <p className="text-sm text-muted-foreground italic">
-            IT Administrator View — Устгах хүсэлтүүд (ажилтнаас ирсэн)
+            IT-д илгээгдсэн бүх хүсэлт — устгах хүсэлт, засварын дуудлага
           </p>
         </div>
         <Button variant="outline" size="sm" className="gap-2">
           <History className="h-4 w-4" /> Түүх
         </Button>
       </div>
+
+      {/* Ажилтнаас ирсэн мэдэгдэл — хэнээс ирсэн, Accept/Decline */}
+      {itNotifications.length > 0 && (
+        <Card className="mt-4 border-violet-200 bg-violet-50/30 shrink-0">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base font-medium text-violet-800">
+              <Bell className="h-5 w-5" /> Ажилтнаас ирсэн мэдэгдэл ({itNotifications.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[280px] pr-4">
+              <div className="space-y-3">
+                {itNotifications.map((n) => {
+                  const disposalId = n.link?.match(/\/disposal\/([^/]+)/)?.[1];
+                  const isDisposal = Boolean(disposalId);
+                  return (
+                    <div
+                      key={n.id}
+                      className="rounded-lg border border-violet-100 bg-white p-3 text-sm"
+                    >
+                      <p className="font-medium text-foreground">{n.title}</p>
+                      <p className="mt-1 text-muted-foreground">{n.message}</p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Хэнээс ирсэн: Ажилтан (системийн мэдэгдэл)
+                      </p>
+                      {n.createdAt && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Илгээсэн огноо: {new Date(n.createdAt).toLocaleString()}
+                        </p>
+                      )}
+                      {isDisposal && (
+                        <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            size="sm"
+                            className="gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => disposalId && handleApprove(disposalId)}
+                            disabled={approving || rejecting}
+                          >
+                            <Check className="h-3.5 w-3.5" /> Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 border-rose-600 text-rose-600 hover:bg-rose-50"
+                            onClick={() => disposalId && handleReject(disposalId)}
+                            disabled={approving || rejecting}
+                          >
+                            <X className="h-3.5 w-3.5" /> Decline
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Устгах хүсэлтүүд (PENDING) — ажилтан "Миний хөрөнгө" дээрээс илгээсэн */}
       <Card className="mt-6 border-blue-200 bg-blue-50/30">
@@ -217,7 +323,65 @@ export function DemoITContent({
         </CardContent>
       </Card>
 
-      {/* 2. Ямар бараа, хэнээс ирсэн, баталгаажуулсан эсэх — бүх устгах хүсэлт */}
+      {/* Засварын дуудлага — IT-д ирсэн бүх засварын хүсэлт */}
+      <Card className="mt-6 border-amber-200 bg-amber-50/30">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-medium text-amber-800">
+            <Wrench className="h-5 w-5" /> Засварын дуудлага ({allMaintenanceTickets.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {allMaintenanceTickets.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-amber-200 bg-white p-6 text-center text-sm text-muted-foreground">
+              Засварын дуудлага байхгүй байна.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Хөрөнгийн ID</TableHead>
+                  <TableHead>Тайлбар</TableHead>
+                  <TableHead>Ноцтой байдал</TableHead>
+                  <TableHead>Төлөв</TableHead>
+                  <TableHead>Огноо</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {allMaintenanceTickets.map((t) => (
+                  <TableRow key={t.id}>
+                    <TableCell className="font-mono text-xs">{t.assetId}</TableCell>
+                    <TableCell className="max-w-xs truncate text-sm">{t.description}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {t.severity}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={
+                          t.status === "OPEN"
+                            ? "bg-amber-100 text-amber-700 border-amber-200"
+                            : t.status === "RESOLVED" || t.status === "CLOSED"
+                              ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                              : "bg-blue-100 text-blue-700 border-blue-200"
+                        }
+                      >
+                        {MAINTENANCE_STATUS_LABELS[t.status] ?? t.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {new Date(t.createdAt).toLocaleString()}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Бүх устгах хүсэлт — бараа, хэнээс, баталгаажуулсан */}
       <Card className="mt-6 border-border bg-card">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-base font-semibold">
@@ -377,6 +541,7 @@ export function DemoITContent({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </ScrollArea>
   );
 }
