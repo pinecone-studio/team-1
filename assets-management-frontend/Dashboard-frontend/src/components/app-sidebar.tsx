@@ -28,10 +28,10 @@ const menuItems = [
     title: "Хянах самбар",
     icon: LayoutDashboard,
   },
-  {
-    title: "Хөрөнгө",
-    icon: Package,
-  },
+  // {
+  //   title: "Хөрөнгө",
+  //   icon: Package,
+  // },
   {
     title: "Эд Хөрөнгө",
     icon: Package,

@@ -37,6 +37,13 @@ npm run deploy
 # or similar package manager command
 ```
 
+This frontend is configured to deploy as its own Cloudflare Worker service:
+
+- Worker name: `dashboard-frontend`
+- Default Cloudflare URL: `https://dashboard-frontend.<your-subdomain>.workers.dev`
+
+If you want a branded custom domain, add it in Cloudflare after the first successful deploy and map it to the `dashboard-frontend` worker.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

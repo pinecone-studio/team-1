@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import { getDb } from "../../client";
 import { assets } from "@/schema";
@@ -8,11 +8,14 @@ export async function deleteAssetById(id: string): Promise<boolean> {
   const existing = await db
     .select({ id: assets.id })
     .from(assets)
-    .where(eq(assets.id, id))
+    .where(and(eq(assets.id, id), isNull(assets.deletedAt)))
     .get();
 
   if (!existing) return false;
 
-  await db.delete(assets).where(eq(assets.id, id));
+  await db
+    .update(assets)
+    .set({ deletedAt: Date.now(), updatedAt: Date.now() })
+    .where(eq(assets.id, id));
   return true;
 }

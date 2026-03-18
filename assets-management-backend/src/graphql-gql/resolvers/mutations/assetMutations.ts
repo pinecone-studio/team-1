@@ -13,6 +13,8 @@ import { writeAuditLog } from "@/db/auditLogger";
 import { ensureLocationId } from "@/db/locations";
 import { bumpAssetsCacheVersion } from "@/graphql-gql/cache/assetsListCache";
 import type { GraphQLContext } from "@/graphql-gql/context";
+import { employees } from "@/schema";
+import { eq } from "drizzle-orm";
 
 type AssetCreateInput = {
   assetTag: string;
@@ -66,6 +68,26 @@ const buildAssetUpdate = (input: AssetUpdateInput) => {
   }
   return updates;
 };
+
+async function getActorId(ctx: GraphQLContext): Promise<string | null> {
+  if (ctx.userId) {
+    try {
+      const row = await ctx.db
+        .select({ id: employees.id })
+        .from(employees)
+        .where(eq(employees.clerkId, ctx.userId))
+        .get();
+      if (row?.id) return row.id;
+    } catch {
+      // fall back below
+    }
+  }
+  try {
+    return (await getFirstEmployeeId()) ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export const assetMutations = {
   createAsset: async (_: unknown, args: { input: AssetCreateInput }, ctx: GraphQLContext) => {
@@ -135,9 +157,55 @@ export const assetMutations = {
       !!process.env.R2_ACCESS_KEY_ID &&
       !!process.env.R2_SECRET_ACCESS_KEY &&
       !!process.env.ARCHIVE_BUCKET_NAME;
-    const ok = !hasArchiveEnv
-      ? await deleteAssetById(args.id)
-      : await deleteAndArchiveAsset(args.id);
+    const actorId = await getActorId(ctx);
+    const oldAsset = await getAssetById(args.id);
+    if (actorId) {
+      await writeAuditLog(
+        "assets",
+        args.id,
+        "ASSET_DELETE_REQUESTED",
+        actorId,
+        oldAsset ? { ...oldAsset } : null,
+        {
+          mode: hasArchiveEnv ? "ARCHIVE" : "SOFT_DELETE",
+        },
+      );
+    }
+
+    let ok = false;
+    try {
+      ok = !hasArchiveEnv
+        ? await deleteAssetById(args.id)
+        : await deleteAndArchiveAsset(args.id);
+    } catch (error: any) {
+      ok = false;
+      if (actorId) {
+        await writeAuditLog(
+          "assets",
+          args.id,
+          "ASSET_DELETE_FAILED",
+          actorId,
+          oldAsset ? { ...oldAsset } : null,
+          {
+            mode: hasArchiveEnv ? "ARCHIVE" : "SOFT_DELETE",
+            error: error?.message ? String(error.message) : "unknown_error",
+          },
+        );
+      }
+    }
+
+    if (ok && actorId) {
+      await writeAuditLog(
+        "assets",
+        args.id,
+        "ASSET_DELETED",
+        actorId,
+        oldAsset ? { ...oldAsset } : null,
+        {
+          mode: hasArchiveEnv ? "ARCHIVE" : "SOFT_DELETE",
+        },
+      );
+    }
     await bumpAssetsCacheVersion(ctx);
     return ok;
   },

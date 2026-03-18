@@ -297,10 +297,17 @@ export function AssetDetailContent({
     )
       return;
     try {
-      await deleteAsset({ variables: { id: assetId } });
-      onClose?.();
+      const result = await deleteAsset({ variables: { id: assetId } });
+      if (result.data?.deleteAsset) {
+        onClose?.();
+      } else {
+        window.alert(
+          "Хөрөнгийг устгаж чадсангүй. Хөрөнгө одоогоор эзэмшигчтэй эсвэл холбоотой үйлдэлтэй байж болно.",
+        );
+      }
     } catch (e) {
       console.error("Failed to delete asset:", e);
+      window.alert("Хөрөнгийг устгахад алдаа гарлаа.");
     }
   };
 

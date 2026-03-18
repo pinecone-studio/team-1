@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@apollo/client";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectTrigger,
@@ -218,8 +219,18 @@ export function AssetDistributionChart() {
       <CardContent>
         <div className="h-80 min-h-[280px] flex items-center">
           {loading ? (
-            <div className="w-full text-center text-sm text-muted-foreground">
-              Уншиж байна...
+            <div className="flex h-full w-full items-center gap-8">
+              <div className="flex w-1/2 justify-center">
+                <Skeleton className="h-52 w-52 rounded-full" />
+              </div>
+              <div className="grid w-1/2 grid-cols-2 gap-x-8 gap-y-4">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Skeleton className="h-2.5 w-2.5 rounded-full" />
+                    <Skeleton className="h-4 w-20 rounded-full" />
+                  </div>
+                ))}
+              </div>
             </div>
           ) : mode === "location" &&
             (!locationsData?.locations ||

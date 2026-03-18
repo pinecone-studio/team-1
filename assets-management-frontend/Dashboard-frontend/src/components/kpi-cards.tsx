@@ -3,6 +3,7 @@
 import { Package, UserCheck, Wrench } from "lucide-react";
 import { useQuery } from "@apollo/client";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { GetAssetKpisDocument } from "@/gql/graphql";
 
 const formatMoney = (value: number) =>
@@ -29,7 +30,7 @@ export function KPICards() {
     {
       title: "Нийт хөрөнгө",
       value: formatMoney(totalValue),
-      subtitle: "100%",
+      subtitle: `${totalAssets} ширхэг`,
       progress: 100,
       icon: Package,
       iconBorder: "border-sky-400",
@@ -109,6 +110,26 @@ function KPICard({
   iconColor,
   loading,
 }: KPICardProps) {
+  if (loading) {
+    return (
+      <Card className="rounded-xl border bg-white shadow-sm">
+        <CardContent className="space-y-5">
+          <div className="flex items-start justify-between">
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-20 rounded-full" />
+              <Skeleton className="h-7 w-28 rounded-full" />
+            </div>
+            <Skeleton className="h-9 w-9 rounded-full" />
+          </div>
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-14 rounded-full" />
+            <Skeleton className="h-2 w-full rounded-full" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="rounded-xl border bg-white shadow-sm">
       <CardContent className=" space-y-5">
@@ -116,7 +137,7 @@ function KPICard({
           <div>
             <p className="text-base text-foreground">{title}</p>
 
-            <p className="text-xl font-bold mt-2.5 ">{loading ? "—" : value}</p>
+            <p className="text-xl font-bold mt-2.5 ">{value}</p>
           </div>
 
           <div

@@ -18,11 +18,34 @@ const schema = makeExecutableSchema({
   resolvers,
 });
 
+const CORS_HEADERS: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Max-Age": "86400",
+};
+
+function withCors(response: Response): Response {
+  const next = new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+  Object.entries(CORS_HEADERS).forEach(([key, value]) => next.headers.set(key, value));
+  return next;
+}
+
 const { handleRequest } = Yoga.createYoga({
   schema,
   graphqlEndpoint: "/api/graphql",
   fetchAPI: { Response, Request },
   maskedErrors: false,
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    maxAge: 86400,
+  },
   context: async ({
     request,
   }: {
@@ -47,7 +70,7 @@ const { handleRequest } = Yoga.createYoga({
 
 type RouteContext = { params: Promise<{}> };
 
-export function GET(request: NextRequest, _context: RouteContext) {
+export async function GET(request: NextRequest, _context: RouteContext) {
   const hasQuery =
     request.nextUrl.searchParams.has("query") ||
     request.nextUrl.searchParams.has("operationName") ||
@@ -55,7 +78,15 @@ export function GET(request: NextRequest, _context: RouteContext) {
     request.nextUrl.searchParams.has("extensions");
 
   if (hasQuery) {
-    return handleRequest(request, _context as unknown as never);
+    try {
+      const res = await handleRequest(request, _context as unknown as never);
+      return withCors(res);
+    } catch (err) {
+      const body = JSON.stringify({
+        errors: [{ message: err instanceof Error ? err.message : "Internal server error" }],
+      });
+      return withCors(new Response(body, { status: 500, headers: { "Content-Type": "application/json" } }));
+    }
   }
 
   const explorer = new URL("https://studio.apollographql.com/sandbox/explorer");
@@ -66,10 +97,23 @@ export function GET(request: NextRequest, _context: RouteContext) {
   return NextResponse.redirect(explorer, 302);
 }
 
-export function POST(request: NextRequest, _context: RouteContext) {
-  return handleRequest(request, _context as unknown as never);
+export async function POST(request: NextRequest, _context: RouteContext) {
+  try {
+    const res = await handleRequest(request, _context as unknown as never);
+    return withCors(res);
+  } catch (err) {
+    const body = JSON.stringify({
+      errors: [{ message: err instanceof Error ? err.message : "Internal server error" }],
+    });
+    return withCors(new Response(body, { status: 500, headers: { "Content-Type": "application/json" } }));
+  }
 }
 
-export function OPTIONS(request: NextRequest, _context: RouteContext) {
-  return handleRequest(request, _context as unknown as never);
+export async function OPTIONS(request: NextRequest, _context: RouteContext) {
+  try {
+    const res = await handleRequest(request, _context as unknown as never);
+    return withCors(res);
+  } catch {
+    return withCors(new Response(null, { status: 204 }));
+  }
 }

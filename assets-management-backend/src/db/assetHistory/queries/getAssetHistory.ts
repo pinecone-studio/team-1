@@ -171,6 +171,12 @@ export async function getAssetHistory(
           description = "Эзэмшигч зөвшөөрсөн";
         } else if (al.action === "ASSIGNMENT_REJECTED") {
           description = "Эзэмшигч татгалзсан";
+        } else if (al.action === "ASSET_DELETE_REQUESTED") {
+          description = "Устгах үйлдэл эхэлсэн";
+        } else if (al.action === "ASSET_DELETED") {
+          description = "Хөрөнгө устгасан";
+        } else if (al.action === "ASSET_DELETE_FAILED") {
+          description = `Устгах үйлдэл амжилтгүй${newVal.error ? `: ${newVal.error}` : ""}`;
         }
       }
     } catch {

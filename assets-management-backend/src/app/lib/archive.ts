@@ -17,7 +17,7 @@ const r2Client = new S3Client({
  * Хөрөнгийг архивлаж, өгөгдлийн сангаас устгах үндсэн функц
  * 1. Өгөгдлийг татаж авах
  * 2. R2 руу JSON байдлаар байршуулах
- * 3. D1-ээс бүрмөсөн устгах (Transaction)
+ * 3. D1 дээр soft delete хийх (deletedAt set)
  */
 export async function processAssetArchiving(assetId: string) {
   const db = await getDb();
@@ -65,15 +65,13 @@ export async function processAssetArchiving(assetId: string) {
     throw new Error("Archiving failed at R2 stage");
   }
 
-  // 3. D1-ээс устгах (Transaction ашиглан)
-  // Гадаад түлхүүрийн хамаарлыг (foreign keys) бодолцож эхлээд child хүснэгтүүдээс устгана
+  // 3. D1 дээр soft delete хийх
+  // FK хамаарлуудаас болж hard delete (db.delete) унах эрсдэлтэй тул assets мөрийг deletedAt-аар тэмдэглэнэ.
   try {
-    // Дараалал нь чухал: assignments -> maintenanceTickets -> assets
-    await db.delete(assignments).where(eq(assignments.assetId, assetId));
     await db
-      .delete(maintenanceTickets)
-      .where(eq(maintenanceTickets.assetId, assetId));
-    await db.delete(assets).where(eq(assets.id, assetId));
+      .update(assets)
+      .set({ deletedAt: Date.now(), updatedAt: Date.now() })
+      .where(eq(assets.id, assetId));
   } catch (error) {
     console.error("D1 Deletion failed:", error);
     throw new Error("Archiving succeeded, but cleanup failed at D1 stage");
