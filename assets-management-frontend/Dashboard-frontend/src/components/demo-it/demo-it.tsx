@@ -1,8 +1,18 @@
 "use client";
 
 import React, { useState } from "react";
-import { Check, ShieldCheck, History, Search, X, Eye, Wrench, Bell } from "lucide-react";
+import {
+  Check,
+  ShieldCheck,
+  History,
+  Search,
+  X,
+  Eye,
+  Wrench,
+  Bell,
+} from "lucide-react";
 import { useQuery, useMutation } from "@apollo/client";
+import jsPDF from "jspdf";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +35,8 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import SignaturePad from "@/app/esign/_components/SignaturePad";
+import DocumentPreview from "@/app/esign/_components/DocumentPreview";
 import {
   GetActiveDisposalsDocument,
   GetDisposalRequestsDocument,
@@ -46,6 +58,58 @@ const DISPOSAL_STATUS_LABELS: Record<string, string> = {
   REJECTED: "Татгалзсан",
 };
 
+const PDF_FONT_REGULAR = "/fonts/NotoSans-Variable.ttf";
+const PDF_FONT_BOLD = "/fonts/NotoSans-Variable.ttf";
+const PDF_FONT_NAME = "NotoSans";
+let cachedPdfFontRegular: string | null = null;
+let cachedPdfFontBold: string | null = null;
+
+const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+};
+
+const ensurePdfFonts = async (pdf: jsPDF) => {
+  if (!cachedPdfFontRegular) {
+    const res = await fetch(PDF_FONT_REGULAR);
+    if (!res.ok) throw new Error("PDF font татаж чадсангүй.");
+    cachedPdfFontRegular = arrayBufferToBase64(await res.arrayBuffer());
+  }
+  if (!cachedPdfFontBold) {
+    if (PDF_FONT_BOLD === PDF_FONT_REGULAR) {
+      cachedPdfFontBold = cachedPdfFontRegular;
+    } else {
+      const res = await fetch(PDF_FONT_BOLD);
+      if (!res.ok) throw new Error("PDF bold font татаж чадсангүй.");
+      cachedPdfFontBold = arrayBufferToBase64(await res.arrayBuffer());
+    }
+  }
+  if (!cachedPdfFontRegular || !cachedPdfFontBold) {
+    throw new Error("PDF font уншихад алдаа гарлаа.");
+  }
+  pdf.addFileToVFS("NotoSans-Regular.ttf", cachedPdfFontRegular);
+  pdf.addFont("NotoSans-Regular.ttf", PDF_FONT_NAME, "normal");
+  pdf.addFileToVFS("NotoSans-Bold.ttf", cachedPdfFontBold);
+  pdf.addFont("NotoSans-Bold.ttf", PDF_FONT_NAME, "bold");
+};
+
+const normalizeAssetTag = (value?: string | null) => {
+  if (!value) return "—";
+  const trimmed = value.trim();
+  if (trimmed.length <= 3) return trimmed.toUpperCase();
+  const parts = trimmed.split("-");
+  if (parts.length >= 2) {
+    const prefix = parts[0].slice(0, 3).toUpperCase();
+    return [prefix, ...parts.slice(1)].join("-");
+  }
+  return trimmed.slice(0, 3).toUpperCase();
+};
+
 type DisposalItem = {
   id: string;
   assetId: string;
@@ -54,7 +118,12 @@ type DisposalItem = {
   status: string;
   createdAt: number;
   asset?: { id?: string; assetTag?: string; category?: string } | null;
-  requestedBy?: { id?: string; firstName?: string; lastName?: string; email?: string } | null;
+  requestedBy?: {
+    id?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  } | null;
 };
 
 const DEMO_IT_APPROVER_INDEX = 0;
@@ -84,26 +153,35 @@ export function DemoITContent({
 }: {
   title?: string;
 }) {
-  const [selectedDisposal, setSelectedDisposal] = useState<DisposalItem | null>(null);
-
-  const { data: disposalsData } = useQuery(
-    GetActiveDisposalsDocument,
-    { fetchPolicy: "network-only" },
+  const [selectedDisposal, setSelectedDisposal] = useState<DisposalItem | null>(
+    null,
   );
+  const [signatureData, setSignatureData] = useState<string | null>(null);
+  const [signatureUploading, setSignatureUploading] = useState(false);
+  const [dataWipeConfirmed, setDataWipeConfirmed] = useState(false);
+  const [isDisposalChecked, setIsDisposalChecked] = useState(false);
+
+  const { data: disposalsData } = useQuery(GetActiveDisposalsDocument, {
+    fetchPolicy: "network-only",
+  });
   const { data: employeesData } = useQuery(EmployeesDocument);
-  const demoApproverId = employeesData?.employees?.[DEMO_IT_APPROVER_INDEX]?.id ?? "";
+  const demoApproverId =
+    employeesData?.employees?.[DEMO_IT_APPROVER_INDEX]?.id ?? "";
 
   const { data: allDisposalsData } = useQuery(GetDisposalRequestsDocument, {
     variables: { status: undefined },
     fetchPolicy: "network-only",
   });
-  const allDisposals = allDisposalsData?.disposalRequests ?? [];
+  const allDisposals = (allDisposalsData?.disposalRequests ?? [])
+    .slice()
+    .sort((a, b) => (b?.createdAt ?? 0) - (a?.createdAt ?? 0));
 
   const { data: maintenanceData } = useQuery(GetMaintenanceTicketsDocument, {
     variables: { status: undefined },
     fetchPolicy: "network-only",
   });
-  const allMaintenanceTickets = (maintenanceData?.maintenanceTickets ?? []) as MaintenanceItem[];
+  const allMaintenanceTickets = (maintenanceData?.maintenanceTickets ??
+    []) as MaintenanceItem[];
 
   const { data: wipeData, refetch: refetchWipe } = useQuery(
     GetDataWipeTasksDocument,
@@ -125,22 +203,25 @@ export function DemoITContent({
     variables: { role: UserRole.ItAdmin },
     fetchPolicy: "network-only",
   });
-  const itNotifications =
-    (dashboardData?.dashboard?.itView?.notifications ?? []) as Array<{
-      id: string;
-      title: string;
-      message: string;
-      type?: string;
-      link?: string | null;
-      createdAt?: number;
-    }>;
+  const itNotifications = (dashboardData?.dashboard?.itView?.notifications ??
+    []) as Array<{
+    id: string;
+    title: string;
+    message: string;
+    type?: string;
+    link?: string | null;
+    createdAt?: number;
+  }>;
 
   const [approveDisposal, { loading: approving }] = useMutation(
     ApproveDisposalDocument,
     {
       refetchQueries: [
         { query: GetActiveDisposalsDocument },
-        { query: GetDisposalRequestsDocument, variables: { status: undefined } },
+        {
+          query: GetDisposalRequestsDocument,
+          variables: { status: undefined },
+        },
         { query: GetDashboardDocument, variables: { role: UserRole.ItAdmin } },
       ],
     },
@@ -150,7 +231,10 @@ export function DemoITContent({
     {
       refetchQueries: [
         { query: GetActiveDisposalsDocument },
-        { query: GetDisposalRequestsDocument, variables: { status: undefined } },
+        {
+          query: GetDisposalRequestsDocument,
+          variables: { status: undefined },
+        },
         { query: GetDashboardDocument, variables: { role: UserRole.ItAdmin } },
       ],
     },
@@ -191,6 +275,185 @@ export function DemoITContent({
     }
   };
 
+  const handleSaveSignature = (dataUrl: string) => {
+    setSignatureData(dataUrl);
+  };
+
+  const handleClearSignature = () => {
+    setSignatureData(null);
+  };
+
+  const dataUrlToBlob = (dataUrl: string) => {
+    const [header, data] = dataUrl.split(",");
+    const mimeMatch = header.match(/data:(.*);base64/);
+    const mime = mimeMatch ? mimeMatch[1] : "image/png";
+    const binary = atob(data);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type: mime });
+  };
+
+  const uploadApprovalPdf = async (item: DisposalItem) => {
+    if (!signatureData) {
+      toast.error("Эхлээд гарын үсгээ зурна уу.");
+      return false;
+    }
+
+    const bucketName = process.env.NEXT_PUBLIC_R2_BUCKET_NAME;
+    const publicUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
+    const graphqlUrl = process.env.NEXT_PUBLIC_GRAPHQL_URL;
+    const presignUrl =
+      process.env.NEXT_PUBLIC_R2_PRESIGN_URL ??
+      (graphqlUrl
+        ? graphqlUrl.replace(/\/api\/graphql$/, "/api/r2/presign")
+        : "/api/r2/presign");
+
+    if (!bucketName || !publicUrl) {
+      toast.error("R2 орчны хувьсагч дутуу байна.");
+      return false;
+    }
+
+    try {
+      setSignatureUploading(true);
+      toast.loading("Баталгаажуулалтын PDF үүсгэж байна...", {
+        id: "disposal-approve-pdf",
+      });
+
+      const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+      await ensurePdfFonts(pdf);
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 16;
+      const contentWidth = pageWidth - margin * 2;
+      let cursorY = 18;
+
+      const assetName = normalizeAssetTag(item.asset?.assetTag ?? item.assetId);
+      const category = item.asset?.category ?? "—";
+      const requestedByName = item.requestedBy
+        ? [item.requestedBy.firstName, item.requestedBy.lastName]
+            .filter(Boolean)
+            .join(" ") || item.requestedBy.email
+        : "Admin";
+      const methodLabel = item.method ?? "—";
+      const reasonLabel = item.reason ?? "—";
+      const approverName = employeesData?.employees?.[DEMO_IT_APPROVER_INDEX]
+        ?.firstName
+        ? `${employeesData?.employees?.[DEMO_IT_APPROVER_INDEX]?.firstName ?? ""} ${employeesData?.employees?.[DEMO_IT_APPROVER_INDEX]?.lastName ?? ""}`.trim()
+        : "IT Admin";
+
+      pdf.setFillColor(245, 247, 250);
+      pdf.rect(0, 0, pageWidth, 34, "F");
+      pdf.setFont(PDF_FONT_NAME, "bold");
+      pdf.setFontSize(18);
+      pdf.text("Эвдрэлтэй хөрөнгийн баталгаажуулалт", pageWidth / 2, 20, {
+        align: "center",
+      });
+      pdf.setFontSize(10);
+      pdf.setFont(PDF_FONT_NAME, "normal");
+      pdf.text(
+        `Огноо: ${new Date().toLocaleDateString("mn-MN")}`,
+        pageWidth - margin,
+        28,
+        { align: "right" },
+      );
+      cursorY = 42;
+
+      pdf.setFont(PDF_FONT_NAME, "bold");
+      pdf.setFontSize(12);
+      pdf.text("1. Хүсэлтийн мэдээлэл", margin, cursorY);
+      cursorY += 6;
+
+      const boxTop = cursorY;
+      const boxHeight = 44;
+      pdf.setDrawColor(210, 214, 220);
+      pdf.rect(margin, boxTop, contentWidth, boxHeight);
+      pdf.setFont(PDF_FONT_NAME, "normal");
+      pdf.setFontSize(11);
+
+      const leftX = margin + 4;
+      const rightX = margin + contentWidth / 2 + 4;
+      let rowY = boxTop + 8;
+      pdf.text(`Хөрөнгө: ${assetName}`, leftX, rowY);
+      pdf.text(`Ангилал: ${category}`, rightX, rowY);
+      rowY += 8;
+      pdf.text(`Хэнээс: ${requestedByName}`, leftX, rowY);
+      pdf.text(`Устгах арга: ${methodLabel}`, rightX, rowY);
+      rowY += 8;
+      pdf.text(`Шалтгаан: ${reasonLabel}`, leftX, rowY);
+      pdf.text(`Хүсэлт №: ${item.id}`, rightX, rowY);
+      cursorY = boxTop + boxHeight + 10;
+
+      pdf.setFont(PDF_FONT_NAME, "bold");
+      pdf.setFontSize(12);
+      pdf.text("2. Баталгаажуулалт", margin, cursorY);
+      cursorY += 6;
+      pdf.setFont(PDF_FONT_NAME, "normal");
+      pdf.setFontSize(11);
+      const approveText =
+        "IT ажилтан хүсэлтийг шалгаж, эвдэрсэн болохыг баталгаажуулсан. Өгөгдөл сэргээх боломжгүй болсон.";
+      const approveLines = pdf.splitTextToSize(approveText, contentWidth);
+      pdf.text(approveLines, margin, cursorY);
+      cursorY += approveLines.length * 5.5 + 8;
+
+      pdf.setFont(PDF_FONT_NAME, "bold");
+      pdf.text("Баталгаажуулсан ажилтан", margin, pageHeight - 20);
+      pdf.setFont(PDF_FONT_NAME, "normal");
+      pdf.text(approverName, margin + 54, pageHeight - 20);
+
+      pdf.setFont(PDF_FONT_NAME, "bold");
+      pdf.text("Гарын үсэг", pageWidth - margin - 60, pageHeight - 20);
+      pdf.setDrawColor(17, 17, 17);
+      pdf.line(
+        pageWidth - margin - 60,
+        pageHeight - 28,
+        pageWidth - margin,
+        pageHeight - 28,
+      );
+      try {
+        pdf.addImage(
+          signatureData,
+          "PNG",
+          pageWidth - margin - 60,
+          pageHeight - 50,
+          60,
+          20,
+        );
+      } catch {
+        // ignore if signature image fails to render
+      }
+
+      const pdfBlob = pdf.output("blob");
+      const key = `disposal-approvals/${item.assetId}/${item.id}-${Date.now()}.pdf`;
+      const presignRes = await fetch(presignUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key,
+          contentType: "application/pdf",
+          bucketName,
+        }),
+      });
+      if (!presignRes.ok) throw new Error("Presign failed");
+      const { url } = (await presignRes.json()) as { url: string };
+
+      await fetch(url, {
+        method: "PUT",
+        body: pdfBlob,
+        headers: { "Content-Type": "application/pdf" },
+      });
+
+      toast.success("Баталгаажуулалтын PDF хадгалагдлаа.", {
+        id: "disposal-approve-pdf",
+      });
+      return true;
+    } catch (err) {
+      console.error(err);
+      toast.error("PDF хадгалахад алдаа гарлаа.", {
+        id: "disposal-approve-pdf",
+      });
+      return false;
+    } finally {
+      setSignatureUploading(false);
   const handleWipeDone = async (id: string) => {
     try {
       await updateWipeTask({ variables: { id, status: "DONE" } });
@@ -202,12 +465,14 @@ export function DemoITContent({
   };
 
   return (
+    <div className="flex flex-col gap-4 p-6 pb-10">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between shrink-0">
     <ScrollArea className="h-full min-h-0 flex-1 w-full">
       <div className="flex flex-col gap-4 p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between shrink-0">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
-          <p className="text-sm text-muted-foreground italic">
+          <p className="text-sm text-muted-foreground ">
             IT-д илгээгдсэн бүх хүсэлт — устгах хүсэлт, засварын дуудлага
           </p>
         </div>
@@ -260,76 +525,19 @@ export function DemoITContent({
         </CardContent>
       </Card>
 
-      {/* Ажилтнаас ирсэн мэдэгдэл — хэнээс ирсэн, Accept/Decline */}
-      {itNotifications.length > 0 && (
-        <Card className="mt-4 border-violet-200 bg-violet-50/30 shrink-0">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base font-medium text-violet-800">
-              <Bell className="h-5 w-5" /> Ажилтнаас ирсэн мэдэгдэл ({itNotifications.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[280px] pr-4">
-              <div className="space-y-3">
-                {itNotifications.map((n) => {
-                  const disposalId = n.link?.match(/\/disposal\/([^/]+)/)?.[1];
-                  const isDisposal = Boolean(disposalId);
-                  return (
-                    <div
-                      key={n.id}
-                      className="rounded-lg border border-violet-100 bg-white p-3 text-sm"
-                    >
-                      <p className="font-medium text-foreground">{n.title}</p>
-                      <p className="mt-1 text-muted-foreground">{n.message}</p>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Хэнээс ирсэн: Ажилтан (системийн мэдэгдэл)
-                      </p>
-                      {n.createdAt && (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Илгээсэн огноо: {new Date(n.createdAt).toLocaleString()}
-                        </p>
-                      )}
-                      {isDisposal && (
-                        <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            size="sm"
-                            className="gap-1.5 bg-green-600 hover:bg-green-700 text-white"
-                            onClick={() => disposalId && handleApprove(disposalId)}
-                            disabled={approving || rejecting}
-                          >
-                            <Check className="h-3.5 w-3.5" /> Accept
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="gap-1.5 border-rose-600 text-rose-600 hover:bg-rose-50"
-                            onClick={() => disposalId && handleReject(disposalId)}
-                            disabled={approving || rejecting}
-                          >
-                            <X className="h-3.5 w-3.5" /> Decline
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Устгах хүсэлтүүд (PENDING) — ажилтан "Миний хөрөнгө" дээрээс илгээсэн */}
-      <Card className="mt-6 border-blue-200 bg-blue-50/30">
+      <Card className="mt-6 border-gray-200 bg-white">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base font-medium text-blue-800">
-            <ShieldCheck className="h-5 w-5" /> Устгах хүсэлтүүд ({pendingDisposals.length})
+          <CardTitle className="flex items-center gap-2 text-base font-medium text-gray-900">
+            <ShieldCheck className="h-5 w-5" /> Устгах хүсэлтүүд (
+            {pendingDisposals.length})
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {pendingDisposals.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-blue-200 bg-white p-6 text-center text-sm text-muted-foreground">
-              Одоогоор хүлээгдэж буй устгах хүсэлт байхгүй. Ажилтан «Миний хөрөнгө» → хөрөнгө дээр дарж «Устгах хүсэлт илгээх»-ээр илгээж болно.
+            <p className="rounded-lg border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-muted-foreground">
+              Одоогоор хүлээгдэж буй устгах хүсэлт байхгүй. Ажилтан «Миний
+              хөрөнгө» → хөрөнгө дээр дарж «Устгах хүсэлт илгээх»-ээр илгээж
+              болно.
             </p>
           ) : (
             pendingDisposals.map((req) => {
@@ -337,61 +545,84 @@ export function DemoITContent({
               const assetName = r.asset?.assetTag ?? r.assetId;
               const categoryName = r.asset?.category ?? "—";
               const requesterName = r.requestedBy
-                ? [r.requestedBy.firstName, r.requestedBy.lastName].filter(Boolean).join(" ") || r.requestedBy.email
+                ? [r.requestedBy.firstName, r.requestedBy.lastName]
+                    .filter(Boolean)
+                    .join(" ") || r.requestedBy.email
                 : "—";
               return (
-              <div
-                key={req.id}
-                className="flex flex-col justify-between gap-4 rounded-lg border border-blue-100 bg-white p-4 sm:flex-row sm:items-center shadow-sm cursor-pointer hover:bg-blue-50/50 transition-colors"
-                onClick={() => setSelectedDisposal(r)}
-              >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white font-bold text-sm">
-                    {(assetName ?? "?").slice(0, 2).toUpperCase()}
+                <div
+                  key={req.id}
+                  className="flex flex-col justify-between gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:flex-row sm:items-center shadow-sm cursor-pointer hover:bg-gray-50 transition-colors"
+                  onClick={() => {
+                    setIsDisposalChecked(false);
+                    setSelectedDisposal(r);
+                  }}
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-900 text-white font-bold text-sm">
+                      {(assetName ?? "?").slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-foreground">
+                        {assetName}{" "}
+                        <span className="text-muted-foreground font-normal">
+                          ({categoryName})
+                        </span>
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Хэнээс:{" "}
+                        <span className="font-medium text-foreground">
+                          {requesterName}
+                        </span>{" "}
+                        | Арга: {r.method} |{" "}
+                        {new Date(r.createdAt).toLocaleString()}
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-foreground">
-                      {assetName} <span className="text-muted-foreground font-normal">({categoryName})</span>
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Хэнээс: <span className="font-medium text-foreground">{requesterName}</span> | Арга: {r.method} | {new Date(r.createdAt).toLocaleString()}
-                    </p>
+                  <div
+                    className="flex items-center gap-2 shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsDisposalChecked(false);
+                        setSelectedDisposal(r);
+                      }}
+                    >
+                      <Eye className="h-3.5 w-3.5" /> Дэлгэрэнгүй
+                    </Button>
+                    <Badge
+                      variant="outline"
+                      className="bg-amber-50 text-amber-600 border-amber-200"
+                    >
+                      PENDING
+                    </Badge>
+                    <Button
+                      onClick={() => {
+                        setIsDisposalChecked(false);
+                        setSelectedDisposal(r);
+                      }}
+                      className="gap-2 bg-gray-900 text-white hover:bg-gray-800"
+                      size="sm"
+                      disabled
+                    >
+                      <Check className="h-4 w-4" /> Батлах (IT)
+                    </Button>
+                    <Button
+                      onClick={() => handleReject(r.id)}
+                      variant="outline"
+                      className="gap-2 border-gray-300 text-gray-700 hover:bg-gray-100"
+                      size="sm"
+                      disabled={approving || rejecting}
+                    >
+                      <X className="h-4 w-4" /> Цуцлах
+                    </Button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedDisposal(r);
-                    }}
-                  >
-                    <Eye className="h-3.5 w-3.5" /> Дэлгэрэнгүй
-                  </Button>
-                  <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200">
-                    PENDING
-                  </Badge>
-                  <Button
-                    onClick={() => handleApprove(r.id)}
-                    className="gap-2 bg-blue-600 text-white hover:bg-blue-700"
-                    size="sm"
-                    disabled={approving || rejecting}
-                  >
-                    <Check className="h-4 w-4" /> Батлах (IT)
-                  </Button>
-                  <Button
-                    onClick={() => handleReject(r.id)}
-                    variant="outline"
-                    className="gap-2 border-rose-600 text-rose-600 hover:bg-rose-50"
-                    size="sm"
-                    disabled={approving || rejecting}
-                  >
-                    <X className="h-4 w-4" /> Цуцлах
-                  </Button>
-                </div>
-              </div>
               );
             })
           )}
@@ -399,15 +630,16 @@ export function DemoITContent({
       </Card>
 
       {/* Засварын дуудлага — IT-д ирсэн бүх засварын хүсэлт */}
-      <Card className="mt-6 border-amber-200 bg-amber-50/30">
+      <Card className="mt-6 border-gray-200 bg-white">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base font-medium text-amber-800">
-            <Wrench className="h-5 w-5" /> Засварын дуудлага ({allMaintenanceTickets.length})
+          <CardTitle className="flex items-center gap-2 text-base font-medium text-gray-900">
+            <Wrench className="h-5 w-5" /> Засварын хүсэлт (
+            {allMaintenanceTickets.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
           {allMaintenanceTickets.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-amber-200 bg-white p-6 text-center text-sm text-muted-foreground">
+            <p className="rounded-lg border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-muted-foreground">
               Засварын дуудлага байхгүй байна.
             </p>
           ) : (
@@ -424,8 +656,12 @@ export function DemoITContent({
               <TableBody>
                 {allMaintenanceTickets.map((t) => (
                   <TableRow key={t.id}>
-                    <TableCell className="font-mono text-xs">{t.assetId}</TableCell>
-                    <TableCell className="max-w-xs truncate text-sm">{t.description}</TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {t.assetId}
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate text-sm">
+                      {t.description}
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-xs">
                         {t.severity}
@@ -436,10 +672,10 @@ export function DemoITContent({
                         variant="outline"
                         className={
                           t.status === "OPEN"
-                            ? "bg-amber-100 text-amber-700 border-amber-200"
+                            ? "bg-gray-100 text-gray-700 border-gray-200"
                             : t.status === "RESOLVED" || t.status === "CLOSED"
-                              ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                              : "bg-blue-100 text-blue-700 border-blue-200"
+                              ? "bg-gray-200 text-gray-800 border-gray-200"
+                              : "bg-gray-100 text-gray-700 border-gray-200"
                         }
                       >
                         {MAINTENANCE_STATUS_LABELS[t.status] ?? t.status}
@@ -484,7 +720,10 @@ export function DemoITContent({
             <TableBody>
               {allDisposals.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground text-sm">
+                  <TableCell
+                    colSpan={5}
+                    className="h-24 text-center text-muted-foreground text-sm"
+                  >
                     Устгах хүсэлт байхгүй байна.
                   </TableCell>
                 </TableRow>
@@ -494,13 +733,19 @@ export function DemoITContent({
                   const assetName = r.asset?.assetTag ?? r.assetId;
                   const categoryName = r.asset?.category ?? "—";
                   const requesterName = r.requestedBy
-                    ? [r.requestedBy.firstName, r.requestedBy.lastName].filter(Boolean).join(" ") || r.requestedBy.email
+                    ? [r.requestedBy.firstName, r.requestedBy.lastName]
+                        .filter(Boolean)
+                        .join(" ") || r.requestedBy.email
                     : "—";
-                  const statusLabel = DISPOSAL_STATUS_LABELS[r.status] ?? r.status;
+                  const statusLabel =
+                    DISPOSAL_STATUS_LABELS[r.status] ?? r.status;
                   return (
                     <TableRow key={r.id}>
                       <TableCell className="font-medium">
-                        {assetName} <span className="text-muted-foreground font-normal">({categoryName})</span>
+                        {assetName}{" "}
+                        <span className="text-muted-foreground font-normal">
+                          ({categoryName})
+                        </span>
                       </TableCell>
                       <TableCell>{requesterName}</TableCell>
                       <TableCell className="text-sm">{r.method}</TableCell>
@@ -515,7 +760,8 @@ export function DemoITContent({
                               ? "bg-emerald-100 text-emerald-700 border-emerald-200"
                               : r.status === "REJECTED"
                                 ? "bg-rose-100 text-rose-700 border-rose-200"
-                                : r.status === "IT_APPROVED" || r.status === "FINANCE_APPROVED"
+                                : r.status === "IT_APPROVED" ||
+                                    r.status === "FINANCE_APPROVED"
                                   ? "bg-blue-100 text-blue-700 border-blue-200"
                                   : "bg-amber-100 text-amber-600 border-amber-200"
                           }
@@ -535,52 +781,110 @@ export function DemoITContent({
       {/* Устгах хүсэлтийн дэлгэрэнгүй — мэдээлэл шалгах dialog */}
       <Dialog
         open={!!selectedDisposal}
-        onOpenChange={(open) => !open && setSelectedDisposal(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedDisposal(null);
+            setSignatureData(null);
+            setDataWipeConfirmed(false);
+            setIsDisposalChecked(false);
+          }
+        }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-5xl w-full">
           <DialogHeader>
-            <DialogTitle>Устгах хүсэлтийн дэлгэрэнгүй</DialogTitle>
+            <DialogTitle>Устгах хүсэлт — баталгаажуулалт</DialogTitle>
             <DialogDescription>
-              Ажилтанаас ирсэн устгах хүсэлтийн мэдээлэл. Шалгаад Батлах эсвэл Цуцлах товчоор шийднэ үү.
+              Эвдрэлтэй гэж баталгаажуулж, гарын үсэг зурна уу.
             </DialogDescription>
           </DialogHeader>
           {selectedDisposal && (
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="text-muted-foreground">Хөрөнгө (нэр):</div>
-                <div className="font-medium">{selectedDisposal.asset?.assetTag ?? selectedDisposal.assetId}</div>
-                <div className="text-muted-foreground">Ангилал:</div>
-                <div className="font-medium">{selectedDisposal.asset?.category ?? "—"}</div>
-                <div className="text-muted-foreground">Хэнээс ирсэн (ажилтан):</div>
-                <div className="font-medium">
-                  {selectedDisposal.requestedBy
-                    ? [selectedDisposal.requestedBy.firstName, selectedDisposal.requestedBy.lastName].filter(Boolean).join(" ") || selectedDisposal.requestedBy.email
-                    : "—"}
+            <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-6 py-4">
+              <div className="order-2 lg:order-1 flex justify-center">
+                <DocumentPreview
+                  signatureData={signatureData}
+                  title="Data Wipe Out Confirmation"
+                  bodyText="IT ажилтан өгөгдөл сэргээх боломжгүй болсон гэдгийг баталгаажуулж байна. Энэхүү баримт нь дата бүрэн устсан болохыг нотлох зорилготой."
+                  waitingLabel="Гарын үсэг хүлээгдэж байна..."
+                  signedByLabel="Баталгаажуулсан"
+                  dateLabel="Огноо"
+                />
+              </div>
+
+              <div className="order-1 lg:order-2 space-y-4">
+                <div className="rounded-xl border border-muted bg-muted/30 p-4">
+                  <h4 className="text-base font-semibold mb-3">
+                    Хүсэлтийн мэдээлэл
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="text-muted-foreground">Хөрөнгө (нэр):</div>
+                    <div className="font-medium">
+                      {normalizeAssetTag(
+                        selectedDisposal.asset?.assetTag ??
+                          selectedDisposal.assetId,
+                      )}
+                    </div>
+                    <div className="text-muted-foreground">Ангилал:</div>
+                    <div className="font-medium">
+                      {selectedDisposal.asset?.category ?? "—"}
+                    </div>
+                    <div className="text-muted-foreground">
+                      Хэнээс ирсэн (ажилтан):
+                    </div>
+                    <div className="font-medium">
+                      {selectedDisposal.requestedBy
+                        ? [
+                            selectedDisposal.requestedBy.firstName,
+                            selectedDisposal.requestedBy.lastName,
+                          ]
+                            .filter(Boolean)
+                            .join(" ") || selectedDisposal.requestedBy.email
+                        : "Admin"}
+                    </div>
+                    {selectedDisposal.requestedBy?.email && (
+                      <>
+                        <div className="text-muted-foreground">Имэйл:</div>
+                        <div className="font-medium text-xs">
+                          {selectedDisposal.requestedBy.email}
+                        </div>
+                      </>
+                    )}
+                    <div className="text-muted-foreground">Устгах арга:</div>
+                    <div className="font-medium">{selectedDisposal.method}</div>
+                    {selectedDisposal.reason && (
+                      <>
+                        <div className="text-muted-foreground">Шалтгаан:</div>
+                        <div className="font-medium">
+                          {selectedDisposal.reason}
+                        </div>
+                      </>
+                    )}
+                    <div className="text-muted-foreground">Төлөв:</div>
+                    <div>
+                      <Badge
+                        variant="outline"
+                        className="bg-amber-50 text-amber-600 border-amber-200"
+                      >
+                        {selectedDisposal.status}
+                      </Badge>
+                    </div>
+                    <div className="text-muted-foreground">Илгээсэн огноо:</div>
+                    <div className="font-medium">
+                      {new Date(selectedDisposal.createdAt).toLocaleString()}
+                    </div>
+                  </div>
                 </div>
-                {selectedDisposal.requestedBy?.email && (
-                  <>
-                    <div className="text-muted-foreground">Имэйл:</div>
-                    <div className="font-medium text-xs">{selectedDisposal.requestedBy.email}</div>
-                  </>
-                )}
-                <div className="text-muted-foreground">Устгах арга:</div>
-                <div className="font-medium">{selectedDisposal.method}</div>
-                {selectedDisposal.reason && (
-                  <>
-                    <div className="text-muted-foreground">Шалтгаан:</div>
-                    <div className="font-medium">{selectedDisposal.reason}</div>
-                  </>
-                )}
-                <div className="text-muted-foreground">Төлөв:</div>
-                <div>
-                  <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200">
-                    {selectedDisposal.status}
-                  </Badge>
-                </div>
-                <div className="text-muted-foreground">Илгээсэн огноо:</div>
-                <div className="font-medium">
-                  {new Date(selectedDisposal.createdAt).toLocaleString()}
-                </div>
+
+                <SignaturePad
+                  onSave={handleSaveSignature}
+                  onClear={handleClearSignature}
+                  title="Баталгаажуулах гарын үсэг"
+                  clearLabel="Арилгах"
+                  saveLabel={
+                    signatureUploading
+                      ? "PDF үүсгэж байна..."
+                      : "Гарын үсэг хадгалах"
+                  }
+                />
               </div>
             </div>
           )}
@@ -591,18 +895,25 @@ export function DemoITContent({
             {selectedDisposal && (
               <>
                 <Button
-                  className="gap-2 bg-blue-600 text-white hover:bg-blue-700"
+                  className="gap-2 bg-gray-900 text-white hover:bg-gray-800"
                   onClick={async () => {
+                    const uploaded = await uploadApprovalPdf(selectedDisposal);
+                    if (!uploaded) return;
                     await handleApprove(selectedDisposal.id);
                     setSelectedDisposal(null);
                   }}
-                  disabled={approving || rejecting}
+                  disabled={
+                    !signatureData ||
+                    signatureUploading ||
+                    approving ||
+                    rejecting
+                  }
                 >
                   <Check className="h-4 w-4" /> Батлах (IT)
                 </Button>
                 <Button
                   variant="outline"
-                  className="gap-2 border-rose-600 text-rose-600 hover:bg-rose-50"
+                  className="gap-2 border-gray-300 text-gray-700 hover:bg-gray-100"
                   onClick={async () => {
                     await handleReject(selectedDisposal.id);
                     setSelectedDisposal(null);
@@ -616,7 +927,6 @@ export function DemoITContent({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </div>
-    </ScrollArea>
+    </div>
   );
 }
