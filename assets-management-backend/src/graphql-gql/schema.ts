@@ -306,6 +306,9 @@ export const typeDefs = /* GraphQL */ `
   type DataWipeTask {
     id: ID!
     assetId: ID!
+    asset: Asset
+    latestAssignment: Assignment
+    latestReturnRequest: OffboardingReturnRequest
     status: String!
     createdAt: Float!
     updatedAt: Float!

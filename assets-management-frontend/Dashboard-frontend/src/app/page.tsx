@@ -60,7 +60,7 @@ export default function DashboardPage() {
           activeTitle !== "Ажилтан демо" &&
           activeTitle !== "IT демо" &&
           activeTitle !== "HR демо" ? (
-            <div className="min-h-0 flex flex-1 overflow-auto p-6">
+            <div className="">
               <div className="w-full rounded-xl bg-gray opacity-0" />
             </div>
           ) : null}

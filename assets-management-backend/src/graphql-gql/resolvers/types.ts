@@ -13,7 +13,7 @@ import {
 } from "@/db/assignments";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { assignments, categories } from "@/schema";
+import { assignments, categories, offboardingReturnRequests } from "@/schema";
 
 const safeNumber = (val: any) => {
   if (val === null || val === undefined || val === "") return null;
@@ -165,7 +165,29 @@ export const typeResolvers = {
     asset: (r: { assetId: string }) => getAssetById(r.assetId),
     employee: (r: { employeeId: string }) => getEmployeeById(r.employeeId),
   },
-  DataWipeTask: {},
+  DataWipeTask: {
+    asset: (task: { assetId: string }) => getAssetById(task.assetId),
+    latestAssignment: async (task: { assetId: string }) => {
+      const db = await getDb();
+      return db
+        .select()
+        .from(assignments)
+        .where(eq(assignments.assetId, task.assetId))
+        .orderBy(desc(assignments.returnedAt), desc(assignments.assignedAt))
+        .limit(1)
+        .get();
+    },
+    latestReturnRequest: async (task: { assetId: string }) => {
+      const db = await getDb();
+      return db
+        .select()
+        .from(offboardingReturnRequests)
+        .where(eq(offboardingReturnRequests.assetId, task.assetId))
+        .orderBy(desc(offboardingReturnRequests.updatedAt))
+        .limit(1)
+        .get();
+    },
+  },
   MaintenanceTicket: {
     repairCost: (mt: any) => safeNumber(mt.repairCost),
   },

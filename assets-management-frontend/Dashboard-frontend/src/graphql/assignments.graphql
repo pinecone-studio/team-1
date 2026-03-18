@@ -29,4 +29,9 @@ fragment AssignmentFields on Assignment {
     firstName
     lastName
   }
+  requestedBy {
+    id
+    firstName
+    lastName
+  }
 }

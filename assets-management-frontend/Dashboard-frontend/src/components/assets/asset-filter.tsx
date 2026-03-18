@@ -820,14 +820,13 @@ export function AssetFilter() {
         open={!!detailAssetId}
         onOpenChange={(open) => !open && setDetailAssetId(null)}
       >
-        <DialogContent className="max-w-6xl w-[98vw] max-h-[92vh] flex flex-col overflow-hidden p-6 rounded-xl">
+        <DialogContent className="">
           <DialogTitle className="sr-only">Хөрөнгийн дэлгэрэнгүй</DialogTitle>
           <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1">
             {detailAssetId && (
               <AssetDetailContent
                 assetId={detailAssetId}
-                className=""
-                onSaved={() => refetch()}
+             
               />
             )}
           </div>

@@ -22,7 +22,7 @@ export type AssetKpis = {
  * NOTE:
  * - "assigned" is defined as: there exists an assignment with returnedAt IS NULL.
  *   This mirrors the GraphQL `assignedTo` resolver behavior.
- * - value uses purchaseCost as DB source (currentBookValue is not a DB column here).
+ * - value uses currentBookValue (зарж болох үнэ) with fallback to purchaseCost.
  */
 export async function getAssetKpis(office?: string): Promise<AssetKpis> {
   const db = await getDb();
@@ -41,7 +41,7 @@ export async function getAssetKpis(office?: string): Promise<AssetKpis> {
       and ${assignments.returnedAt} is null
   )`;
 
-  const valueExpr = sql<number>`coalesce(${assets.purchaseCost}, 0)`;
+  const valueExpr = sql<number>`coalesce(${assets.currentBookValue}, ${assets.purchaseCost}, 0)`;
 
   const row = await db
     .select({
