@@ -105,6 +105,7 @@ export const assets = sqliteTable(
     status: text().default("AVAILABLE").notNull(),
     purchaseDate: integer(),
     purchaseCost: integer(),
+    currentBookValue: integer(),
     locationId: text().references(() => locations.id),
     imageUrl: text(),
     notes: text(),

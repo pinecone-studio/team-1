@@ -5,6 +5,7 @@ import { KPICards } from "@/components/kpi-cards";
 import { AssetDistributionChart } from "@/components/charts/asset-distribution-chart";
 import { AssetDepreciationChart } from "@/components/charts/asset-depreciation-chart";
 import { RecentActivities } from "@/components/recent-activities";
+import { AssetRequestsTable } from "@/components/asset-requests-table";
 
 export function DashboardContent() {
   return (
@@ -16,6 +17,8 @@ export function DashboardContent() {
           <AssetDistributionChart />
           <RecentActivities />
         </div>
+
+        <AssetRequestsTable />
 
         <div className="grid gap-6 lg:grid-cols-2">
           {/* <AssetDepreciationChart /> */}
