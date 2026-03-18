@@ -4,22 +4,14 @@ import { useApolloClient, useMutation, useQuery } from "@apollo/client";
 import { useMemo, useState, useEffect } from "react";
 import type { AssetFieldsFragment } from "@/gql/graphql";
 import {
+  DeleteAssetDocument,
   GetAssetDocument,
   GetAssetHistoryDocument,
   GetAssetKpisDocument,
   GetAssetsDocument,
-  UpdateAssetDocument,
-  DeleteAssetDocument,
   GetLocationsDocument,
+  UpdateAssetDocument,
 } from "@/gql/graphql";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import {
   Box,
   Pencil,
@@ -42,6 +33,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { CATEGORY_LABELS, SUB_CATEGORIES_BY_MAIN } from "./constants";
+import { cn } from "@/lib/utils";
 
 const STATUS_LABELS: Record<string, string> = {
   ASSIGNED: "Эзэмшигчтэй",
@@ -87,6 +79,54 @@ const MAIN_CATEGORY_BY_SUB: Record<string, string> = Object.entries(
   {} as Record<string, string>,
 );
 
+const FIELD_LABEL_CLASS =
+  "text-[13px] font-medium leading-5 tracking-normal text-slate-500";
+const FIELD_BOX_CLASS =
+  "flex min-h-11 items-center rounded-lg border border-slate-200 bg-white px-3.5 text-[15px] font-medium text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.04)]";
+const FIELD_INPUT_CLASS =
+  "h-11 rounded-lg border-slate-200 bg-white px-3.5 text-[15px] text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.04)] focus-visible:border-slate-300 focus-visible:ring-2 focus-visible:ring-slate-200";
+const FIELD_SELECT_TRIGGER_CLASS = cn(FIELD_INPUT_CLASS, "w-full");
+const FIELD_SELECT_CONTENT_CLASS =
+  "z-[70] rounded-lg border border-slate-200 bg-white shadow-[0_20px_48px_rgba(15,23,42,0.12)]";
+const FIELD_NATIVE_SELECT_OVERLAY_CLASS =
+  "absolute inset-0 h-full w-full cursor-pointer opacity-0";
+
+function formatCurrency(value: number | null | undefined) {
+  if (value == null) return "—";
+  return `${Number(value).toLocaleString()}₮`;
+}
+
+function formatNumberInput(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+  return Number(digits).toLocaleString();
+}
+
+function parseNumberInput(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return digits ? Number(digits) : 0;
+}
+
+function StatusChip({ status }: { status: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-2 rounded-lg border px-2.5 py-1 text-[13px] font-semibold",
+        STATUS_BADGE_CLASSES[status] ??
+          "border-slate-200 bg-slate-50 text-slate-600",
+      )}
+    >
+      <span
+        className={cn(
+          "h-2 w-2 rounded-full",
+          STATUS_DOT_CLASSES[status] ?? "bg-slate-400",
+        )}
+      />
+      {STATUS_LABELS[status] || status || "—"}
+    </span>
+  );
+}
+
 export function AssetDetailContent({
   assetId,
   onClose,
@@ -103,14 +143,17 @@ export function AssetDetailContent({
     assetTag: "",
     serialNumber: "",
     status: "",
+    mainCategory: "",
+    category: "",
     locationId: "",
+    purchaseCost: "",
     salePrice: "",
     notes: "",
   });
   const [saving, setSaving] = useState(false);
-  const [optimisticBookValue, setOptimisticBookValue] = useState<
-    number | null
-  >(null);
+  const [optimisticBookValue, setOptimisticBookValue] = useState<number | null>(
+    null,
+  );
 
   const { data, loading, refetch } = useQuery(GetAssetDocument, {
     variables: { id: assetId },
@@ -145,13 +188,35 @@ export function AssetDetailContent({
   const asset = data?.asset as
     | (AssetFieldsFragment & { locationPath?: string })
     | undefined;
+  const historyItems = (historyData?.assetHistory ?? []) as Array<{
+    id: string;
+    eventType: string;
+    description: string;
+    timestamp: string;
+    actor?: {
+      firstName?: string | null;
+      lastName?: string | null;
+      imageUrl?: string | null;
+    } | null;
+  }>;
 
   const locationOptions = useMemo(() => {
-    return (locationsData?.locations ?? []).map((loc: any) => ({
+    return (
+      (locationsData?.locations ?? []) as Array<{ id: string; name: string }>
+    ).map((loc) => ({
       id: loc.id.toString(),
       name: loc.name,
     }));
   }, [locationsData]);
+
+  const mainCategoryOptions = useMemo(
+    () => Object.keys(SUB_CATEGORIES_BY_MAIN),
+    [],
+  );
+
+  const subCategoryOptions = useMemo(() => {
+    return SUB_CATEGORIES_BY_MAIN[editData.mainCategory] ?? [];
+  }, [editData.mainCategory]);
 
   const handleEditToggle = () => {
     if (!asset) return;
@@ -161,8 +226,11 @@ export function AssetDetailContent({
       assetTag: asset.assetTag ?? "",
       serialNumber: asset.serialNumber ?? "",
       status: asset.status ?? "AVAILABLE",
+      mainCategory: MAIN_CATEGORY_BY_SUB[asset.category ?? ""] || "",
+      category: asset.category ?? "",
       locationId: asset.locationId ?? "",
-      salePrice: bookValue?.toString() ?? "",
+      purchaseCost: formatNumberInput(asset.purchaseCost?.toString() ?? ""),
+      salePrice: formatNumberInput(bookValue?.toString() ?? ""),
       notes: asset.notes ?? "",
     });
     setIsEditing(true);
@@ -180,8 +248,11 @@ export function AssetDetailContent({
       assetTag: asset.assetTag ?? "",
       serialNumber: asset.serialNumber ?? "",
       status: asset.status ?? "AVAILABLE",
+      mainCategory: MAIN_CATEGORY_BY_SUB[asset.category ?? ""] || "",
+      category: asset.category ?? "",
       locationId: asset.locationId ?? "",
-      salePrice: asset.currentBookValue?.toString() ?? "",
+      purchaseCost: formatNumberInput(asset.purchaseCost?.toString() ?? ""),
+      salePrice: formatNumberInput(asset.currentBookValue?.toString() ?? ""),
       notes: asset.notes ?? "",
     });
     setHasInitializedEdit(true);
@@ -197,13 +268,16 @@ export function AssetDetailContent({
             assetTag: editData.assetTag,
             serialNumber: editData.serialNumber,
             status: editData.status,
+            mainCategory: editData.mainCategory,
+            category: editData.category,
             locationId: editData.locationId,
-            currentBookValue: parseFloat(editData.salePrice) || 0,
+            purchaseCost: parseNumberInput(editData.purchaseCost),
+            currentBookValue: parseNumberInput(editData.salePrice),
             notes: editData.notes,
           },
         },
       });
-      const savedBookValue = parseFloat(editData.salePrice) || 0;
+      const savedBookValue = parseNumberInput(editData.salePrice);
       setOptimisticBookValue(savedBookValue);
       await refetch();
       await client.refetchQueries({
@@ -219,9 +293,7 @@ export function AssetDetailContent({
 
   const handleDelete = async () => {
     if (
-      !window.confirm(
-        "Энэ хөрөнгийг устгах уу? Энэ үйлдлийг буцааж болохгүй.",
-      )
+      !window.confirm("Энэ хөрөнгийг устгах уу? Энэ үйлдлийг буцааж болохгүй.")
     )
       return;
     try {
@@ -249,131 +321,132 @@ export function AssetDetailContent({
     categoryKey ||
     "—";
   const mainCategoryLabel = MAIN_CATEGORY_BY_SUB[categoryKey] || "—";
+  const isModal = Boolean(onClose);
+  const salePriceValue = optimisticBookValue ?? asset.currentBookValue ?? null;
 
   return (
-    <div className="bg-white rounded-[24px] max-w-4xl w-full mx-auto shadow-xl border border-gray-100 overflow-hidden">
-      <Tabs defaultValue="details" className="w-full">
-        {/* Header Section */}
-        <div className="flex items-center justify-between px-6 pt-[20px] border-b border-gray-100">
-          <TabsList className="bg-transparent h-12 p-0 gap-5">
-            <TabsTrigger
-              value="details"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-black data-[state=active]:text-black text-gray-400 font-semibold h-full px-1 gap-2 transition-all bg-transparent shadow-none text-[13px]"
-            >
-              <Box className="h-4 w-4" /> Хөрөнгийн дэлгэрэнгүй
-            </TabsTrigger>
-            <TabsTrigger
-              value="history"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-black data-[state=active]:text-black text-gray-400 font-semibold h-full px-1 gap-2 transition-all bg-transparent shadow-none text-[13px]"
-            >
-              <History className="h-4 w-4" /> Хөрөнгийн түүх
-            </TabsTrigger>
-          </TabsList>
+    <div
+      className={cn(
+        "w-full overflow-hidden rounded-[28px] bg-white",
+        !isModal &&
+          "mx-auto border border-slate-200 shadow-[0_20px_60px_rgba(15,23,42,0.08)]",
+      )}
+    >
+      <Tabs defaultValue="details" className="w-full gap-0">
+        <div className="border-b border-slate-200 px-6 pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <TabsList variant="line" className="h-auto gap-6 p-0">
+              <TabsTrigger
+                value="details"
+                className="gap-2 rounded-none px-0 py-3 text-[14px] font-semibold text-slate-500 data-active:text-slate-950 after:bottom-[-1px] after:h-0.5"
+              >
+                <Box className="h-4 w-4" />
+                Хөрөнгийн дэлгэрэнгүй
+              </TabsTrigger>
+              <TabsTrigger
+                value="history"
+                className="gap-2 rounded-none px-0 py-3 text-[14px] font-semibold text-slate-500 data-active:text-slate-950 after:bottom-[-1px] after:h-0.5"
+              >
+                <History className="h-4 w-4" />
+                Хөрөнгийн түүх
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Buttons: Close + Устгах + Edit/Save */}
-          <div className="flex flex-col items-end gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-8 w-8 text-gray-300 hover:text-black hover:bg-transparent transition-colors"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pb-3">
+              {isEditing ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsEditing(false)}
+                    className="h-9 rounded-lg px-3 text-[13px] text-slate-600"
+                  >
+                    Цуцлах
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="h-9 rounded-lg px-4 text-[13px] font-semibold"
+                  >
+                    {saving ? "..." : "Хадгалах"}
+                    <Check className="h-4 w-4" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleEditToggle}
+                    className="h-9 rounded-lg border-slate-200 px-3.5 text-[13px] font-medium text-slate-900 shadow-sm hover:bg-slate-50"
+                  >
+                    Засварлах
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={handleDelete}
                 disabled={deleting}
-                className="rounded-lg text-[12px] h-8 gap-2 font-medium px-3 text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors"
+                className="h-9 w-9 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600"
               >
-                <Trash2 className="h-3.5 w-3.5" />
-                {deleting ? "..." : "Устгах"}
+                <Trash2 className="h-4 w-4" />
               </Button>
-              {!isEditing ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleEditToggle}
-                  className="rounded-lg border-gray-200 text-[12px] h-8 gap-2 font-medium px-3 hover:bg-gray-50 transition-colors"
-                >
-                  Засварлах <Pencil className="h-3.5 w-3.5" />
-                </Button>
-              ) : (
-              <>
-              <div className="flex gap-2">
+              {isModal && (
                 <Button
                   variant="ghost"
-                  size="sm"
-                  onClick={() => setIsEditing(false)}
-                  className="h-8 text-[12px]"
+                  size="icon"
+                  onClick={onClose}
+                  className="h-9 w-9 rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                 >
-                  Цуцлах
+                  <X className="h-4.5 w-4.5" />
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="rounded-lg h-8 px-4 gap-1.5 font-semibold text-[12px]"
-                >
-                  {saving ? "..." : "Хадгалах"}{" "}
-                  <Check className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-              </>
               )}
             </div>
           </div>
         </div>
 
-        {/* Details Content */}
-        <TabsContent value="details" className="p-8 m-0">
-          <div className="flex flex-col md:flex-row gap-8">
-            {/* Image Section */}
-            <div className="w-44 h-44 shrink-0 rounded-[22px] border border-gray-200 bg-white p-4 flex items-center justify-center shadow-[0_0_0_1px_rgba(0,0,0,0.04)]">
+        <TabsContent value="details" className="m-0 px-6 pb-6 pt-5">
+          <div className="grid gap-6 lg:grid-cols-[160px_minmax(0,1fr)]">
+            <div className="flex h-[158px] w-full items-center justify-center rounded-2xl border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] lg:w-[160px]">
               {asset.imageUrl ? (
                 <img
                   src={asset.imageUrl}
-                  className="max-h-full object-contain"
-                  alt="Asset"
+                  className="max-h-full w-full object-contain"
+                  alt={asset.assetTag || "Asset"}
                 />
               ) : (
-                <Box className="h-12 w-12 text-gray-200" />
+                <Box className="h-12 w-12 text-slate-300" />
               )}
             </div>
 
-            {/* Fields Grid */}
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
-              <div className="space-y-1">
-                <Label className="text-[12px] font-medium leading-5 tracking-normal text-[#6B7280] bg-transparent px-0 py-0 inline-flex items-center">
-                  Нэр
-                </Label>
+            <div className="grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className={FIELD_LABEL_CLASS}>Нэр</Label>
                 {isEditing ? (
-                  <div className="relative group">
+                  <div className="relative">
                     <Input
                       value={editData.assetTag}
                       onChange={(e) =>
                         setEditData({ ...editData, assetTag: e.target.value })
                       }
-                      className="h-9 text-[14px] pr-8 focus:ring-1 focus:ring-black"
+                      className={cn(FIELD_INPUT_CLASS, "pr-9")}
                     />
                     <X
-                      className="absolute right-2 top-2.5 h-4 w-4 text-gray-300 cursor-pointer"
+                      className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 cursor-pointer text-slate-300"
                       onClick={() => setEditData({ ...editData, assetTag: "" })}
                     />
                   </div>
                 ) : (
-                  <div className="text-[15px] font-semibold text-gray-900">
-                    {asset.assetTag || "—"}
-                  </div>
+                  <div className={FIELD_BOX_CLASS}>{asset.assetTag || "—"}</div>
                 )}
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-[12px] font-medium leading-5 tracking-normal text-[#6B7280] bg-transparent px-0 py-0 inline-flex items-center">
-                  Серийн дугаар
-                </Label>
+              <div className="space-y-1.5">
+                <Label className={FIELD_LABEL_CLASS}>Серийн дугаар</Label>
                 {isEditing ? (
                   <div className="relative">
                     <Input
@@ -384,86 +457,69 @@ export function AssetDetailContent({
                           serialNumber: e.target.value,
                         })
                       }
-                      className="h-9 text-[14px] pr-8 focus:ring-1 focus:ring-black"
+                      className={cn(FIELD_INPUT_CLASS, "pr-9")}
                     />
                     <X
-                      className="absolute right-2 top-2.5 h-4 w-4 text-gray-300 cursor-pointer"
+                      className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 cursor-pointer text-slate-300"
                       onClick={() =>
                         setEditData({ ...editData, serialNumber: "" })
                       }
                     />
                   </div>
                 ) : (
-                  <div className="text-[15px] font-semibold text-gray-900">
+                  <div className={FIELD_BOX_CLASS}>
                     {asset.serialNumber || "—"}
                   </div>
                 )}
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-[12px] font-medium leading-5 tracking-normal text-[#6B7280] bg-transparent px-0 py-0 inline-flex items-center">
-                  Төлөв
-                </Label>
+              <div className="space-y-1.5">
+                <Label className={FIELD_LABEL_CLASS}>Төлөв</Label>
                 {isEditing ? (
-                  <Select
-                    value={editData.status}
-                    onValueChange={(v) =>
-                      setEditData({ ...editData, status: v })
-                    }
-                  >
-                    <SelectTrigger
-                      className={`h-9 text-[14px] font-medium focus:ring-1 focus:ring-black ${
-                        STATUS_BADGE_CLASSES[editData.status] ??
-                        "border-gray-100 bg-white text-gray-800"
-                      }`}
+                  <div className="relative">
+                    <Input
+                      readOnly
+                      value={STATUS_LABELS[editData.status] || "Төлөв сонгох"}
+                      className={cn(
+                        FIELD_INPUT_CLASS,
+                        "cursor-pointer pr-10 font-medium",
+                      )}
+                    />
+                    <select
+                      value={editData.status}
+                      onChange={(event) =>
+                        setEditData({ ...editData, status: event.target.value })
+                      }
+                      className={FIELD_NATIVE_SELECT_OVERLAY_CLASS}
                     >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                        <SelectItem key={k} value={k}>
-                          <span className="inline-flex items-center gap-2">
-                            <span
-                              className={`h-2 w-2 rounded-full ${
-                                STATUS_DOT_CLASSES[k] ?? "bg-gray-400"
-                              }`}
-                            />
-                            {v}
-                          </span>
-                        </SelectItem>
+                      {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                        <option key={key} value={key}>
+                          {label}
+                        </option>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  </div>
                 ) : (
-                  <div className="pt-0.5">
-                    <Badge
-                      variant="outline"
-                      className={`rounded-lg px-3 py-0.5 font-semibold text-[11px] ${
-                        STATUS_BADGE_CLASSES[asset.status ?? ""] ??
-                        "border-gray-100 bg-gray-50 text-gray-500"
-                      }`}
-                    >
-                      {STATUS_LABELS[asset.status ?? ""] || asset.status}
-                    </Badge>
+                  <div className={FIELD_BOX_CLASS}>
+                    <StatusChip status={asset.status ?? ""} />
                   </div>
                 )}
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-[12px] font-medium leading-5 tracking-normal text-[#6B7280] bg-transparent px-0 py-0 inline-flex items-center">
-                  Байршил
-                </Label>
+              <div className="space-y-1.5">
+                <Label className={FIELD_LABEL_CLASS}>Байршил</Label>
                 {isEditing ? (
                   <Select
                     value={editData.locationId}
-                    onValueChange={(v) =>
-                      setEditData({ ...editData, locationId: v })
+                    onValueChange={(value) =>
+                      setEditData({ ...editData, locationId: value })
                     }
                   >
-                    <SelectTrigger className="h-9 text-[14px] focus:ring-1 focus:ring-black">
+                    <SelectTrigger className={FIELD_SELECT_TRIGGER_CLASS}>
                       <SelectValue placeholder="Сонгох" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className={FIELD_SELECT_CONTENT_CLASS}>
                       {locationOptions.map((loc) => (
                         <SelectItem key={loc.id} value={loc.id}>
                           {loc.name}
@@ -472,78 +528,129 @@ export function AssetDetailContent({
                     </SelectContent>
                   </Select>
                 ) : (
-                  <div className="text-[14px] font-medium text-gray-800 leading-tight">
+                  <div className={cn(FIELD_BOX_CLASS, "break-words leading-6")}>
                     {asset.locationPath || "—"}
                   </div>
                 )}
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-[12px] font-medium leading-5 tracking-normal text-[#6B7280] bg-transparent px-0 py-0 inline-flex items-center">
-                  Ангилал
-                </Label>
-                <div className="text-[14px] font-medium text-gray-800 leading-tight">
-                  {mainCategoryLabel}
-                </div>
+              <div className="space-y-1.5">
+                <Label className={FIELD_LABEL_CLASS}>Ангилал</Label>
+                {isEditing ? (
+                  <Select
+                    value={editData.mainCategory}
+                    onValueChange={(value) => {
+                      const nextCategory =
+                        SUB_CATEGORIES_BY_MAIN[value]?.[0] ?? "";
+                      setEditData({
+                        ...editData,
+                        mainCategory: value,
+                        category: nextCategory,
+                      });
+                    }}
+                  >
+                    <SelectTrigger className={FIELD_SELECT_TRIGGER_CLASS}>
+                      <SelectValue placeholder="Ангилал сонгох" />
+                    </SelectTrigger>
+                    <SelectContent className={FIELD_SELECT_CONTENT_CLASS}>
+                      {mainCategoryOptions.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className={FIELD_BOX_CLASS}>{mainCategoryLabel}</div>
+                )}
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-[12px] font-medium leading-5 tracking-normal text-[#6B7280] bg-transparent px-0 py-0 inline-flex items-center">
-                  Дэд ангилал
-                </Label>
-                <div className="text-[14px] font-medium text-gray-800 leading-tight">
-                  {subCategoryLabel}
-                </div>
+              <div className="space-y-1.5">
+                <Label className={FIELD_LABEL_CLASS}>Дэд ангилал</Label>
+                {isEditing ? (
+                  <Select
+                    value={editData.category}
+                    onValueChange={(value) =>
+                      setEditData({ ...editData, category: value })
+                    }
+                    disabled={subCategoryOptions.length === 0}
+                  >
+                    <SelectTrigger className={FIELD_SELECT_TRIGGER_CLASS}>
+                      <SelectValue placeholder="Дэд ангилал сонгох" />
+                    </SelectTrigger>
+                    <SelectContent className={FIELD_SELECT_CONTENT_CLASS}>
+                      {subCategoryOptions.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {CATEGORY_LABELS[option] ?? option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className={FIELD_BOX_CLASS}>{subCategoryLabel}</div>
+                )}
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-[12px] font-medium leading-5 tracking-normal text-[#6B7280] bg-transparent px-0 py-0 inline-flex items-center">
-                  Худалдаж авсан үнэ
-                </Label>
-                <div className="text-[16px] font-semibold text-gray-900">
-                  {asset.purchaseCost
-                    ? Number(asset.purchaseCost).toLocaleString() + "₮"
-                    : "—"}
-                </div>
+              <div className="space-y-1.5">
+                <Label className={FIELD_LABEL_CLASS}>Худалдаж авсан үнэ</Label>
+                {isEditing ? (
+                  <div className="relative">
+                    <Input
+                      value={editData.purchaseCost}
+                      onChange={(e) =>
+                        setEditData({
+                          ...editData,
+                          purchaseCost: formatNumberInput(e.target.value),
+                        })
+                      }
+                      inputMode="numeric"
+                      className={cn(FIELD_INPUT_CLASS, "pr-9 font-semibold")}
+                    />
+                    <X
+                      className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 cursor-pointer text-slate-300"
+                      onClick={() =>
+                        setEditData({ ...editData, purchaseCost: "" })
+                      }
+                    />
+                  </div>
+                ) : (
+                  <div className={cn(FIELD_BOX_CLASS, "font-semibold")}>
+                    {formatCurrency(asset.purchaseCost)}
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-[12px] font-medium leading-5 tracking-normal text-[#6B7280] bg-transparent px-0 py-0 inline-flex items-center">
-                  Зарах үнэ
-                </Label>
+              <div className="space-y-1.5">
+                <Label className={FIELD_LABEL_CLASS}>Зарах үнэ</Label>
                 {isEditing ? (
                   <div className="relative">
                     <Input
                       value={editData.salePrice}
                       onChange={(e) =>
-                        setEditData({ ...editData, salePrice: e.target.value })
+                        setEditData({
+                          ...editData,
+                          salePrice: formatNumberInput(e.target.value),
+                        })
                       }
-                      className="h-9 text-[14px] font-semibold pr-8 focus:ring-1 focus:ring-black"
+                      inputMode="numeric"
+                      className={cn(FIELD_INPUT_CLASS, "pr-9 font-semibold")}
                     />
                     <X
-                      className="absolute right-2 top-2.5 h-4 w-4 text-gray-300 cursor-pointer"
+                      className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 cursor-pointer text-slate-300"
                       onClick={() =>
                         setEditData({ ...editData, salePrice: "" })
                       }
                     />
                   </div>
                 ) : (
-                  <div className="text-[16px] font-semibold text-gray-900">
-                    {(optimisticBookValue ??
-                      asset.currentBookValue ??
-                      null) != null
-                      ? Number(
-                          optimisticBookValue ?? asset.currentBookValue,
-                        ).toLocaleString() + "₮"
-                      : "—"}
+                  <div className={cn(FIELD_BOX_CLASS, "font-semibold")}>
+                    {formatCurrency(salePriceValue)}
                   </div>
                 )}
               </div>
 
-              <div className="space-y-1 pt-1 md:col-start-2">
-                <Label className="text-[12px] font-medium leading-5 tracking-normal text-[#6B7280] bg-transparent px-0 py-0 inline-flex items-center">
-                  Тэмдэглэл
-                </Label>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label className={FIELD_LABEL_CLASS}>Тэмдэглэл</Label>
                 {isEditing ? (
                   <div className="relative">
                     <Input
@@ -551,16 +658,21 @@ export function AssetDetailContent({
                       onChange={(e) =>
                         setEditData({ ...editData, notes: e.target.value })
                       }
-                      className="h-9 text-[14px] pr-8 italic text-gray-500 focus:ring-1 focus:ring-black"
+                      className={cn(FIELD_INPUT_CLASS, "pr-9")}
                     />
                     <X
-                      className="absolute right-2 top-2.5 h-4 w-4 text-gray-300 cursor-pointer"
+                      className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 cursor-pointer text-slate-300"
                       onClick={() => setEditData({ ...editData, notes: "" })}
                     />
                   </div>
                 ) : (
-                  <div className="text-[13px] text-gray-500 italic leading-relaxed">
-                    {asset.notes || "Demo asset"}
+                  <div
+                    className={cn(
+                      FIELD_BOX_CLASS,
+                      "min-h-[48px] items-start py-3 text-slate-500",
+                    )}
+                  >
+                    {asset.notes || "Тэмдэглэл байхгүй"}
                   </div>
                 )}
               </div>
@@ -571,11 +683,11 @@ export function AssetDetailContent({
         {/* History Content */}
         <TabsContent
           value="history"
-          className="m-0 border-t border-gray-50 max-h-[420px] overflow-y-auto bg-white"
+          className="m-0 max-h-[420px] overflow-y-auto border-t border-slate-100 bg-white"
         >
-          <div className="p-6 space-y-4">
-            {historyData?.assetHistory?.length ? (
-              historyData.assetHistory.map((h: any) => {
+          <div className="space-y-4 p-6">
+            {historyItems.length ? (
+              historyItems.map((h) => {
                 const actorName = h.actor
                   ? `${h.actor.lastName?.[0] ?? ""}.${h.actor.firstName ?? ""}`
                   : "—";
@@ -587,14 +699,14 @@ export function AssetDetailContent({
                 return (
                   <div
                     key={h.id}
-                    className="border border-gray-200 rounded-xl px-6 py-4 flex items-center justify-between"
+                    className="flex items-center justify-between rounded-2xl border border-slate-200 px-5 py-4"
                   >
-                    <div className="text-[16px] font-semibold text-gray-900">
+                    <div className="text-[16px] font-semibold text-slate-900">
                       {eventLabel}
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full border border-gray-200 overflow-hidden bg-gray-100 flex items-center justify-center text-[11px] text-gray-500">
+                        <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100 text-[11px] text-slate-500">
                           {h.actor?.imageUrl ? (
                             <img
                               src={h.actor.imageUrl}
@@ -606,10 +718,10 @@ export function AssetDetailContent({
                           )}
                         </div>
                         <div className="leading-tight">
-                          <div className="text-[15px] font-semibold text-gray-900">
+                          <div className="text-[15px] font-semibold text-slate-900">
                             {actorName}
                           </div>
-                          <div className="text-[13px] text-gray-500">
+                          <div className="text-[13px] text-slate-500">
                             {formatted}
                           </div>
                         </div>
@@ -619,7 +731,7 @@ export function AssetDetailContent({
                         onClick={() =>
                           setExpandedHistoryId(isOpen ? null : h.id)
                         }
-                        className="h-8 w-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50"
+                        className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50"
                         aria-label="Дэлгэрэнгүй"
                       >
                         <ChevronDown
@@ -633,7 +745,7 @@ export function AssetDetailContent({
                 );
               })
             ) : (
-              <div className="h-32 flex items-center justify-center text-gray-300 italic text-[13px]">
+              <div className="flex h-32 items-center justify-center text-[13px] italic text-slate-300">
                 Түүх олдсонгүй.
               </div>
             )}

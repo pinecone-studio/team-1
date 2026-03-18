@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import type { ActiveOffboarding } from "./DemoEmployeeOffboardingCard";
 
 type EmployeeOption = {
   id: string;
@@ -26,7 +27,7 @@ export type DemoEmployeeHeaderProps = {
   demoEmployeeId: string;
   onDemoEmployeeChange: (id: string) => void;
   currentEmployeeId: string | null;
-  activeOffboarding: unknown;
+  activeOffboarding: ActiveOffboarding | null;
   offboardingStarting: boolean;
   onShowOffboardingModal: () => void;
   pendingListLength: number;

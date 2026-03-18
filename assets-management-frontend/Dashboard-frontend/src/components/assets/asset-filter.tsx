@@ -853,7 +853,10 @@ export function AssetFilter() {
         open={!!detailAssetId}
         onOpenChange={(open) => !open && setDetailAssetId(null)}
       >
-        <DialogContent className="">
+        <DialogContent
+          showCloseButton={false}
+          className="w-[min(92vw,760px)] max-h-[90vh] overflow-hidden rounded-[28px] border border-slate-200 bg-white p-0 shadow-[0_32px_90px_rgba(15,23,42,0.18)]"
+        >
           <DialogTitle className="sr-only">Хөрөнгийн дэлгэрэнгүй</DialogTitle>
           <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1">
             {detailAssetId && (

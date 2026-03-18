@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+	webpack(config) {
+		config.resolve = config.resolve ?? {};
+		config.resolve.alias = config.resolve.alias ?? {};
+		config.resolve.alias["@vercel/analytics/next"] = "@vercel/analytics/react";
+		return config;
+	},
 	images: {
 		remotePatterns: [
 			{
