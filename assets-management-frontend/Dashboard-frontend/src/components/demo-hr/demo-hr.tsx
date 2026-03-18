@@ -51,14 +51,96 @@ import {
   ApproveReturnRequestDocument,
   RequestRepairDocument,
   StartOffboardingDocument,
+  CreateEmployeeDocument,
+  UpdateEmployeeDocument,
+} from "@/gql/graphql";
+import type {
+  EmployeeCreateInput,
+  EmployeeUpdateInput,
 } from "@/gql/graphql";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const EMPLOYEE_STATUS_LABELS: Record<string, string> = {
   ACTIVE: "Идэвхтэй",
   OFFBOARDING: "Гарах процесс",
   TERMINATED: "Ажлаас гарсан",
 };
+
+const ROLE_OPTIONS: { value: string; label: string }[] = [
+  { value: "SUPER_ADMIN", label: "Super Admin" },
+  { value: "HR", label: "HR" },
+  { value: "IT", label: "IT" },
+  { value: "FINANCE", label: "Finance" },
+  { value: "EMPLOYEE", label: "Ажилтан" },
+];
+
+type NewEmployeeFormState = {
+  firstName: string;
+  lastName: string;
+  firstNameEng: string;
+  lastNameEng: string;
+  email: string;
+  hireDate: string;
+  numberOfVacationDays: string;
+  github: string;
+  department: string;
+  branch: string;
+  employeeCode: string;
+  level: string;
+  isKpi: boolean;
+  isSalaryCompany: boolean;
+  birthDayAndMonth: string;
+  birthdayPoster: string;
+};
+
+function getTodayDateString(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getDefaultNewEmployeeForm(): NewEmployeeFormState {
+  return {
+    firstName: "",
+    lastName: "",
+    firstNameEng: "",
+    lastNameEng: "",
+    email: "",
+    hireDate: getTodayDateString(),
+    numberOfVacationDays: "",
+    github: "",
+    department: "",
+    branch: "",
+    employeeCode: "",
+    level: "",
+    isKpi: false,
+    isSalaryCompany: true,
+    birthDayAndMonth: "",
+    birthdayPoster: "",
+  };
+}
+
+function getDemoNewEmployeeForm(): NewEmployeeFormState {
+  return {
+    ...getDefaultNewEmployeeForm(),
+    firstName: "Бат",
+    lastName: "Дорж",
+    firstNameEng: "Bat",
+    lastNameEng: "Dorj",
+    email: "bat.dorj@company.mn",
+    numberOfVacationDays: "21",
+    github: "batdorj",
+    department: "IT",
+    branch: "Улаанбаатар",
+    employeeCode: "EMP-DEMO",
+    level: "Senior",
+    isKpi: true,
+    isSalaryCompany: true,
+    birthDayAndMonth: "05-15",
+    birthdayPoster: "",
+  };
+}
 
 /** OFFBOARDING ажилтны буцаах хүсэлтийн тоог fetch хийж bell + тоо харуулна */
 function OffboardingBell({
@@ -126,6 +208,17 @@ export function DemoHRContent() {
   const [hrPhotoByRequestId, setHrPhotoByRequestId] = useState<
     Record<string, File | null>
   >({});
+
+  const [createEmployeeMutation, { loading: createEmployeeLoading }] =
+    useMutation(CreateEmployeeDocument);
+  const [updateEmployeeMutation, { loading: updateRoleLoading }] =
+    useMutation(UpdateEmployeeDocument);
+
+  const [roleChangeEmployeeId, setRoleChangeEmployeeId] = useState<string>("");
+  const [roleChangeRole, setRoleChangeRole] = useState<string>("EMPLOYEE");
+
+  const [newEmployeeForm, setNewEmployeeForm] =
+    useState<NewEmployeeFormState>(() => getDefaultNewEmployeeForm());
 
   const { data, loading, error, refetch } = useQuery(EmployeesDocument, {
     fetchPolicy: "network-only",
@@ -248,6 +341,81 @@ export function DemoHRContent() {
       toast.error("Ажлаас гаргах процесст алдаа гарлаа.");
     } finally {
       setOffboardSubmitting(false);
+    }
+  };
+
+  const handleCreateEmployee = async () => {
+    const d = newEmployeeForm;
+    if (
+      !d.firstName?.trim() ||
+      !d.lastName?.trim() ||
+      !d.firstNameEng?.trim() ||
+      !d.lastNameEng?.trim() ||
+      !d.email?.trim() ||
+      !d.hireDate ||
+      !d.department?.trim() ||
+      !d.branch?.trim() ||
+      !d.employeeCode?.trim() ||
+      !d.level?.trim()
+    ) {
+      toast.error("Заавал бөглөх талбаруудыг бүгдийг оруулна уу.");
+      return;
+    }
+    const hireDateTs = new Date(d.hireDate).getTime();
+    if (Number.isNaN(hireDateTs)) {
+      toast.error("Ажилд орсон огноо буруу байна.");
+      return;
+    }
+    const input: EmployeeCreateInput = {
+      firstName: d.firstName.trim(),
+      lastName: d.lastName.trim(),
+      firstNameEng: d.firstNameEng.trim(),
+      lastNameEng: d.lastNameEng.trim(),
+      email: d.email.trim(),
+      hireDate: hireDateTs,
+      numberOfVacationDays: d.numberOfVacationDays ? parseInt(d.numberOfVacationDays, 10) : undefined,
+      github: d.github.trim() || undefined,
+      department: d.department.trim(),
+      branch: d.branch.trim(),
+      employeeCode: d.employeeCode.trim(),
+      level: d.level.trim(),
+      isKpi: d.isKpi ? 1 : 0,
+      isSalaryCompany: d.isSalaryCompany ? 1 : 0,
+      birthDayAndMonth: d.birthDayAndMonth.trim() || undefined,
+      birthdayPoster: d.birthdayPoster.trim() || undefined,
+    };
+    try {
+      await createEmployeeMutation({ variables: { input } });
+      toast.success("Шинэ ажилтан амжилттай бүртгэгдлээ. И-мэйлээр нэвтрэхэд төлөв ACTIVE болно.");
+      setNewEmployeeOpen(false);
+      setNewEmployeeForm(getDefaultNewEmployeeForm());
+      refetch();
+    } catch (err) {
+      toast.error("Ажилтан бүртгэхэд алдаа гарлаа. Нэвтэрсэн эсэх, Bearer token шалгана уу.");
+    }
+  };
+
+  const handleRoleChangeSubmit = async () => {
+    if (!roleChangeEmployeeId) {
+      toast.error("Ажилтан сонгоно уу.");
+      return;
+    }
+    try {
+      await updateEmployeeMutation({
+        variables: {
+          id: roleChangeEmployeeId,
+          input: { role: roleChangeRole } as EmployeeUpdateInput,
+        },
+      });
+      toast.success(
+        "Role амжилттай солигдлоо. Clerk дээрх publicMetadata-д бас шинэчлэгдсэн.",
+      );
+      setRoleChangeOpen(false);
+      setRoleChangeEmployeeId("");
+      setRoleChangeRole("EMPLOYEE");
+      refetch();
+    } catch (err) {
+      toast.error("Role солиход алдаа гарлаа.");
     }
   };
 
@@ -393,43 +561,332 @@ export function DemoHRContent() {
           </CardContent>
         </Card>
 
-        {/* Шинэ ажилтан бүртгэх — placeholder */}
-        <Dialog open={newEmployeeOpen} onOpenChange={setNewEmployeeOpen}>
-          <DialogContent>
+        {/* Шинэ ажилтан бүртгэх */}
+        <Dialog
+          open={newEmployeeOpen}
+          onOpenChange={(open) => {
+            setNewEmployeeOpen(open);
+            if (open) setNewEmployeeForm(getDefaultNewEmployeeForm());
+          }}
+        >
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Шинэ ажилтан бүртгэх</DialogTitle>
               <DialogDescription>
-                Энэ хэсэг нь удахгүй нэмэгдэнэ. Одоогоор ажилчдын жагсаалтыг
-                харна уу.
+                И-мэйлээр бүртгэсний дараа тухайн хүн нэвтэрч ороход төлөв
+                ACTIVE болж, clerkId холбогдоно. Ажилд орсон огноо default-аар
+                өнөөдөр.
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setNewEmployeeOpen(false)}
-              >
-                Хаах
-              </Button>
-            </DialogFooter>
+            <div className="grid gap-4 py-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">Нэр (монгол)</Label>
+                <Input
+                  id="firstName"
+                  value={newEmployeeForm.firstName}
+                  onChange={(e) =>
+                    setNewEmployeeForm((p) => ({ ...p, firstName: e.target.value }))
+                  }
+                  placeholder="Жишээ"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Овог (монгол)</Label>
+                <Input
+                  id="lastName"
+                  value={newEmployeeForm.lastName}
+                  onChange={(e) =>
+                    setNewEmployeeForm((p) => ({ ...p, lastName: e.target.value }))
+                  }
+                  placeholder="Жишээ"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="firstNameEng">Нэр (англи)</Label>
+                <Input
+                  id="firstNameEng"
+                  value={newEmployeeForm.firstNameEng}
+                  onChange={(e) =>
+                    setNewEmployeeForm((p) => ({ ...p, firstNameEng: e.target.value }))
+                  }
+                  placeholder="First"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastNameEng">Овог (англи)</Label>
+                <Input
+                  id="lastNameEng"
+                  value={newEmployeeForm.lastNameEng}
+                  onChange={(e) =>
+                    setNewEmployeeForm((p) => ({ ...p, lastNameEng: e.target.value }))
+                  }
+                  placeholder="Last"
+                />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="email">И-мэйл *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={newEmployeeForm.email}
+                  onChange={(e) =>
+                    setNewEmployeeForm((p) => ({ ...p, email: e.target.value }))
+                  }
+                  placeholder="email@company.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="hireDate">Ажилд орсон огноо *</Label>
+                <Input
+                  id="hireDate"
+                  type="date"
+                  value={newEmployeeForm.hireDate}
+                  onChange={(e) =>
+                    setNewEmployeeForm((p) => ({ ...p, hireDate: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="numberOfVacationDays">Чөлөөний өдрийн тоо</Label>
+                <Input
+                  id="numberOfVacationDays"
+                  type="number"
+                  min={0}
+                  value={newEmployeeForm.numberOfVacationDays}
+                  onChange={(e) =>
+                    setNewEmployeeForm((p) => ({
+                      ...p,
+                      numberOfVacationDays: e.target.value,
+                    }))
+                  }
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="github">GitHub</Label>
+                <Input
+                  id="github"
+                  value={newEmployeeForm.github}
+                  onChange={(e) =>
+                    setNewEmployeeForm((p) => ({ ...p, github: e.target.value }))
+                  }
+                  placeholder="username"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="department">Алба *</Label>
+                <Input
+                  id="department"
+                  value={newEmployeeForm.department}
+                  onChange={(e) =>
+                    setNewEmployeeForm((p) => ({ ...p, department: e.target.value }))
+                  }
+                  placeholder="IT"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="branch">Салбар *</Label>
+                <Input
+                  id="branch"
+                  value={newEmployeeForm.branch}
+                  onChange={(e) =>
+                    setNewEmployeeForm((p) => ({ ...p, branch: e.target.value }))
+                  }
+                  placeholder="Улаанбаатар"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="employeeCode">Ажилтны код *</Label>
+                <Input
+                  id="employeeCode"
+                  value={newEmployeeForm.employeeCode}
+                  onChange={(e) =>
+                    setNewEmployeeForm((p) => ({ ...p, employeeCode: e.target.value }))
+                  }
+                  placeholder="EMP001"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="level">Түвшин *</Label>
+                <Input
+                  id="level"
+                  value={newEmployeeForm.level}
+                  onChange={(e) =>
+                    setNewEmployeeForm((p) => ({ ...p, level: e.target.value }))
+                  }
+                  placeholder="Junior / Senior"
+                />
+              </div>
+              <div className="flex items-center space-x-2 sm:col-span-2">
+                <Checkbox
+                  id="isKpi"
+                  checked={newEmployeeForm.isKpi}
+                  onCheckedChange={(checked) =>
+                    setNewEmployeeForm((p) => ({ ...p, isKpi: !!checked }))
+                  }
+                />
+                <Label htmlFor="isKpi" className="cursor-pointer">
+                  KPI-тэй эсэх
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2 sm:col-span-2">
+                <Checkbox
+                  id="isSalaryCompany"
+                  checked={newEmployeeForm.isSalaryCompany}
+                  onCheckedChange={(checked) =>
+                    setNewEmployeeForm((p) => ({ ...p, isSalaryCompany: !!checked }))
+                  }
+                />
+                <Label htmlFor="isSalaryCompany" className="cursor-pointer">
+                  Цалингийн компани (төлөвлөгөөнд багтах)
+                </Label>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="birthDayAndMonth">Төрсөн сар/өдөр (MM-DD)</Label>
+                <Input
+                  id="birthDayAndMonth"
+                  value={newEmployeeForm.birthDayAndMonth}
+                  onChange={(e) =>
+                    setNewEmployeeForm((p) => ({
+                      ...p,
+                      birthDayAndMonth: e.target.value,
+                    }))
+                  }
+                  placeholder="01-15"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="birthdayPoster">Төрсөн өдрийн poster</Label>
+                <Input
+                  id="birthdayPoster"
+                  value={newEmployeeForm.birthdayPoster}
+                  onChange={(e) =>
+                    setNewEmployeeForm((p) => ({ ...p, birthdayPoster: e.target.value }))
+                  }
+                  placeholder="URL эсвэл тэмдэглэл"
+                />
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4">
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setNewEmployeeForm(getDemoNewEmployeeForm())}
+                >
+                  Demo
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setNewEmployeeForm(getDefaultNewEmployeeForm())}
+                >
+                  Цэвлэх
+                </Button>
+              </div>
+              <DialogFooter className="border-0 p-0">
+                <Button
+                  variant="outline"
+                  onClick={() => setNewEmployeeOpen(false)}
+                >
+                  Хаах
+                </Button>
+                <Button
+                  onClick={handleCreateEmployee}
+                  disabled={createEmployeeLoading}
+                >
+                  {createEmployeeLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Бүртгэж байна...
+                    </>
+                  ) : (
+                    "Бүртгэх"
+                  )}
+                </Button>
+              </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
 
-        {/* Ажилтны role солих — placeholder */}
-        <Dialog open={roleChangeOpen} onOpenChange={setRoleChangeOpen}>
-          <DialogContent>
+        {/* Ажилтны role солих */}
+        <Dialog
+          open={roleChangeOpen}
+          onOpenChange={(open) => {
+            setRoleChangeOpen(open);
+            if (!open) {
+              setRoleChangeEmployeeId("");
+              setRoleChangeRole("EMPLOYEE");
+            }
+          }}
+        >
+          <DialogContent className="sm:min-w-[380px]">
             <DialogHeader>
               <DialogTitle>Ажилтны role солих</DialogTitle>
               <DialogDescription>
-                Энэ хэсэг нь удахгүй нэмэгдэнэ. Ажилтан сонгоод role солих
-                боломжтой болно.
+                Ажилтан сонгоод шинэ role сонгоод OK дарна. DB болон Clerk-ийн
+                publicMetadata дээр шинэчлэгдэнэ.
               </DialogDescription>
             </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label>Ажилтан</Label>
+                <Select
+                  value={roleChangeEmployeeId || undefined}
+                  onValueChange={setRoleChangeEmployeeId}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Ажилтан сонгох" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employeesSorted.map((emp) => (
+                      <SelectItem key={emp.id} value={emp.id}>
+                        {emp.firstName} {emp.lastName} ({emp.email}) — {emp.role}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Role</Label>
+                <Select
+                  value={roleChangeRole}
+                  onValueChange={setRoleChangeRole}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROLE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <DialogFooter>
               <Button
                 variant="outline"
                 onClick={() => setRoleChangeOpen(false)}
               >
                 Хаах
+              </Button>
+              <Button
+                onClick={handleRoleChangeSubmit}
+                disabled={updateRoleLoading || !roleChangeEmployeeId}
+              >
+                {updateRoleLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Хадгалж байна...
+                  </>
+                ) : (
+                  "OK"
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>

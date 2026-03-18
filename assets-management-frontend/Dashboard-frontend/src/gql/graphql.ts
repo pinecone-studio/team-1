@@ -253,12 +253,13 @@ export type Employee = {
   birthDayAndMonth?: Maybe<Scalars['String']['output']>;
   birthdayPoster?: Maybe<Scalars['String']['output']>;
   branch: Scalars['String']['output'];
+  clerkId?: Maybe<Scalars['String']['output']>;
   createdAt: Scalars['Float']['output'];
   deletedAt?: Maybe<Scalars['Float']['output']>;
   department: Scalars['String']['output'];
   email: Scalars['String']['output'];
   employeeCode: Scalars['String']['output'];
-  entraId: Scalars['String']['output'];
+  entraId?: Maybe<Scalars['String']['output']>;
   firstName: Scalars['String']['output'];
   firstNameEng: Scalars['String']['output'];
   github?: Maybe<Scalars['String']['output']>;
@@ -285,7 +286,7 @@ export type EmployeeCreateInput = {
   department: Scalars['String']['input'];
   email: Scalars['String']['input'];
   employeeCode: Scalars['String']['input'];
-  entraId: Scalars['String']['input'];
+  entraId?: InputMaybe<Scalars['String']['input']>;
   firstName: Scalars['String']['input'];
   firstNameEng: Scalars['String']['input'];
   github?: InputMaybe<Scalars['String']['input']>;
@@ -1382,21 +1383,21 @@ export type UpdateDataWipeTaskMutation = { __typename?: 'Mutation', updateDataWi
 export type EmployeesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type EmployeesQuery = { __typename?: 'Query', employees: Array<{ __typename?: 'Employee', id: string, entraId: string, firstName: string, lastName: string, firstNameEng: string, lastNameEng: string, email: string, role: string, imageUrl?: string | null, hireDate: number, terminationDate?: number | null, status: string, numberOfVacationDays?: number | null, github?: string | null, department: string, branch: string, employeeCode: string, level: string, isKpi: number, isSalaryCompany: number, birthDayAndMonth?: string | null, birthdayPoster?: string | null, createdAt: number, updatedAt: number, deletedAt?: number | null }> };
+export type EmployeesQuery = { __typename?: 'Query', employees: Array<{ __typename?: 'Employee', id: string, entraId?: string | null, firstName: string, lastName: string, firstNameEng: string, lastNameEng: string, email: string, role: string, imageUrl?: string | null, hireDate: number, terminationDate?: number | null, status: string, numberOfVacationDays?: number | null, github?: string | null, department: string, branch: string, employeeCode: string, level: string, isKpi: number, isSalaryCompany: number, birthDayAndMonth?: string | null, birthdayPoster?: string | null, createdAt: number, updatedAt: number, deletedAt?: number | null }> };
 
 export type EmployeeQueryVariables = Exact<{
   id: Scalars['ID']['input'];
 }>;
 
 
-export type EmployeeQuery = { __typename?: 'Query', employee?: { __typename?: 'Employee', id: string, entraId: string, firstName: string, lastName: string, firstNameEng: string, lastNameEng: string, email: string, role: string, imageUrl?: string | null, hireDate: number, terminationDate?: number | null, status: string, numberOfVacationDays?: number | null, github?: string | null, department: string, branch: string, employeeCode: string, level: string, isKpi: number, isSalaryCompany: number, birthDayAndMonth?: string | null, birthdayPoster?: string | null, createdAt: number, updatedAt: number, deletedAt?: number | null } | null };
+export type EmployeeQuery = { __typename?: 'Query', employee?: { __typename?: 'Employee', id: string, entraId?: string | null, firstName: string, lastName: string, firstNameEng: string, lastNameEng: string, email: string, role: string, imageUrl?: string | null, hireDate: number, terminationDate?: number | null, status: string, numberOfVacationDays?: number | null, github?: string | null, department: string, branch: string, employeeCode: string, level: string, isKpi: number, isSalaryCompany: number, birthDayAndMonth?: string | null, birthdayPoster?: string | null, createdAt: number, updatedAt: number, deletedAt?: number | null } | null };
 
 export type CreateEmployeeMutationVariables = Exact<{
   input: EmployeeCreateInput;
 }>;
 
 
-export type CreateEmployeeMutation = { __typename?: 'Mutation', createEmployee: { __typename?: 'Employee', id: string, entraId: string, firstName: string, lastName: string, firstNameEng: string, lastNameEng: string, email: string, imageUrl?: string | null, hireDate: number, terminationDate?: number | null, status: string, numberOfVacationDays?: number | null, github?: string | null, department: string, branch: string, employeeCode: string, level: string, isKpi: number, isSalaryCompany: number, birthDayAndMonth?: string | null, birthdayPoster?: string | null, createdAt: number, updatedAt: number, deletedAt?: number | null } };
+export type CreateEmployeeMutation = { __typename?: 'Mutation', createEmployee: { __typename?: 'Employee', id: string, entraId?: string | null, firstName: string, lastName: string, firstNameEng: string, lastNameEng: string, email: string, imageUrl?: string | null, hireDate: number, terminationDate?: number | null, status: string, numberOfVacationDays?: number | null, github?: string | null, department: string, branch: string, employeeCode: string, level: string, isKpi: number, isSalaryCompany: number, birthDayAndMonth?: string | null, birthdayPoster?: string | null, createdAt: number, updatedAt: number, deletedAt?: number | null } };
 
 export type UpdateEmployeeMutationVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -1404,7 +1405,7 @@ export type UpdateEmployeeMutationVariables = Exact<{
 }>;
 
 
-export type UpdateEmployeeMutation = { __typename?: 'Mutation', updateEmployee?: { __typename?: 'Employee', id: string, entraId: string, firstName: string, lastName: string, firstNameEng: string, lastNameEng: string, email: string, imageUrl?: string | null, hireDate: number, terminationDate?: number | null, status: string, numberOfVacationDays?: number | null, github?: string | null, department: string, branch: string, employeeCode: string, level: string, isKpi: number, isSalaryCompany: number, birthDayAndMonth?: string | null, birthdayPoster?: string | null, createdAt: number, updatedAt: number, deletedAt?: number | null } | null };
+export type UpdateEmployeeMutation = { __typename?: 'Mutation', updateEmployee?: { __typename?: 'Employee', id: string, entraId?: string | null, firstName: string, lastName: string, firstNameEng: string, lastNameEng: string, email: string, imageUrl?: string | null, hireDate: number, terminationDate?: number | null, status: string, numberOfVacationDays?: number | null, github?: string | null, department: string, branch: string, employeeCode: string, level: string, isKpi: number, isSalaryCompany: number, birthDayAndMonth?: string | null, birthdayPoster?: string | null, createdAt: number, updatedAt: number, deletedAt?: number | null } | null };
 
 export type DeleteEmployeeMutationVariables = Exact<{
   id: Scalars['ID']['input'];

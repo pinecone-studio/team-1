@@ -7,6 +7,10 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { drizzle } from "drizzle-orm/d1";
 import * as dbSchema from "@/schema";
 import type { GraphQLContext } from "@/graphql-gql/context";
+import {
+  getUserIdFromRequest,
+  syncEmployeeClerkId,
+} from "@/lib/clerk-auth";
 export const runtime = "nodejs";
 
 const schema = makeExecutableSchema({
@@ -19,11 +23,24 @@ const { handleRequest } = Yoga.createYoga({
   graphqlEndpoint: "/api/graphql",
   fetchAPI: { Response, Request },
   maskedErrors: false,
-  context: async (): Promise<GraphQLContext> => {
+  context: async ({
+    request,
+  }: {
+    request: Request;
+  }): Promise<GraphQLContext> => {
     const { env } = await getCloudflareContext({ async: true });
+    const envTyped = env as GraphQLContext["env"];
+    const db = drizzle(env.DB, { schema: dbSchema });
+    const secretKey =
+      envTyped.CLERK_SECRET_KEY ?? (typeof process !== "undefined" ? process.env?.CLERK_SECRET_KEY : undefined);
+    let userId = await getUserIdFromRequest(request, secretKey);
+    if (userId && secretKey) {
+      await syncEmployeeClerkId(db, userId, secretKey);
+    }
     return {
-      env: env as any,
-      db: drizzle(env.DB, { schema: dbSchema }),
+      env: envTyped,
+      db,
+      userId: userId ?? null,
     };
   },
 });

@@ -8,7 +8,8 @@ type AssetTimelineEvent {
 
 type Employee {
   id: ID!
-  entraId: String!
+  entraId: String
+  clerkId: String
   firstName: String!
   lastName: String!
   firstNameEng: String!
@@ -230,7 +231,7 @@ type PurchaseRequest {
 }
 
 input EmployeeCreateInput {
-  entraId: String!
+  entraId: String
   firstName: String!
   lastName: String!
   firstNameEng: String!

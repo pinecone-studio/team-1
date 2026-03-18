@@ -9,7 +9,8 @@ export const typeDefs = /* GraphQL */ `
 
   type Employee {
     id: ID!
-    entraId: String!
+    entraId: String
+    clerkId: String
     firstName: String!
     lastName: String!
     firstNameEng: String!
@@ -231,7 +232,7 @@ export const typeDefs = /* GraphQL */ `
   }
 
   input EmployeeCreateInput {
-    entraId: String!
+    entraId: String
     firstName: String!
     lastName: String!
     firstNameEng: String!
