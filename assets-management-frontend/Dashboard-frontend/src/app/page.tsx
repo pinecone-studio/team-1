@@ -17,14 +17,15 @@ import { QRCensusContent } from "@/components/qr/qr-census-content";
 
 export default function DashboardPage() {
   const [activeTitle, setActiveTitle] = useState("Хянах самбар");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
-    <div className="min-h-svh bg-muted/30">
-      <DashboardHeader />
-
+    <div className="h-svh overflow-hidden bg-muted/30">
       <SidebarProvider
-        className="min-h-svh"
+        className="h-full pt-14"
         defaultOpen={true}
+        open={sidebarOpen}
+        onOpenChange={setSidebarOpen}
         style={
           {
             "--sidebar-width": "240px",
@@ -32,13 +33,15 @@ export default function DashboardPage() {
           } as React.CSSProperties
         }
       >
+        <DashboardHeader sidebarOpen={sidebarOpen} />
+
         <AppSidebar
           activeTitle={activeTitle}
           onSelect={setActiveTitle}
-          sidebarClassName="top-14 bottom-0"
+          sidebarClassName="top-14 bottom-0 h-[calc(100svh-56px)]"
         />
 
-        <SidebarInset className="min-h-0 bg-transparent">
+        <SidebarInset className="h-[calc(100svh-56px)] overflow-y-auto bg-transparent">
           {activeTitle === "Хянах самбар" ? <DashboardContent /> : null}
           {activeTitle === "Хөрөнгө" ? <AssetsContent /> : null}
           {activeTitle === "Эд Хөрөнгө" ? <AssetFilter /> : null}

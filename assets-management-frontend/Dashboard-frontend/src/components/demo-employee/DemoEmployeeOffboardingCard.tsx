@@ -15,10 +15,10 @@ import {
 import { ClipboardCheck } from "lucide-react";
 import { normalizeAssetTag, type AssignmentItem } from "./demo-employee-utils";
 
-type ActiveOffboarding = {
-  deadline?: number;
-  returnedAssets?: number;
-  totalAssets?: number;
+export type ActiveOffboarding = {
+  deadline?: number | null;
+  returnedAssets?: number | null;
+  totalAssets?: number | null;
 };
 
 export type DemoEmployeeOffboardingCardProps = {
@@ -126,7 +126,8 @@ export function DemoEmployeeOffboardingCard({
                   aria-label="Бүгдийг сонгох"
                   checked={
                     eligibleReturnAssignmentsLength > 0 &&
-                    selectedReturnAssetIds.size === eligibleReturnAssignmentsLength
+                    selectedReturnAssetIds.size ===
+                      eligibleReturnAssignmentsLength
                   }
                   onChange={(e) => selectAllEligibleReturns(e.target.checked)}
                   className="rounded border-amber-600"
