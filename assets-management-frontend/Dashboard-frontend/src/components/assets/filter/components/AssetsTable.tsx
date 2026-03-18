@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { Asset } from "@/lib/types";
+import type { Asset, AssetCategory } from "@/lib/types";
 import {
   Table,
   TableBody,
@@ -14,7 +14,12 @@ import { Button } from "@/components/ui/button";
 import { formatAssetId, formatName } from "../utils";
 import { StatusBadge } from "../StatusBadge";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, ChevronsUpDown, Search } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  ChevronsUpDown,
+  Search,
+} from "lucide-react";
 
 type AssetsTableProps = {
   assets: Asset[];
@@ -43,7 +48,9 @@ export function AssetsTable({
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState("");
-  const [subCategoryFilter, setSubCategoryFilter] = useState("");
+  const [subCategoryFilter, setSubCategoryFilter] = useState<
+    AssetCategory | ""
+  >("");
   const [statusFilter, setStatusFilter] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [priceFilter, setPriceFilter] = useState("");
@@ -71,7 +78,7 @@ export function AssetsTable({
 
   const filteredAssets = useMemo(() => {
     return assets.filter((a) => {
-      const nameMatch = (a.assetName ?? "")
+      const nameMatch = (a.category ?? "")
         .toLowerCase()
         .includes(nameSearch.toLowerCase());
 
@@ -230,7 +237,7 @@ export function AssetsTable({
     >
       <Table className="table-fixed w-full border-separate border-spacing-y-2">
         <TableHeader>
-          <TableRow className="bg-[#0f4c6e] text-white hover:!bg-[#0f4c6e]">
+          <TableRow className="bg-[#0f4c6e] text-white hover:bg-[#0f4c6e]!">
             <TableHead className="w-10 text-white">
               <input
                 ref={selectAllRef}
@@ -243,7 +250,7 @@ export function AssetsTable({
             <TableHead className="w-10 text-white">№</TableHead>
             <TableHead className="truncate text-white">Хөрөнгийн ID</TableHead>
 
-            <TableHead className="text-white relative max-w-[140px]">
+            <TableHead className="text-white relative max-w-35">
               <div
                 className="flex items-center gap-1 min-w-0 cursor-pointer select-none"
                 onClick={(e) => {
@@ -260,7 +267,7 @@ export function AssetsTable({
                 <div
                   ref={filterRef}
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute left-0 top-full z-[9999] mt-1 bg-white p-2 rounded shadow w-44"
+                  className="absolute left-0 top-full z-9999 mt-1 bg-white p-2 rounded shadow w-44"
                 >
                   <input
                     autoFocus
@@ -289,7 +296,7 @@ export function AssetsTable({
                 <div
                   ref={filterRef}
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute left-0 top-full z-[9999] mt-1 bg-white p-2 rounded shadow w-44"
+                  className="absolute left-0 top-full z-9999 mt-1 bg-white p-2 rounded shadow w-44"
                 >
                   <div className="flex flex-col gap-1 text-xs text-black">
                     <button
@@ -308,7 +315,9 @@ export function AssetsTable({
                     </button>
                     {[
                       ...new Set(
-                        assets.map((a) => a.mainCategory).filter(Boolean),
+                        assets
+                          .map((a) => a.mainCategory)
+                          .filter((c): c is string => Boolean(c)),
                       ),
                     ].map((c) => (
                       <button
@@ -348,7 +357,7 @@ export function AssetsTable({
                 <div
                   ref={filterRef}
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute left-0 top-full z-[9999] mt-1 bg-white p-2 rounded shadow w-44"
+                  className="absolute left-0 top-full z-9999 mt-1 bg-white p-2 rounded shadow w-44"
                 >
                   <div className="flex flex-col gap-1 text-xs text-black">
                     <button
@@ -366,7 +375,11 @@ export function AssetsTable({
                       Бүгд
                     </button>
                     {[
-                      ...new Set(assets.map((a) => a.category).filter(Boolean)),
+                      ...new Set(
+                        assets
+                          .map((a) => a.category)
+                          .filter((c): c is AssetCategory => Boolean(c)),
+                      ),
                     ].map((c) => (
                       <button
                         key={c}
@@ -405,7 +418,7 @@ export function AssetsTable({
                 <div
                   ref={filterRef}
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute left-0 top-full z-[9999] mt-1 bg-white p-2 rounded shadow w-44"
+                  className="absolute left-0 top-full z-9999 mt-1 bg-white p-2 rounded shadow w-44"
                 >
                   <div className="flex flex-col gap-1 text-xs text-black">
                     <button
@@ -459,7 +472,7 @@ export function AssetsTable({
                 <div
                   ref={filterRef}
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute left-0 top-full z-[9999] mt-1 bg-white p-2 rounded shadow w-64"
+                  className="absolute left-0 top-full z-9999 mt-1 bg-white p-2 rounded shadow w-64"
                 >
                   <div className="flex flex-col gap-1 text-xs text-black max-h-64 overflow-auto">
                     <button
@@ -500,7 +513,7 @@ export function AssetsTable({
                 <div
                   ref={filterRef}
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute left-0 top-full z-[9999] mt-1 bg-white p-2 rounded shadow w-44"
+                  className="absolute left-0 top-full z-9999 mt-1 bg-white p-2 rounded shadow w-44"
                 >
                   <input
                     autoFocus
@@ -528,7 +541,7 @@ export function AssetsTable({
                 <div
                   ref={filterRef}
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute left-0 top-full z-[9999] mt-1 bg-white p-2 rounded shadow w-44"
+                  className="absolute left-0 top-full z-9999 mt-1 bg-white p-2 rounded shadow w-44"
                 >
                   <div className="flex flex-col gap-1 text-xs text-black">
                     <button
@@ -691,15 +704,15 @@ export function AssetsTable({
                   </Link>
                 </TableCell>
 
-                <TableCell className="py-2 truncate max-w-[160px]">
+                <TableCell className="py-2 truncate max-w-40">
                   {asset.category}
                 </TableCell>
 
-                <TableCell className="py-2 truncate max-w-[140px]">
+                <TableCell className="py-2 truncate max-w-35">
                   {asset.mainCategory ?? "—"}
                 </TableCell>
 
-                <TableCell className="py-2 truncate max-w-[140px]">
+                <TableCell className="py-2 truncate max-w-35">
                   {asset.category}
                 </TableCell>
 
@@ -707,11 +720,11 @@ export function AssetsTable({
                   <StatusBadge status={asset.status} />
                 </TableCell>
 
-                <TableCell className="py-2 truncate max-w-[160px]">
+                <TableCell className="py-2 truncate max-w-40">
                   {asset.location ?? "—"}
                 </TableCell>
 
-                <TableCell className="py-2 text-left pl-6 truncate max-w-[140px]">
+                <TableCell className="py-2 text-left pl-6 truncate max-w-35">
                   {formatName(asset.assignedEmployeeName)}
                 </TableCell>
 

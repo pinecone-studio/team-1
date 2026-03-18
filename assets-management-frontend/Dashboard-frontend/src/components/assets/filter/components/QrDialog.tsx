@@ -44,9 +44,9 @@ export function QrDialog({
             хуудас гарна.
           </p>
         )}
-        <div className="mt-4 bg-white p-4 border border-border rounded-lg shadow-sm overflow-auto min-h-[280px] max-h-[60vh] flex-1">
+        <div className="mt-4 bg-white p-4 border border-border rounded-lg shadow-sm overflow-auto min-h-70 max-h-[60vh] flex-1">
           {assets.length === 1 ? (
-            <div className="flex items-center justify-center min-h-[240px]">
+            <div className="flex items-center justify-center min-h-60">
               {assets.map((asset) => {
                 const qrUrl =
                   typeof window !== "undefined"
@@ -75,11 +75,12 @@ export function QrDialog({
                   typeof window !== "undefined"
                     ? `${window.location.origin}/assets/${asset.id}`
                     : `/assets/${asset.id}`;
-                const label = asset.assetId || asset.serialNumber || `#${index + 1}`;
+                const label =
+                  asset.assetId || asset.serialNumber || `#${index + 1}`;
                 return (
                   <div
                     key={asset.id}
-                    className="flex flex-col items-center justify-center rounded-md border border-border/60 bg-white p-1.5 h-[100px] min-h-[100px]"
+                    className="flex flex-col items-center justify-center rounded-md border border-border/60 bg-white p-1.5 h-25 min-h-25"
                   >
                     <img
                       src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(
@@ -102,7 +103,11 @@ export function QrDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Хаах
             </Button>
-            <Button variant="outline" className="gap-2" onClick={onOpenPdfPreview}>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={onOpenPdfPreview}
+            >
               PDF файл болгох
             </Button>
             <Button onClick={onPrint} className="gap-2">

@@ -59,7 +59,7 @@ export function AssignAssetDialog({
             <p className="text-sm font-medium text-foreground">
               Сонгогдсон хөрөнгө
             </p>
-            <div className="mt-2 flex flex-wrap gap-2 rounded-md border border-input bg-muted/30 p-2 min-h-[52px]">
+            <div className="mt-2 flex flex-wrap gap-2 rounded-md border border-input bg-muted/30 p-2 min-h-13">
               {selectedAssetsList.length === 0 ? (
                 <span className="text-sm text-muted-foreground py-1">
                   Хөрөнгө сонгоогүй байна. Хүснэгтээс сонгоно уу.
