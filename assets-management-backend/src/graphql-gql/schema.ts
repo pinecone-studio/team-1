@@ -9,7 +9,8 @@ export const typeDefs = /* GraphQL */ `
 
   type Employee {
     id: ID!
-    entraId: String!
+    entraId: String
+    clerkId: String
     firstName: String!
     lastName: String!
     firstNameEng: String!
@@ -74,7 +75,9 @@ export const typeDefs = /* GraphQL */ `
     asset: Asset
     buyoutPolicy: AssignmentBuyoutPolicy
     financing: AssignmentFinancing
-    """Хүлээгдэж буй шилжүүлэлтийг хэн илгээсэн (ASSIGN_REQUESTED үед)"""
+    """
+    Хүлээгдэж буй шилжүүлэлтийг хэн илгээсэн (ASSIGN_REQUESTED үед)
+    """
     requestedBy: Employee
   }
 
@@ -229,7 +232,7 @@ export const typeDefs = /* GraphQL */ `
   }
 
   input EmployeeCreateInput {
-    entraId: String!
+    entraId: String
     firstName: String!
     lastName: String!
     firstNameEng: String!
@@ -333,7 +336,9 @@ export const typeDefs = /* GraphQL */ `
     totalAssets: Int!
     returnedAssets: Int!
     assetIdsJson: String!
-    """Буцаах ёстой asset-ууд (assetIdsJson-аас resolve)."""
+    """
+    Буцаах ёстой asset-ууд (assetIdsJson-аас resolve).
+    """
     assetsToReturn: [Asset!]!
     pendingReturnRequests: [OffboardingReturnRequest!]!
     deadline: Float
@@ -446,6 +451,7 @@ export const typeDefs = /* GraphQL */ `
     locations: [Location!]!
     auditLogs(tableName: String, recordId: String): [AuditLog!]!
     maintenanceTickets(status: String): [MaintenanceTicket!]!
+  dataWipeTasks(status: String): [DataWipeTask!]!
   }
 
   type Vendor {
@@ -592,7 +598,11 @@ export const typeDefs = /* GraphQL */ `
     ): DisposalRequest!
 
     # ── Offboarding mutations ────────────────────────────────────────────
-    startOffboarding(employeeId: ID!, initiatedBy: ID!): OffboardingEvent!
+  startOffboarding(
+    employeeId: ID!
+    initiatedBy: ID!
+    terminationDate: Float
+  ): OffboardingEvent!
     submitReturnRequest(
       assetId: ID!
       employeeId: ID!
@@ -618,6 +628,7 @@ export const typeDefs = /* GraphQL */ `
       inspectedBy: ID!
     ): Asset!
     createDataWipeTask(assetId: ID!): DataWipeTask!
+  updateDataWipeTask(id: ID!, status: String!): DataWipeTask!
 
     # ── Maintenance mutations ───────────────────────────────────────────
     createMaintenanceTicket(

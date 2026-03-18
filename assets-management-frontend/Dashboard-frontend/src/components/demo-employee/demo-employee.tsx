@@ -187,6 +187,13 @@ export function DemoEmployeeContent({
   const [returnRequestSending, setReturnRequestSending] = useState(false);
   /** Буцаах зааврыг уншсан, тэмдэглэсэн эсэх — тэмдэглээгүй бол илгээх товч идэвхгүй */
   const [returnInstructionsRead, setReturnInstructionsRead] = useState(false);
+  /** Offboarding: олон хөрөнгийг зэрэг сонгох (bulk) */
+  const [selectedReturnAssetIds, setSelectedReturnAssetIds] = useState<
+    Set<string>
+  >(() => new Set());
+  const [bulkReturnInstructionsRead, setBulkReturnInstructionsRead] =
+    useState(false);
+  const [bulkReturnSending, setBulkReturnSending] = useState(false);
   /** Эвдрэлтэй үед оруулсан зураг (файл) — R2 upload байхгүй бол mock key илгээнэ */
   const [returnPhotoFile, setReturnPhotoFile] = useState<File | null>(null);
   /** Мэдэгдлийн "Дэлгэрэнгүй" нээгдсэн эсэх (notification id) */
@@ -225,6 +232,36 @@ export function DemoEmployeeContent({
       setShowSignaturePad(true);
     }
   }, [isSignModalOpen, savedSignatureUrl]);
+  const isDamagedCondition = ["DAMAGED", "NON_FUNCTIONAL", "LOST"].includes(
+    returnCondition,
+  );
+
+  const { data: employeesData } = useQuery(EmployeesDocument, {
+    fetchPolicy: "network-only",
+  });
+  const [demoEmployeeId, setDemoEmployeeId] = useState<string>("");
+  const defaultDemoEmployeeId = useMemo(() => {
+    const list = employeesData?.employees ?? [];
+    const byEmail =
+      list.find(
+        (e) => e.email?.toLowerCase() === DEMO_EMPLOYEE_EMAIL.toLowerCase(),
+      )?.id ?? "";
+    return byEmail || list[0]?.id || "";
+  }, [employeesData?.employees]);
+  useEffect(() => {
+    if (!demoEmployeeId && defaultDemoEmployeeId) {
+      setDemoEmployeeId(defaultDemoEmployeeId);
+    }
+  }, [demoEmployeeId, defaultDemoEmployeeId]);
+  const currentEmployeeId = demoEmployeeId || null;
+  useEffect(() => {
+    // Reset view-specific state when switching demo employee
+    setSelectedAssignment(null);
+    setPendingTransferSent(null);
+    setExpandedNotificationId(null);
+    setSelectedReturnAssetIds(new Set());
+    setBulkReturnInstructionsRead(false);
+  }, [currentEmployeeId]);
 
   const [updateAssignmentStatus, { loading: updatingStatus }] = useMutation(
     UpdateAssignmentStatusDocument,
@@ -246,6 +283,7 @@ export function DemoEmployeeContent({
     {
       variables: { employeeId: currentEmployeeId ?? "" },
       skip: !currentEmployeeId,
+      fetchPolicy: "network-only",
     },
   );
   const activeOffboarding = offboardingData?.offboardingEvent ?? null;
@@ -273,7 +311,7 @@ export function DemoEmployeeContent({
     id: "demo-mock-offboarding",
     title: OFFBOARDING_TITLE,
     message:
-      "Таны нэр дээр 1 хөрөнгө бүртгэгдсэн. Буцаах эцсийн хугацаа: 3 хоногийн дотор. Миний хөрөнгө хэсэгт орж буцаана уу.",
+      "Таны нэр дээр 1 хөрөнгө бүртгэгдсэн. Буцаах эцсийн хугацаа: ажлаас гарснаас хойш 3 хоногийн дотор. Миний хөрөнгө хэсэгт орж буцаана уу.",
     type: "WARNING",
     isRead: false,
     createdAt: Date.now(),
@@ -328,6 +366,7 @@ export function DemoEmployeeContent({
   } = useQuery(GetEmployeeAssignmentsDocument, {
     variables: { ...queryVars, status: "ACTIVE" },
     skip: !currentEmployeeId,
+    fetchPolicy: "network-only",
   });
 
   const pendingLoading = loadingAssignRequested || loadingPending;
@@ -395,6 +434,78 @@ export function DemoEmployeeContent({
       )?.pendingReturnRequests ?? [];
     return new Set(list.map((r) => r.assetId));
   }, [activeOffboarding]);
+
+  const assignmentsToReturn = useMemo(() => {
+    return (myAssetsList as Array<AssignmentItem & { returnedAt?: number | null }>).filter(
+      (a) => !a.returnedAt,
+    );
+  }, [myAssetsList]);
+  const eligibleReturnAssignments = useMemo(
+    () =>
+      assignmentsToReturn.filter((a) => !pendingReturnRequestAssetIds.has(a.assetId)),
+    [assignmentsToReturn, pendingReturnRequestAssetIds],
+  );
+
+  const toggleReturnSelection = (assetId: string, next: boolean) => {
+    setSelectedReturnAssetIds((prev) => {
+      const s = new Set(prev);
+      if (next) s.add(assetId);
+      else s.delete(assetId);
+      return s;
+    });
+  };
+
+  const selectAllEligibleReturns = (next: boolean) => {
+    if (!next) {
+      setSelectedReturnAssetIds(new Set());
+      return;
+    }
+    setSelectedReturnAssetIds(
+      new Set(eligibleReturnAssignments.map((a) => a.assetId)),
+    );
+  };
+
+  const handleBulkSubmitReturnRequests = async () => {
+    if (!currentEmployeeId) return;
+    if (!activeOffboarding) {
+      toast.error(
+        "HR таны ажлаас гарах процессыг эхлүүлээгүй байна (offboarding event байхгүй).",
+      );
+      return;
+    }
+    if (!bulkReturnInstructionsRead) {
+      toast.error("Буцаах зааврыг уншсан гэдгээ тэмдэглэнэ үү.");
+      return;
+    }
+    const ids = Array.from(selectedReturnAssetIds);
+    if (ids.length === 0) {
+      toast.error("Буцаах хөрөнгө сонгоно уу.");
+      return;
+    }
+    setBulkReturnSending(true);
+    try {
+      for (const assetId of ids) {
+        await submitReturnRequestMutation({
+          variables: {
+            assetId,
+            employeeId: currentEmployeeId,
+            condition: "GOOD",
+            conditionDetail: null,
+            photoR2Key: null,
+          },
+        });
+      }
+      toast.success(`Буцаах хүсэлт илгээгдлээ: ${ids.length} хөрөнгө.`);
+      setSelectedReturnAssetIds(new Set());
+      setBulkReturnInstructionsRead(false);
+      await refetchOffboarding();
+      await refetchActive();
+    } catch {
+      toast.error("Багцаар буцаах хүсэлт илгээхэд алдаа гарлаа.");
+    } finally {
+      setBulkReturnSending(false);
+    }
+  };
 
   // Үйлдэл бүрийн дараа дараагийн хүсэлт рүү шилжих логик
   const handleActionComplete = async () => {
@@ -787,6 +898,12 @@ export function DemoEmployeeContent({
       toast.error("Нөхцөл сонгоно уу.");
       return;
     }
+    if (!activeOffboarding) {
+      toast.error(
+        "HR таны ажлаас гарах процессыг эхлүүлээгүй байна (offboarding event байхгүй).",
+      );
+      return;
+    }
     const conditionDetailToSend = returnConditionDetail.trim() || null;
     const photoR2KeyToSend = returnPhotoFile
       ? `demo-photo-${Date.now()}-${returnPhotoFile.name}`
@@ -810,6 +927,7 @@ export function DemoEmployeeContent({
       await submitReturnRequestMutation({ variables });
       toast.success(
         `${normalizeAssetTag(returnRequestAssignment.asset.assetTag)} буцааж өгөх хүсэлт илгээгдлээ. HR шалгана.`,
+        `${returnRequestAssignment.asset.assetTag ?? "Хөрөнгө"} буцааж өгөх хүсэлт илгээгдлээ. HR шалгана.`,
       );
       setShowReturnRequestDialog(false);
       setReturnRequestAssignment(null);
@@ -898,6 +1016,8 @@ export function DemoEmployeeContent({
         assetTag: normalizeAssetTag(
           selectedAssignment.asset?.assetTag ?? selectedAssignment.assetId,
         ),
+        assetTag:
+          selectedAssignment.asset?.assetTag ?? selectedAssignment.assetId,
       });
       toast.success(
         `${toName} руу шилжүүлэх хүсэлт илгээгдлээ. Тэр хүн "Шинэ хүсэлт" дээрээ хүлээн авах хүртэл хүлээгдэнэ.`,
@@ -950,6 +1070,7 @@ export function DemoEmployeeContent({
     employeesData?.employees &&
     employeesData.employees.length > 0 &&
     !currentEmployeeId;
+    !defaultDemoEmployeeId;
 
   return (
     <div className="flex flex-col p-6 overflow-visible">
@@ -961,7 +1082,35 @@ export function DemoEmployeeContent({
       )}
       {/* 1. Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+          {employeesData?.employees?.length ? (
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+              <span className="text-xs text-muted-foreground">
+                Demo ажилтан сонгох:
+              </span>
+              <Select value={demoEmployeeId} onValueChange={setDemoEmployeeId}>
+                <SelectTrigger className="h-8 w-[280px]">
+                  <SelectValue placeholder="Ажилтан сонгох..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(employeesData.employees as Array<{
+                    id: string;
+                    firstName?: string | null;
+                    lastName?: string | null;
+                    email?: string | null;
+                  }>).map((e) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {[e.firstName, e.lastName].filter(Boolean).join(" ") ||
+                        e.email ||
+                        e.id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+        </div>
         <div className="flex items-center gap-2">
           {currentEmployeeId && !activeOffboarding && (
             <Button
@@ -1111,6 +1260,7 @@ export function DemoEmployeeContent({
             <p className="text-sm text-blue-700">
               <span className="font-medium">
                 {normalizeAssetTag(pendingTransferSent.assetTag)}
+                {pendingTransferSent.assetTag}
               </span>{" "}
               хөрөнгийг{" "}
               <span className="font-medium">{pendingTransferSent.toName}</span>{" "}
@@ -1130,6 +1280,7 @@ export function DemoEmployeeContent({
             </CardTitle>
             <p className="text-sm text-amber-800">
               Буцаах эцсийн хугацаа:{" "}
+              Буцаах эцсийн хугацаа (ажлаас гарснаас хойш 3 хоногийн дотор):{" "}
               {(activeOffboarding as unknown as { deadline?: number })
                 .deadline != null
                 ? new Date(
@@ -1143,24 +1294,95 @@ export function DemoEmployeeContent({
                 : "—"}
               . Хөрөнгө бүр дээр нөхцөлөө сонгоод &quot;Буцааж өгөх хүсэлт
               гаргах&quot; дараана уу.
+              . Хөрөнгө бүр дээр &quot;Буцааж өгөх хүсэлт гаргах&quot; дарах
+              эсвэл олон хөрөнгө сонгоод багцаар илгээнэ үү.
             </p>
           </CardHeader>
           <CardContent className="pt-0">
+            <div className="mb-3 rounded-lg border border-amber-200 bg-white/70 p-3 text-sm text-amber-900">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={bulkReturnInstructionsRead}
+                    onChange={(e) =>
+                      setBulkReturnInstructionsRead(e.target.checked)
+                    }
+                    className="rounded border-amber-600"
+                  />
+                  <span>
+                    Би буцаах зааврыг уншсан. Гэмтэл, дутуу байвал нөхцөл болон
+                    зургийг оруулна.
+                  </span>
+                </label>
+                <Button
+                  size="sm"
+                  className="gap-2 bg-amber-700 hover:bg-amber-800 text-white"
+                  onClick={handleBulkSubmitReturnRequests}
+                  disabled={
+                    bulkReturnSending ||
+                    submitReturnRequestLoading ||
+                    !bulkReturnInstructionsRead ||
+                    selectedReturnAssetIds.size === 0
+                  }
+                >
+                  {bulkReturnSending ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                      Илгээж байна...
+                    </span>
+                  ) : null}
+                  Багцаар буцаах хүсэлт илгээх ({selectedReturnAssetIds.size})
+                </Button>
+              </div>
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[44px]">
+                    <input
+                      type="checkbox"
+                      aria-label="Бүгдийг сонгох"
+                      checked={
+                        eligibleReturnAssignments.length > 0 &&
+                        selectedReturnAssetIds.size ===
+                          eligibleReturnAssignments.length
+                      }
+                      onChange={(e) =>
+                        selectAllEligibleReturns(e.target.checked)
+                      }
+                      className="rounded border-amber-600"
+                    />
+                  </TableHead>
                   <TableHead>Хөрөнгө</TableHead>
                   <TableHead>Serial</TableHead>
                   <TableHead>Үйлдэл</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {myAssetsList.map((assignment) => {
+                {assignmentsToReturn.map((assignment) => {
                   const a = assignment as AssignmentItem;
+                  const hasPendingRequest = pendingReturnRequestAssetIds.has(
+                    a.assetId,
+                  );
                   return (
                     <TableRow key={a.id}>
                       <TableCell className="font-medium">
                         {normalizeAssetTag(a.asset?.assetTag ?? a.assetId)}
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          aria-label="Хөрөнгө сонгох"
+                          checked={selectedReturnAssetIds.has(a.assetId)}
+                          onChange={(e) =>
+                            toggleReturnSelection(a.assetId, e.target.checked)
+                          }
+                          disabled={hasPendingRequest}
+                          className="rounded border-amber-600"
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {a.asset?.assetTag ?? a.assetId}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {a.asset?.serialNumber ?? "—"}
@@ -1171,6 +1393,7 @@ export function DemoEmployeeContent({
                           size="sm"
                           className="gap-1.5 border-amber-600 text-amber-700 hover:bg-amber-100"
                           onClick={() => {
+                            if (hasPendingRequest) return;
                             setReturnRequestAssignment(a);
                             setReturnCondition("GOOD");
                             setReturnConditionDetail("");
@@ -1178,10 +1401,14 @@ export function DemoEmployeeContent({
                             setReturnInstructionsRead(false);
                             setShowReturnRequestDialog(true);
                           }}
-                          disabled={completeReturnLoading}
+                          disabled={completeReturnLoading || hasPendingRequest}
                         >
                           <ClipboardCheck className="h-3.5 w-3.5" /> Буцааж өгөх
                           хүсэлт гаргах
+                          <ClipboardCheck className="h-3.5 w-3.5" />{" "}
+                          {hasPendingRequest
+                            ? "HR шалгах хүлээгдэж буй"
+                            : "Буцааж өгөх хүсэлт гаргах"}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -1283,9 +1510,70 @@ export function DemoEmployeeContent({
                           Хөрөнгийн жагсаалт — доорх хөрөнгө бүр дээр буцаах
                           хүсэлт илгээнэ үү.
                         </p>
+                        <div className="rounded-lg border border-amber-200 bg-white/70 p-3 text-sm text-amber-900">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={bulkReturnInstructionsRead}
+                                onChange={(e) =>
+                                  setBulkReturnInstructionsRead(
+                                    e.target.checked,
+                                  )
+                                }
+                                className="rounded border-amber-600"
+                              />
+                              <span>
+                                Би буцаах зааврыг уншсан. Гэмтэл, дутуу байвал
+                                нөхцөл болон зургийг оруулна.
+                              </span>
+                            </label>
+                            <Button
+                              size="sm"
+                              className="gap-2 bg-amber-700 hover:bg-amber-800 text-white"
+                              onClick={handleBulkSubmitReturnRequests}
+                              disabled={
+                                bulkReturnSending ||
+                                submitReturnRequestLoading ||
+                                !bulkReturnInstructionsRead ||
+                                selectedReturnAssetIds.size === 0 ||
+                                !activeOffboarding
+                              }
+                              title={
+                                !activeOffboarding
+                                  ? "HR таны offboarding процессыг эхлүүлсний дараа багцаар илгээх боломжтой."
+                                  : undefined
+                              }
+                            >
+                              Багцаар буцаах хүсэлт илгээх (
+                              {selectedReturnAssetIds.size})
+                            </Button>
+                          </div>
+                          {!activeOffboarding ? (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                              Анхаар: HR таны ажлаас гарах процессыг эхлүүлээгүй
+                              байна (offboarding event байхгүй).
+                            </p>
+                          ) : null}
+                        </div>
                         <Table>
                           <TableHeader>
                             <TableRow>
+                              <TableHead className="w-[44px]">
+                                <input
+                                  type="checkbox"
+                                  aria-label="Бүгдийг сонгох"
+                                  checked={
+                                    eligibleReturnAssignments.length > 0 &&
+                                    selectedReturnAssetIds.size ===
+                                      eligibleReturnAssignments.length
+                                  }
+                                  onChange={(e) =>
+                                    selectAllEligibleReturns(e.target.checked)
+                                  }
+                                  className="rounded border-amber-600"
+                                />
+                              </TableHead>
                               <TableHead>Хөрөнгө</TableHead>
                               <TableHead>Serial</TableHead>
                               <TableHead>Үйлдэл</TableHead>
@@ -1300,11 +1588,15 @@ export function DemoEmployeeContent({
                                   (a as AssignmentItem).asset?.assetTag ??
                                     (a as AssignmentItem).assetId,
                                 ),
+                                assetTag:
+                                  (a as AssignmentItem).asset?.assetTag ??
+                                  (a as AssignmentItem).assetId,
                                 serialNumber:
                                   (a as AssignmentItem).asset?.serialNumber ??
                                   "—",
                               }))
                             ).map((item, idx) => {
+                            ).map((item) => {
                               const canReturn = myAssetsList.some(
                                 (m) =>
                                   (m as AssignmentItem).assetId === item.id,
@@ -1319,6 +1611,26 @@ export function DemoEmployeeContent({
                                 <TableRow key={`${item.id}-${idx}`}>
                                   <TableCell className="font-medium">
                                     {normalizeAssetTag(item.assetTag)}
+                                <TableRow key={item.id}>
+                                  <TableCell>
+                                    <input
+                                      type="checkbox"
+                                      aria-label="Хөрөнгө сонгох"
+                                      checked={selectedReturnAssetIds.has(
+                                        item.id,
+                                      )}
+                                      onChange={(e) =>
+                                        toggleReturnSelection(
+                                          item.id,
+                                          e.target.checked,
+                                        )
+                                      }
+                                      disabled={!canReturn || hasPendingRequest}
+                                      className="rounded border-amber-600"
+                                    />
+                                  </TableCell>
+                                  <TableCell className="font-medium">
+                                    {item.assetTag}
                                   </TableCell>
                                   <TableCell className="text-muted-foreground text-sm">
                                     {item.serialNumber}
@@ -1341,6 +1653,7 @@ export function DemoEmployeeContent({
                                                 assetTag: normalizeAssetTag(
                                                   item.assetTag,
                                                 ),
+                                                assetTag: item.assetTag,
                                                 serialNumber: item.serialNumber,
                                               },
                                             } as AssignmentItem),
@@ -1523,6 +1836,8 @@ export function DemoEmployeeContent({
                         .filter(Boolean)
                         .join(" ") || "Admin"
                     : "Admin";
+                        .join(" ") || "—"
+                    : "—";
                   return (
                     <TableRow
                       key={assignment.id}
@@ -1805,6 +2120,7 @@ export function DemoEmployeeContent({
             <DialogTitle>Хөрөнгийн дэлгэрэнгүй</DialogTitle>
             <DialogDescription>
               {normalizeAssetTag(selectedAssignment?.asset?.assetTag)} — эзэмшиж буй хөрөнгийн
+              {selectedAssignment?.asset?.assetTag} — эзэмшиж буй хөрөнгийн
               мэдээлэл. Устгах хүсэлт илгээх бол IT хэсэгт харагдана.
             </DialogDescription>
           </DialogHeader>
@@ -1814,6 +2130,7 @@ export function DemoEmployeeContent({
                 <div className="text-muted-foreground">Нэр:</div>
                 <div className="font-medium">
                   {normalizeAssetTag(selectedAssignment.asset.assetTag)}
+                  {selectedAssignment.asset.assetTag}
                 </div>
                 <div className="text-muted-foreground">Serial:</div>
                 <div className="font-medium">
@@ -2030,6 +2347,7 @@ export function DemoEmployeeContent({
               {normalizeAssetTag(returnRequestAssignment?.asset?.assetTag) ??
                 "Хөрөнгө"}{" "}
               — зааврыг
+              {returnRequestAssignment?.asset?.assetTag ?? "Хөрөнгө"} — зааврыг
               уншиж, нөхцөлөө сонгоно уу.
             </DialogDescription>
           </DialogHeader>
@@ -2038,8 +2356,7 @@ export function DemoEmployeeContent({
               <p className="font-medium mb-2">Буцаах заавар</p>
               <ul className="list-disc list-inside space-y-1 text-muted-foreground">
                 <li>Хөрөнгийг цэвэр, бүрэн бүтэн буцаана.</li>
-                <li>Гэмтэл, дутуу байвал нөхцөл дээр нь тэмдэглэнэ.</li>
-                <li>Буцаасны дараа HR/IT шалгаж баталгаажуулна.</li>
+                <li>Гэмтэл, дутуу байвал нөхцөл болон зургийг оруулна.</li>
               </ul>
             </div>
             <label className="flex items-center gap-2 cursor-pointer">
@@ -2062,6 +2379,7 @@ export function DemoEmployeeContent({
                 onValueChange={(v) => {
                   setReturnCondition(v);
                   if (!["DAMAGED", "BROKEN", "FAULTY", "DESTROYED"].includes(v))
+                  if (!["DAMAGED", "NON_FUNCTIONAL", "LOST"].includes(v))
                     setReturnPhotoFile(null);
                 }}
               >
@@ -2077,6 +2395,12 @@ export function DemoEmployeeContent({
                     DESTROYED — Устаж болсон
                   </SelectItem>
                   <SelectItem value="OTHER">OTHER — Бусад</SelectItem>
+                  <SelectItem value="FAIR">FAIR — Дунд</SelectItem>
+                  <SelectItem value="DAMAGED">DAMAGED — Эвдрэлтэй</SelectItem>
+                  <SelectItem value="NON_FUNCTIONAL">
+                    NON_FUNCTIONAL — Ажиллахгүй
+                  </SelectItem>
+                  <SelectItem value="LOST">LOST — Алдагдсан</SelectItem>
                 </SelectContent>
               </Select>
             </div>

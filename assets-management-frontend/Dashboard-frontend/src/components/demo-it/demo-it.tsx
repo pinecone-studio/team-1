@@ -41,6 +41,8 @@ import {
   GetActiveDisposalsDocument,
   GetDisposalRequestsDocument,
   GetMaintenanceTicketsDocument,
+  GetDataWipeTasksDocument,
+  UpdateDataWipeTaskDocument,
   GetDashboardDocument,
   ApproveDisposalDocument,
   RejectDisposalDocument,
@@ -181,6 +183,22 @@ export function DemoITContent({
   const allMaintenanceTickets = (maintenanceData?.maintenanceTickets ??
     []) as MaintenanceItem[];
 
+  const { data: wipeData, refetch: refetchWipe } = useQuery(
+    GetDataWipeTasksDocument,
+    {
+      variables: { status: "PENDING" },
+      fetchPolicy: "network-only",
+    },
+  );
+  const wipeTasks =
+    (wipeData?.dataWipeTasks ?? []) as Array<{
+      id: string;
+      assetId: string;
+      status: string;
+      createdAt: number;
+      updatedAt: number;
+    }>;
+
   const { data: dashboardData } = useQuery(GetDashboardDocument, {
     variables: { role: UserRole.ItAdmin },
     fetchPolicy: "network-only",
@@ -220,6 +238,9 @@ export function DemoITContent({
         { query: GetDashboardDocument, variables: { role: UserRole.ItAdmin } },
       ],
     },
+  );
+  const [updateWipeTask, { loading: updatingWipe }] = useMutation(
+    UpdateDataWipeTaskDocument,
   );
 
   const pendingDisposals = disposalsData?.disposalRequests ?? [];
@@ -433,12 +454,22 @@ export function DemoITContent({
       return false;
     } finally {
       setSignatureUploading(false);
+  const handleWipeDone = async (id: string) => {
+    try {
+      await updateWipeTask({ variables: { id, status: "DONE" } });
+      toast.success("Data wipe task дууслаа (DONE).");
+      await refetchWipe();
+    } catch {
+      toast.error("Data wipe task шинэчлэхэд алдаа гарлаа.");
     }
   };
 
   return (
     <div className="flex flex-col gap-4 p-6 pb-10">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between shrink-0">
+    <ScrollArea className="h-full min-h-0 flex-1 w-full">
+      <div className="flex flex-col gap-4 p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between shrink-0">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
           <p className="text-sm text-muted-foreground ">
@@ -448,7 +479,51 @@ export function DemoITContent({
         <Button variant="outline" size="sm" className="gap-2">
           <History className="h-4 w-4" /> Түүх
         </Button>
-      </div>
+        </div>
+
+      {/* Data wipe tasks */}
+      <Card className="mt-4 border-emerald-200 bg-emerald-50/30 shrink-0">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-medium text-emerald-800">
+            <ShieldCheck className="h-5 w-5" /> Data wipe tasks ({wipeTasks.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {wipeTasks.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-emerald-200 bg-white p-6 text-center text-sm text-muted-foreground">
+              PENDING data wipe task байхгүй байна.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {wipeTasks.map((t) => (
+                <div
+                  key={t.id}
+                  className="flex flex-col justify-between gap-3 rounded-lg border border-emerald-100 bg-white p-4 sm:flex-row sm:items-center"
+                >
+                  <div className="min-w-0">
+                    <div className="font-medium text-foreground">
+                      Asset: {t.assetId}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Task: {t.id} · Status: {t.status}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={() => handleWipeDone(t.id)}
+                      disabled={updatingWipe}
+                    >
+                      <Check className="h-3.5 w-3.5" /> Done
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="mt-6 border-gray-200 bg-white">
         <CardHeader className="pb-3">

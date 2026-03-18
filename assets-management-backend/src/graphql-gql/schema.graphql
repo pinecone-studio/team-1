@@ -8,7 +8,8 @@ type AssetTimelineEvent {
 
 type Employee {
   id: ID!
-  entraId: String!
+  entraId: String
+  clerkId: String
   firstName: String!
   lastName: String!
   firstNameEng: String!
@@ -73,7 +74,9 @@ type Assignment {
   asset: Asset
   buyoutPolicy: AssignmentBuyoutPolicy
   financing: AssignmentFinancing
-  """Хүлээгдэж буй шилжүүлэлтийг хэн илгээсэн (ASSIGN_REQUESTED үед)"""
+  """
+  Хүлээгдэж буй шилжүүлэлтийг хэн илгээсэн (ASSIGN_REQUESTED үед)
+  """
   requestedBy: Employee
 }
 
@@ -228,7 +231,7 @@ type PurchaseRequest {
 }
 
 input EmployeeCreateInput {
-  entraId: String!
+  entraId: String
   firstName: String!
   lastName: String!
   firstNameEng: String!
@@ -332,9 +335,13 @@ type OffboardingEvent {
   totalAssets: Int!
   returnedAssets: Int!
   assetIdsJson: String!
-  """assetIdsJson-д хадгалсан ID-аар assets хүснэгтээс шүүж авсан буцаах хөрөнгийн жагсаалт"""
+  """
+  assetIdsJson-д хадгалсан ID-аар assets хүснэгтээс шүүж авсан буцаах хөрөнгийн жагсаалт
+  """
   assetsToReturn: [Asset!]!
-  """HR шалгах хүлээгдэж буй буцаах хүсэлтүүд (status=PENDING_HR)"""
+  """
+  HR шалгах хүлээгдэж буй буцаах хүсэлтүүд (status=PENDING_HR)
+  """
   pendingReturnRequests: [OffboardingReturnRequest!]!
   deadline: Float
   completedAt: Float
@@ -433,7 +440,9 @@ type Query {
   disposalRequest(id: ID!): DisposalRequest
   disposalRequests(status: String): [DisposalRequest!]!
   offboardingEvent(employeeId: ID!): OffboardingEvent
-  """Нэг offboarding event-ийн PENDING_HR буцаах хүсэлтүүд (HR bell-д)"""
+  """
+  Нэг offboarding event-ийн PENDING_HR буцаах хүсэлтүүд (HR bell-д)
+  """
   pendingReturnRequests(offboardingEventId: ID!): [OffboardingReturnRequest!]!
   searchAssets(
     filter: AssetSearchInput!
@@ -447,6 +456,7 @@ type Query {
   locations: [Location!]!
   auditLogs(tableName: String, recordId: String): [AuditLog!]!
   maintenanceTickets(status: String): [MaintenanceTicket!]!
+  dataWipeTasks(status: String): [DataWipeTask!]!
 }
 
 type Vendor {
@@ -594,8 +604,14 @@ type Mutation {
   ): DisposalRequest!
 
   # ── Offboarding mutations ────────────────────────────────────────────
-  startOffboarding(employeeId: ID!, initiatedBy: ID!): OffboardingEvent!
-  """Ажилтан буцаах хүсэлт илгээх (HR шалгах хүртэл PENDING_HR). Нөхцөлийн дэлгэрэнгүй, эвдрэлтэй үед зураг (R2 key) заавал биш."""
+  startOffboarding(
+    employeeId: ID!
+    initiatedBy: ID!
+    terminationDate: Float
+  ): OffboardingEvent!
+  """
+  Ажилтан буцаах хүсэлт илгээх (HR шалгах хүртэл PENDING_HR). Нөхцөлийн дэлгэрэнгүй, эвдрэлтэй үед зураг (R2 key) заавал биш.
+  """
   submitReturnRequest(
     assetId: ID!
     employeeId: ID!
@@ -603,13 +619,17 @@ type Mutation {
     conditionDetail: String
     photoR2Key: String
   ): OffboardingReturnRequest!
-  """HR: нөхцөл зөв бол AVAILABLE болгоод IT data wipe task үүсгэнэ"""
+  """
+  HR: нөхцөл зөв бол AVAILABLE болгоод IT data wipe task үүсгэнэ
+  """
   approveReturnRequest(
     returnRequestId: ID!
     conditionHr: String!
     inspectedBy: ID!
   ): Asset!
-  """HR: эвдрэлтэй бол зураг (R2) + засварын хүсэлт IT руу, asset REPAIR_REQUESTED"""
+  """
+  HR: эвдрэлтэй бол зураг (R2) + засварын хүсэлт IT руу, asset REPAIR_REQUESTED
+  """
   requestRepair(
     returnRequestId: ID!
     conditionHr: String!
@@ -623,6 +643,7 @@ type Mutation {
     inspectedBy: ID!
   ): Asset!
   createDataWipeTask(assetId: ID!): DataWipeTask!
+  updateDataWipeTask(id: ID!, status: String!): DataWipeTask!
 
   # ── Maintenance mutations ───────────────────────────────────────────
   createMaintenanceTicket(

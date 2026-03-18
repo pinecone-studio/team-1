@@ -49,7 +49,7 @@ export const vendors = sqliteTable("vendors", {
 
 export const employees = sqliteTable("employees", {
   id: text().primaryKey().notNull(),
-  entraId: text().notNull(),
+  entraId: text(),
   clerkId: text(),
   role: text().default("EMPLOYEE").notNull(),
   firstName: text().notNull(),
@@ -60,7 +60,7 @@ export const employees = sqliteTable("employees", {
   imageUrl: text(),
   hireDate: integer().notNull(),
   terminationDate: integer(),
-  status: text().default("ACTIVE").notNull(),
+  status: text().default("INACTIVE").notNull(),
   numberOfVacationDays: integer(),
   github: text(),
   department: text().notNull(),

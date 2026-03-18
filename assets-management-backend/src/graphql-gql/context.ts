@@ -9,7 +9,9 @@ export type GraphQLEnv = {
 };
 
 export type GraphQLContext = {
-  env: Partial<GraphQLEnv>;
+  env: Partial<GraphQLEnv & { CLERK_SECRET_KEY?: string }>;
   db: DrizzleD1Database<typeof schema>;
+  /** Clerk userId (sub from JWT) when Bearer token is valid; null otherwise */
+  userId: string | null;
 };
 

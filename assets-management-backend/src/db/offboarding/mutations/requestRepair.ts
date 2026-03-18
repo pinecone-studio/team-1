@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { getDb } from "../../client";
 import { writeAuditLog } from "../../auditLogger";
 import { getAssetById } from "../../assets/queries";
@@ -19,6 +19,21 @@ export async function requestRepair(
   const db = await getDb();
   const now = Date.now();
 
+  const inspector =
+    (await db
+      .select({ id: employees.id })
+      .from(employees)
+      .where(
+        or(
+          eq(employees.id, inspectedBy),
+          eq(employees.entraId, inspectedBy),
+          eq(employees.email, inspectedBy),
+        ),
+      )
+      .limit(1)
+      .get()) ?? null;
+  const actorId = inspector?.id ?? inspectedBy;
+
   const req = await db
     .select()
     .from(offboardingReturnRequests)
@@ -34,6 +49,7 @@ export async function requestRepair(
     .set({
       returnedAt: now,
       conditionAtReturn: conditionHr,
+      status: "RETURNED",
       updatedAt: now,
     })
     .where(eq(assignments.id, req.assignmentId));
@@ -47,7 +63,7 @@ export async function requestRepair(
     "assets",
     req.assetId,
     "REPAIR_REQUESTED",
-    inspectedBy,
+    actorId,
     { status: "RETURNING" },
     { status: "REPAIR_REQUESTED", conditionHr, photoR2Key: photoR2Key ?? undefined },
   );
@@ -93,7 +109,7 @@ export async function requestRepair(
         "offboarding_events",
         event.id,
         "OFFBOARDING_COMPLETED",
-        inspectedBy,
+        actorId,
         { status: "IN_PROGRESS" },
         { status: "COMPLETED" },
       );
