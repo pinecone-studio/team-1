@@ -13,8 +13,9 @@
 		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
 		"codegen": "graphql-codegen --config codegen.ts"
 	},
-	"dependencies": {
-		"@apollo/client": "^3.14.1",
+  "dependencies": {
+    "@clerk/nextjs": "^6.14.0",
+    "@apollo/client": "^3.14.1",
 		"@opennextjs/cloudflare": "^1.17.1",
 		"@radix-ui/react-toast": "^1.2.15",
 		"@tanstack/react-query": "^5.90.21",

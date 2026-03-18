@@ -4,7 +4,6 @@ export type Employee = typeof employees.$inferSelect;
 export type EmployeeUpdate = Partial<typeof employees.$inferInsert>;
 export type EmployeeCreate = Pick<
   typeof employees.$inferInsert,
-  | "entraId"
   | "firstName"
   | "lastName"
   | "firstNameEng"
@@ -20,7 +19,6 @@ export type EmployeeCreate = Pick<
     Omit<
       typeof employees.$inferInsert,
       | "id"
-      | "entraId"
       | "firstName"
       | "lastName"
       | "firstNameEng"
