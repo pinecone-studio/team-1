@@ -19,12 +19,13 @@ function getClerkSecretKey(ctx: GraphQLContext): string | undefined {
 }
 
 export const employeeMutations = {
-  createEmployee: (
+  createEmployee: async (
     _: unknown,
     args: { input: EmployeeInput },
     ctx: GraphQLContext,
   ) => {
-    requireAuth(ctx);
+    // NOTE: Intentionally public for now (no Bearer token required).
+    // If you want to lock this down again, call requireAuth(ctx) here.
     return createEmployee(args.input as never);
   },
   updateEmployee: async (

@@ -100,6 +100,19 @@ function getTodayDateString(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+function generateEmployeeCode(): string {
+  try {
+    const uuid =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Math.random().toString(16).slice(2)}${Date.now().toString(16)}`;
+    const short = uuid.replace(/-/g, "").slice(0, 8).toUpperCase();
+    return `EMP-${short}`;
+  } catch {
+    return `EMP-${Math.random().toString(16).slice(2, 10).toUpperCase()}`;
+  }
+}
+
 function getDefaultNewEmployeeForm(): NewEmployeeFormState {
   return {
     firstName: "",
@@ -111,8 +124,8 @@ function getDefaultNewEmployeeForm(): NewEmployeeFormState {
     numberOfVacationDays: "",
     github: "",
     department: "",
-    branch: "",
-    employeeCode: "",
+    branch: "Гурван гол",
+    employeeCode: generateEmployeeCode(),
     level: "",
     isKpi: false,
     isSalaryCompany: true,
@@ -132,8 +145,8 @@ function getDemoNewEmployeeForm(): NewEmployeeFormState {
     numberOfVacationDays: "21",
     github: "batdorj",
     department: "IT",
-    branch: "Улаанбаатар",
-    employeeCode: "EMP-DEMO",
+    branch: "Гурван гол",
+    employeeCode: generateEmployeeCode(),
     level: "Senior",
     isKpi: true,
     isSalaryCompany: true,
@@ -391,7 +404,11 @@ export function DemoHRContent() {
       setNewEmployeeForm(getDefaultNewEmployeeForm());
       refetch();
     } catch (err) {
-      toast.error("Ажилтан бүртгэхэд алдаа гарлаа. Нэвтэрсэн эсэх, Bearer token шалгана уу.");
+      toast.error(
+        err instanceof Error && err.message
+          ? err.message
+          : "Ажилтан бүртгэхэд алдаа гарлаа.",
+      );
     }
   };
 
@@ -692,19 +709,38 @@ export function DemoHRContent() {
                   onChange={(e) =>
                     setNewEmployeeForm((p) => ({ ...p, branch: e.target.value }))
                   }
-                  placeholder="Улаанбаатар"
+                  placeholder="Гурван гол"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="employeeCode">Ажилтны код *</Label>
-                <Input
-                  id="employeeCode"
-                  value={newEmployeeForm.employeeCode}
-                  onChange={(e) =>
-                    setNewEmployeeForm((p) => ({ ...p, employeeCode: e.target.value }))
-                  }
-                  placeholder="EMP001"
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="employeeCode"
+                    value={newEmployeeForm.employeeCode}
+                    onChange={(e) =>
+                      setNewEmployeeForm((p) => ({
+                        ...p,
+                        employeeCode: e.target.value,
+                      }))
+                    }
+                    placeholder="EMP-XXXXXXXX"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() =>
+                      setNewEmployeeForm((p) => ({
+                        ...p,
+                        employeeCode: generateEmployeeCode(),
+                      }))
+                    }
+                  >
+                    Random
+                  </Button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="level">Түвшин *</Label>

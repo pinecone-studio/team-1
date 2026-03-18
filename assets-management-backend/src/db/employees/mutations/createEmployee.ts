@@ -1,4 +1,5 @@
 import { getDb } from "../../client";
+import { eq, or } from "drizzle-orm";
 import { getEmployeeById } from "../queries";
 import { employees } from "@/schema";
 import type { Employee, EmployeeCreate } from "../types";
@@ -7,6 +8,20 @@ export async function createEmployee(input: EmployeeCreate): Promise<Employee> {
   const db = await getDb();
   const now = Date.now();
   const id = crypto.randomUUID();
+
+  // Friendly pre-checks (avoid opaque D1 constraint errors)
+  const existing = await db
+    .select({ id: employees.id, email: employees.email, employeeCode: employees.employeeCode })
+    .from(employees)
+    .where(or(eq(employees.email, input.email), eq(employees.employeeCode, input.employeeCode)))
+    .limit(1)
+    .get();
+  if (existing?.email === input.email) {
+    throw new Error("Employee email already exists. Өмнө нь бүртгэгдсэн имэйл байна.");
+  }
+  if (existing?.employeeCode === input.employeeCode) {
+    throw new Error("Employee code already exists. Өмнө нь бүртгэгдсэн employeeCode байна.");
+  }
 
   await db.insert(employees).values({
     id,
