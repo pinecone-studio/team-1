@@ -121,7 +121,7 @@ function getDefaultNewEmployeeForm(): NewEmployeeFormState {
     lastNameEng: "",
     email: "",
     hireDate: getTodayDateString(),
-    numberOfVacationDays: "",
+    numberOfVacationDays: "15",
     github: "",
     department: "",
     branch: "Гурван гол",
@@ -604,7 +604,7 @@ export function DemoHRContent() {
                   onChange={(e) =>
                     setNewEmployeeForm((p) => ({ ...p, firstName: e.target.value }))
                   }
-                  placeholder="Жишээ"
+                  placeholder="Нэр"
                 />
               </div>
               <div className="space-y-2">
@@ -615,7 +615,7 @@ export function DemoHRContent() {
                   onChange={(e) =>
                     setNewEmployeeForm((p) => ({ ...p, lastName: e.target.value }))
                   }
-                  placeholder="Жишээ"
+                  placeholder="Овог"
                 />
               </div>
               <div className="space-y-2">
@@ -626,7 +626,7 @@ export function DemoHRContent() {
                   onChange={(e) =>
                     setNewEmployeeForm((p) => ({ ...p, firstNameEng: e.target.value }))
                   }
-                  placeholder="First"
+                  placeholder="First name"
                 />
               </div>
               <div className="space-y-2">
@@ -637,7 +637,7 @@ export function DemoHRContent() {
                   onChange={(e) =>
                     setNewEmployeeForm((p) => ({ ...p, lastNameEng: e.target.value }))
                   }
-                  placeholder="Last"
+                  placeholder="Last name"
                 />
               </div>
               <div className="space-y-2 sm:col-span-2">
@@ -676,7 +676,7 @@ export function DemoHRContent() {
                       numberOfVacationDays: e.target.value,
                     }))
                   }
-                  placeholder="0"
+                  placeholder="15"
                 />
               </div>
               <div className="space-y-2">
@@ -774,7 +774,7 @@ export function DemoHRContent() {
                   }
                 />
                 <Label htmlFor="isSalaryCompany" className="cursor-pointer">
-                  Цалингийн компани (төлөвлөгөөнд багтах)
+                  НДШ бодож цалин олгох
                 </Label>
               </div>
               <div className="space-y-2">
@@ -792,7 +792,7 @@ export function DemoHRContent() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="birthdayPoster">Төрсөн өдрийн poster</Label>
+                <Label htmlFor="birthdayPoster">Зураг оруулах</Label>
                 <Input
                   id="birthdayPoster"
                   value={newEmployeeForm.birthdayPoster}
@@ -819,7 +819,7 @@ export function DemoHRContent() {
                   size="sm"
                   onClick={() => setNewEmployeeForm(getDefaultNewEmployeeForm())}
                 >
-                  Цэвлэх
+                  Reset
                 </Button>
               </div>
               <DialogFooter className="border-0 p-0">

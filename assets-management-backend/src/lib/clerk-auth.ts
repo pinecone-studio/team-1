@@ -1,6 +1,6 @@
 import { createClerkClient, verifyToken } from "@clerk/backend";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import type * as schema from "@/schema";
 import { employees } from "@/schema";
 
@@ -29,6 +29,12 @@ export async function getUserIdFromRequest(
 /**
  * After Clerk login: find employee by email (from Clerk user), set clerkId and status ACTIVE.
  * Called when context has userId so that first-time login links the employee record.
+ * Email matching is case-insensitive so DB "User@Co.com" matches Clerk "user@co.com".
+ *
+ * Clerk дээрээс email авах нь:
+ * - Clerk Dashboard → Configure → Email, phone, username: "Email address" идэвхтэй байх (Sign-up/Sign-in).
+ * - Нэвтэрсэн хэрэглэгчийн User объект дээр primaryEmailAddress эсвэл emailAddresses байна.
+ * - Доорх код: users.getUser(clerkId) → user.primaryEmailAddress.emailAddress эсвэл emailAddresses[0].
  */
 export async function syncEmployeeClerkId(
   db: DrizzleD1Database<typeof schema>,
@@ -39,10 +45,22 @@ export async function syncEmployeeClerkId(
   try {
     const clerk = createClerkClient({ secretKey });
     const user = await clerk.users.getUser(clerkId);
-    const primaryEmail = user.emailAddresses.find((e) => e.id === user.primaryEmailAddressId)
-      ?.emailAddress ?? user.emailAddresses[0]?.emailAddress;
-    if (!primaryEmail) return;
+    // Clerk-ээс primary email: primaryEmailAddress эсвэл emailAddresses array-аас
+    const primaryEmail =
+      (user as { primaryEmailAddress?: { emailAddress?: string } }).primaryEmailAddress?.emailAddress
+      ?? user.emailAddresses?.find((e: { id: string }) => e.id === user.primaryEmailAddressId)?.emailAddress
+      ?? user.emailAddresses?.[0]?.emailAddress;
+    if (!primaryEmail || typeof primaryEmail !== "string") return;
     const now = Date.now();
+    const candidates = await db
+      .select({ id: employees.id, email: employees.email })
+      .from(employees)
+      .where(isNull(employees.clerkId))
+      .all();
+    const match = candidates.find(
+      (r) => r.email && primaryEmail && r.email.toLowerCase() === primaryEmail.toLowerCase(),
+    );
+    if (!match) return;
     await db
       .update(employees)
       .set({
@@ -50,11 +68,11 @@ export async function syncEmployeeClerkId(
         status: "ACTIVE",
         updatedAt: now,
       })
-      .where(
-        and(eq(employees.email, primaryEmail), isNull(employees.clerkId)),
-      );
-  } catch {
-    // Clerk API or DB error — ignore; user may already be linked or not in DB yet
+      .where(eq(employees.id, match.id));
+  } catch (err) {
+    if (typeof process !== "undefined" && process.env?.NODE_ENV === "development") {
+      console.warn("[syncEmployeeClerkId]", err);
+    }
   }
 }
 
