@@ -68,6 +68,7 @@ type AssetFormDialogProps = {
   onUpdateAsset?: (asset: Asset) => void;
   mode?: AssetDialogMode;
   initialAsset?: Asset | null;
+  initialSerialNumber?: string;
 };
 
 export function AssetFormDialog({
@@ -77,6 +78,7 @@ export function AssetFormDialog({
   onUpdateAsset,
   mode = "create",
   initialAsset = null,
+  initialSerialNumber = "",
 }: AssetFormDialogProps) {
   const [showCsvUploadDialog, setShowCsvUploadDialog] = useState(false);
   const [assetId, setAssetId] = useState("");
@@ -593,6 +595,13 @@ export function AssetFormDialog({
       setLocationStep("location");
     }
   }, [initialAsset, mode, open, resolvedInitialLocation]);
+
+  useEffect(() => {
+    if (!open || mode !== "create") return;
+    if (!initialSerialNumber.trim()) return;
+    setSerialNumber(initialSerialNumber.trim());
+    setSerialItems([]);
+  }, [initialSerialNumber, mode, open]);
 
   useEffect(() => {
     if (!subCategory.trim() || !purchaseDate || !assetIdAuto) return;

@@ -45,6 +45,8 @@ export function DemoEmployeeHeader({
   pendingListLength,
   onShowRequestsDialog,
 }: DemoEmployeeHeaderProps) {
+  const hasActiveOffboarding = Boolean(activeOffboarding);
+
   const onBellClick = () => {
     if (pendingListLength === 0) {
       toast.info("Танд одоогоор шинэ хүсэлт байхгүй байна.");
@@ -80,7 +82,7 @@ export function DemoEmployeeHeader({
         ) : null}
       </div>
       <div className="flex items-center gap-2">
-        {currentEmployeeId && !activeOffboarding && (
+        {currentEmployeeId && !hasActiveOffboarding && (
           <Button
             variant="outline"
             size="sm"
@@ -92,7 +94,7 @@ export function DemoEmployeeHeader({
             Ажилаас гарах (Offboarding)
           </Button>
         )}
-        {activeOffboarding && (
+        {hasActiveOffboarding && (
           <Badge variant="secondary" className="bg-amber-100 text-amber-800">
             Offboarding эхэлсэн
           </Badge>

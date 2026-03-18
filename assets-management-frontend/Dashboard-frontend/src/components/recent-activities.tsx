@@ -11,6 +11,7 @@ import { useQuery } from "@apollo/client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import {
   AssignmentsDocument,
@@ -123,9 +124,15 @@ export function RecentActivities() {
         <ScrollArea className="h-[320px] px-6">
           <div className="space-y-5 py-2">
             {loading ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">
-                Уншиж байна...
-              </div>
+              Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className="flex items-start gap-3">
+                  <Skeleton className="h-6 w-6 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-4/5 rounded-full" />
+                    <Skeleton className="h-3 w-28 rounded-full" />
+                  </div>
+                </div>
+              ))
             ) : activities.length === 0 ? (
               <div className="py-8 text-center text-sm text-muted-foreground">
                 Өгөгдөл алга

@@ -1,4 +1,4 @@
-import { and, eq, inArray, like, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, like, sql } from "drizzle-orm";
 
 import { getDb } from "../../client";
 import { assets, assignments } from "@/schema";
@@ -28,6 +28,7 @@ export async function getAssetKpis(office?: string): Promise<AssetKpis> {
   const db = await getDb();
 
   const baseConditions = [];
+  baseConditions.push(isNull(assets.deletedAt));
   if (office?.trim()) {
     baseConditions.push(like(assets.locationId, `%${office.trim()}%`));
   }

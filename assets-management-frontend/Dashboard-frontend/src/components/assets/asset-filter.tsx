@@ -39,9 +39,11 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getAssetQrImageUrl } from "@/lib/asset-qr";
 import { AssetFormDialog } from "./asset-form-dialog";
 import { AssetTransferDialog } from "./asset-transfer-dialog";
 import { AssetDetailContent } from "./asset-detail-content";
+import { CATEGORY_LABELS } from "./constants";
 
 /** A4 хуудсан дээр 7 багана, ~4 эгнээ (хэвлэх layout-тай таарна) */
 const QR_TILES_PER_A4_PAGE = 28;
@@ -134,6 +136,7 @@ export function AssetFilter() {
     }
     return pages.length > 0 ? pages : [[]];
   }, [qrAssets]);
+  const singleQrAsset = qrAssets.length === 1 ? qrAssets[0] : null;
 
   const assetsQueryVariables = useMemo(
     () => ({
@@ -292,13 +295,9 @@ export function AssetFilter() {
   };
 
   const handlePrintQr = () => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
     const tiles = qrAssets
       .map((asset, index) => {
-        const qrUrl = `${origin}/assets/${asset.id}`;
-        const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(
-          qrUrl,
-        )}`;
+        const qrImgSrc = getAssetQrImageUrl(asset.id, 140);
         const label =
           escapeHtml(asset.assetId || "") ||
           escapeHtml(asset.serialNumber || "") ||
@@ -371,13 +370,9 @@ export function AssetFilter() {
   };
 
   const handleOpenQrPdfPreview = () => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
     const tiles = qrAssets
       .map((asset, index) => {
-        const qrUrl = `${origin}/assets/${asset.id}`;
-        const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(
-          qrUrl,
-        )}`;
+        const qrImgSrc = getAssetQrImageUrl(asset.id, 140);
         const label =
           escapeHtml(asset.assetId || "") ||
           escapeHtml(asset.serialNumber || "") ||
@@ -710,14 +705,22 @@ export function AssetFilter() {
       </Dialog>
 
       <Dialog open={showQrDialog} onOpenChange={setShowQrDialog}>
-        <DialogContent className="max-w-7xl w-[98vw] max-h-[92vh] flex flex-col overflow-hidden">
+        <DialogContent
+          className={
+            singleQrAsset
+              ? "w-full max-w-xl overflow-hidden"
+              : "max-w-7xl w-[98vw] max-h-[92vh] flex flex-col overflow-hidden"
+          }
+        >
           <div className="flex flex-col flex-1 min-h-0">
             <DialogHeader className="shrink-0">
-              <DialogTitle>QR код хэвлэх / PDF болгох</DialogTitle>
+              <DialogTitle>
+                {singleQrAsset ? "QR код" : "QR код хэвлэх / PDF болгох"}
+              </DialogTitle>
               <DialogDescription>
-                Сонгосон хөрөнгийн QR кодуудыг A4 хэмжээтэй хуудсан дээр харах,
-                хэвлэх эсвэл browser-ийн `Print → Save as PDF`-ээр PDF болгон
-                хадгалах боломжтой.
+                {singleQrAsset
+                  ? "Сонгосон нэг хөрөнгийн QR кодыг томоор харуулж байна."
+                  : "Сонгосон хөрөнгийн QR кодуудыг A4 хэмжээтэй хуудсан дээр харах, хэвлэх эсвэл browser-ийн `Print → Save as PDF`-ээр PDF болгон хадгалах боломжтой."}
               </DialogDescription>
             </DialogHeader>
             {qrAssets.length > 1 && (
@@ -732,64 +735,92 @@ export function AssetFilter() {
             )}
             <div
               ref={qrPrintRef}
-              className="mt-4 bg-white p-4 border border-border rounded-lg shadow-sm flex-1 min-h-0 overflow-auto"
+              className={
+                singleQrAsset
+                  ? "mt-4 flex-1 min-h-0 overflow-auto bg-transparent p-0"
+                  : "mt-4 bg-white p-4 border border-border rounded-lg shadow-sm flex-1 min-h-0 overflow-auto"
+              }
             >
-              <div className="space-y-6 py-2">
-                {qrPages.map((pageAssets, pageIndex) => {
-                  const pageNumber = pageIndex + 1;
-                  return (
-                    <div key={pageNumber} className="mx-auto w-fit">
-                      <div className="mb-2 text-xs text-muted-foreground">
-                        A4 · Хуудас {pageNumber} / {qrPages.length}
+              {singleQrAsset ? (
+                <div className="flex justify-center py-2">
+                  <div className="w-full max-w-md rounded-3xl border border-border/70 bg-white p-8 shadow-sm">
+                    <div className="flex flex-col items-center text-center">
+                      <img
+                        src={getAssetQrImageUrl(singleQrAsset.id, 420)}
+                        alt={`${singleQrAsset.assetId || singleQrAsset.serialNumber || singleQrAsset.id} QR`}
+                        className="h-[320px] w-[320px] rounded-2xl bg-white object-contain"
+                      />
+                      <div className="mt-5 space-y-2">
+                        <h3 className="text-xl font-semibold text-foreground">
+                          {singleQrAsset.assetId ||
+                            singleQrAsset.serialNumber ||
+                            singleQrAsset.id}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {CATEGORY_LABELS[singleQrAsset.category]}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {singleQrAsset.serialNumber || "Serial байхгүй"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {singleQrAsset.location || "Байршилгүй"}
+                        </p>
                       </div>
-                      <div className="w-[794px] h-[1123px] bg-white border border-border shadow-sm rounded-md overflow-hidden print:shadow-none print:border-0 print:rounded-none print:break-after-page last:print:break-after-auto">
-                        <div className="h-full w-full p-8">
-                          <div className="grid grid-cols-7 grid-rows-4 gap-2 h-full">
-                            {Array.from(
-                              { length: QR_TILES_PER_A4_PAGE },
-                              (_, i) => pageAssets[i] ?? null,
-                            ).map((asset, index) => {
-                              if (!asset) {
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6 py-2">
+                  {qrPages.map((pageAssets, pageIndex) => {
+                    const pageNumber = pageIndex + 1;
+                    return (
+                      <div key={pageNumber} className="mx-auto w-fit">
+                        <div className="mb-2 text-xs text-muted-foreground">
+                          A4 · Хуудас {pageNumber} / {qrPages.length}
+                        </div>
+                        <div className="w-[794px] h-[1123px] bg-white border border-border shadow-sm rounded-md overflow-hidden print:shadow-none print:border-0 print:rounded-none print:break-after-page last:print:break-after-auto">
+                          <div className="h-full w-full p-8">
+                            <div className="grid grid-cols-7 grid-rows-4 gap-2 h-full">
+                              {Array.from(
+                                { length: QR_TILES_PER_A4_PAGE },
+                                (_, i) => pageAssets[i] ?? null,
+                              ).map((asset, index) => {
+                                if (!asset) {
+                                  return (
+                                    <div
+                                      key={`empty-${pageNumber}-${index}`}
+                                      className="rounded-md border border-transparent"
+                                    />
+                                  );
+                                }
+                                const label =
+                                  asset.assetId ||
+                                  asset.serialNumber ||
+                                  `#${pageIndex * QR_TILES_PER_A4_PAGE + index + 1}`;
                                 return (
                                   <div
-                                    key={`empty-${pageNumber}-${index}`}
-                                    className="rounded-md border border-transparent"
-                                  />
+                                    key={asset.id}
+                                    className="flex flex-col items-center justify-center rounded-md border border-border/60 bg-white p-2 min-h-0"
+                                  >
+                                    <img
+                                      src={getAssetQrImageUrl(asset.id, 180)}
+                                      alt={`${label} QR`}
+                                      className="h-16 w-16 rounded bg-white object-contain shrink-0"
+                                    />
+                                    <span className="mt-1 text-[10px] text-muted-foreground text-center truncate w-full leading-tight">
+                                      {label}
+                                    </span>
+                                  </div>
                                 );
-                              }
-                              const qrUrl =
-                                typeof window !== "undefined"
-                                  ? `${window.location.origin}/assets/${asset.id}`
-                                  : `/assets/${asset.id}`;
-                              const label =
-                                asset.assetId ||
-                                asset.serialNumber ||
-                                `#${pageIndex * QR_TILES_PER_A4_PAGE + index + 1}`;
-                              return (
-                                <div
-                                  key={asset.id}
-                                  className="flex flex-col items-center justify-center rounded-md border border-border/60 bg-white p-2 min-h-0"
-                                >
-                                  <img
-                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-                                      qrUrl,
-                                    )}`}
-                                    alt={`${label} QR`}
-                                    className="h-16 w-16 rounded bg-white object-contain shrink-0"
-                                  />
-                                  <span className="mt-1 text-[10px] text-muted-foreground text-center truncate w-full leading-tight">
-                                    {label}
-                                  </span>
-                                </div>
-                              );
-                            })}
+                              })}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between shrink-0">
@@ -809,10 +840,12 @@ export function AssetFilter() {
               </Button>
             </div>
           </DialogFooter>
-          <div className="text-xs text-muted-foreground shrink-0">
-            PDF болгох бол доорх <b>“PDF файл болгох”</b> товчийг дарж, нээгдсэн
-            цонхноос <b>Save as PDF</b> сонгоно уу.
-          </div>
+          {!singleQrAsset ? (
+            <div className="text-xs text-muted-foreground shrink-0">
+              PDF болгох бол доорх <b>“PDF файл болгох”</b> товчийг дарж,
+              нээгдсэн цонхноос <b>Save as PDF</b> сонгоно уу.
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
 
@@ -826,7 +859,7 @@ export function AssetFilter() {
             {detailAssetId && (
               <AssetDetailContent
                 assetId={detailAssetId}
-             
+                onClose={() => setDetailAssetId(null)}
               />
             )}
           </div>

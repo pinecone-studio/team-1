@@ -30,6 +30,7 @@ export async function searchAssetsDB(
 ) {
   const db = await getDb();
   const conditions = [];
+  conditions.push(isNull(assets.deletedAt));
 
   if (filter.status) {
     conditions.push(eq(assets.status, filter.status));
@@ -96,13 +97,10 @@ export async function searchAssetsDB(
     query = query.orderBy(desc(assets.createdAt));
   }
 
-  // Pagination
-  if (pagination) {
-    if (pagination.limit) query = query.limit(pagination.limit);
-    if (pagination.offset) query = query.offset(pagination.offset);
-  } else {
-    query = query.limit(50); // Default limit
-  }
+  // Pagination (cap limit to avoid D1/response size issues; max 100 per request)
+  const limit = pagination?.limit != null ? Math.min(100, Math.max(1, pagination.limit)) : 50;
+  const offset = pagination?.offset != null ? Math.max(0, pagination.offset) : 0;
+  query = query.limit(limit).offset(offset);
 
   const items = await query.all();
 

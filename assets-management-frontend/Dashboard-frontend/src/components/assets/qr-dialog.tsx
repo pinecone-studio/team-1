@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { CATEGORY_LABELS } from "./constants";
 import type { Asset } from "@/lib/types";
+import { getAssetQrImageUrl } from "@/lib/asset-qr";
 
 interface QrDialogProps {
   open: boolean;
@@ -18,19 +19,10 @@ interface QrDialogProps {
 }
 
 export function QrDialog({ open, assets, onOpenChange }: QrDialogProps) {
-  const getQrUrl = (assetId: string) => {
-    const base =
-      typeof window !== "undefined"
-        ? window.location.origin
-        : "https://example.com";
-    const data = encodeURIComponent(`${base}/assets/${assetId}`);
-    return `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${data}`;
-  };
-
   const printQrSheet = (assets: Asset[]) => {
     const rows = assets
       .map((asset) => {
-        const qrUrl = getQrUrl(asset.id);
+        const qrUrl = getAssetQrImageUrl(asset.id);
         return `
           <div class="item">
             <img src="${qrUrl}" width="200" height="200" alt="QR" />
@@ -90,7 +82,7 @@ export function QrDialog({ open, assets, onOpenChange }: QrDialogProps) {
                     className="flex items-center gap-4 rounded-2xl border border-border p-3"
                   >
                     <img
-                      src={getQrUrl(asset.id)}
+                      src={getAssetQrImageUrl(asset.id)}
                       alt="QR"
                       className="h-24 w-24"
                     />

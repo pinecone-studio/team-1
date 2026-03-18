@@ -1,4 +1,4 @@
-import { and, desc, inArray, like } from "drizzle-orm";
+import { and, desc, inArray, isNull, like } from "drizzle-orm";
 
 import type { Asset } from "../types";
 import { assets } from "@/schema";
@@ -15,6 +15,7 @@ export async function getAssets(
 ): Promise<Asset[]> {
   const db = ctx.db;
   const conditions = [];
+  conditions.push(isNull(assets.deletedAt));
   if (office) {
     conditions.push(like(assets.locationId, `%${office}%`));
   }
