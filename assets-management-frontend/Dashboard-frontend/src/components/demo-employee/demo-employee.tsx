@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useDemoEmployee } from "./useDemoEmployee";
 import { DemoEmployeeHeader } from "./DemoEmployeeHeader";
 import { DemoEmployeeOffboardingModal } from "./DemoEmployeeOffboardingModal";
@@ -14,6 +14,9 @@ import { DemoEmployeeAssetDetailDialog } from "./DemoEmployeeAssetDetailDialog";
 import { DemoEmployeeTransferDialogs } from "./DemoEmployeeTransferDialogs";
 import { DemoEmployeeReturnRequestDialog } from "./DemoEmployeeReturnRequestDialog";
 import { DEMO_EMPLOYEE_EMAIL } from "./demo-employee-utils";
+import { DemoEmployeeIncomingRequestsCard } from "./DemoEmployeeIncomingRequestsCard";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { AssetDetailContent } from "@/components/assets/asset-detail-content";
 
 export function DemoEmployeeContent({
   title = "Миний хөрөнгө",
@@ -21,9 +24,37 @@ export function DemoEmployeeContent({
   title?: string;
 }) {
   const s = useDemoEmployee();
+  const [detailAssetId, setDetailAssetId] = useState<string | null>(null);
+
+  const openSignModal = (a: any) => {
+    s.setSignAssignment(a);
+    s.setSignatureData(null);
+    s.setSignatureFileUrl(null);
+    s.setIsSignModalOpen(true);
+  };
 
   return (
     <div className="flex flex-col p-6 overflow-visible">
+      <Dialog
+        open={!!detailAssetId}
+        onOpenChange={(open) => !open && setDetailAssetId(null)}
+      >
+        <DialogContent
+          showCloseButton={false}
+          className="w-[min(92vw,760px)] max-h-[90vh] overflow-hidden rounded-[28px] border border-slate-200 bg-white p-0 shadow-[0_32px_90px_rgba(15,23,42,0.18)]"
+        >
+          <DialogTitle className="sr-only">Хөрөнгийн дэлгэрэнгүй</DialogTitle>
+          <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1">
+            {detailAssetId && (
+              <AssetDetailContent
+                assetId={detailAssetId}
+                onClose={() => setDetailAssetId(null)}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {s.employeeNotFound && (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           Демо ажилтан олдсонгүй: <strong>{DEMO_EMPLOYEE_EMAIL}</strong>{" "}
@@ -40,8 +71,14 @@ export function DemoEmployeeContent({
         activeOffboarding={s.activeOffboarding}
         offboardingStarting={s.offboardingStarting}
         onShowOffboardingModal={() => s.setShowOffboardingModal(true)}
-        pendingListLength={s.pendingList.length}
-        onShowRequestsDialog={() => s.setShowRequestsDialog(true)}
+        pendingList={s.pendingList as any}
+        currentPending={s.currentPending as any}
+        isChecked={s.isChecked}
+        onConditionCheck={openSignModal}
+        onApprove={s.handleApprove}
+        onReject={s.handleReject}
+        updatingStatus={s.updatingStatus}
+        normalizeAssetTag={s.normalizeAssetTag}
       />
 
       <DemoEmployeeOffboardingModal
@@ -88,6 +125,7 @@ export function DemoEmployeeContent({
         completeReturnLoading={s.completeReturnLoading}
       />
 
+      {/* Offboarding байхгүй үед “шар” мэдэгдлийн card-ууд (өмнөх шиг). */}
       <DemoEmployeeNotificationsCard
         notifications={s.notifications}
         expandedNotificationId={s.expandedNotificationId}
@@ -107,6 +145,19 @@ export function DemoEmployeeContent({
         onOpenReturnRequest={s.onOpenReturnRequest}
         completeReturnLoading={s.completeReturnLoading}
         activeOffboarding={s.activeOffboarding}
+        normalizeAssetTag={s.normalizeAssetTag}
+      />
+
+      {/* Offboarding-оос бусад ерөнхий “ирсэн хүсэлтүүд” UI (зураг дээрхтэй адил). */}
+      <DemoEmployeeIncomingRequestsCard
+        pendingList={s.pendingList as any}
+        currentPending={s.currentPending as any}
+        isChecked={s.isChecked}
+        onConditionCheck={openSignModal}
+        onOpenAsset={(assetId) => setDetailAssetId(assetId)}
+        onApprove={s.handleApprove}
+        onReject={s.handleReject}
+        updatingStatus={s.updatingStatus}
         normalizeAssetTag={s.normalizeAssetTag}
       />
 
@@ -133,6 +184,19 @@ export function DemoEmployeeContent({
         activeLoading={s.activeLoading}
         pendingLoading={s.pendingLoading}
         setSelectedAssignment={s.setSelectedAssignment}
+        selectedAssignment={s.selectedAssignment}
+        onOpenAsset={(assetId) => setDetailAssetId(assetId)}
+        onSendToIt={() => {
+          s.setTransferToEmployeeId("");
+          s.setTransferReason("");
+          s.setShowItTransferDialog(true);
+        }}
+        onSendToFinanceDisposal={s.handleRequestDisposal}
+        onTransferToEmployee={() => {
+          s.setTransferToEmployeeId("");
+          s.setTransferReason("");
+          s.setShowTransferDialog(true);
+        }}
         normalizeAssetTag={s.normalizeAssetTag}
       />
 

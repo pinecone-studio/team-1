@@ -2,7 +2,6 @@
 
 import React from "react";
 import { Wrench } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -13,75 +12,119 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { MaintenanceItem } from "./demo-it-utils";
+import { Button } from "@/components/ui/button";
+import { Check, X } from "lucide-react";
 
 export type DemoITMaintenanceCardProps = {
   allMaintenanceTickets: MaintenanceItem[];
   MAINTENANCE_STATUS_LABELS: Record<string, string>;
+  onOpenAsset: (assetId: string) => void;
 };
 
 export function DemoITMaintenanceCard({
   allMaintenanceTickets,
   MAINTENANCE_STATUS_LABELS,
+  onOpenAsset,
 }: DemoITMaintenanceCardProps) {
   return (
-    <Card className="mt-6 border-gray-200 bg-white">
+    <Card className="border border-border/60 bg-white">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base font-medium text-gray-900">
-          <Wrench className="h-5 w-5" /> Засварын хүсэлт (
-          {allMaintenanceTickets.length})
+        <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+          <Wrench className="h-5 w-5" /> Засварлах хүсэлтүүд
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-0">
         {allMaintenanceTickets.length === 0 ? (
           <p className="rounded-lg border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-muted-foreground">
             Засварын дуудлага байхгүй байна.
           </p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Хөрөнгийн ID</TableHead>
-                <TableHead>Тайлбар</TableHead>
-                <TableHead>Ноцтой байдал</TableHead>
-                <TableHead>Төлөв</TableHead>
-                <TableHead>Огноо</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {allMaintenanceTickets.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell className="font-mono text-xs">
-                    {t.assetId}
-                  </TableCell>
-                  <TableCell className="max-w-xs truncate text-sm">
-                    {t.description}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      {t.severity}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={
-                        t.status === "OPEN"
-                          ? "bg-gray-100 text-gray-700 border-gray-200"
-                          : t.status === "RESOLVED" || t.status === "CLOSED"
-                            ? "bg-gray-200 text-gray-800 border-gray-200"
-                            : "bg-gray-100 text-gray-700 border-gray-200"
-                      }
-                    >
-                      {MAINTENANCE_STATUS_LABELS[t.status] ?? t.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Date(t.createdAt).toLocaleString()}
-                  </TableCell>
+          <div className="overflow-hidden rounded-2xl border border-border/60">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-0 bg-[#0b6fae] hover:bg-[#0b6fae]">
+                  <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
+                    №
+                  </TableHead>
+                  <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
+                    Хөрөнгийн ID
+                  </TableHead>
+                  <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
+                    Серийн дугаар
+                  </TableHead>
+                  <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
+                    Хэнээс
+                  </TableHead>
+                  <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
+                    Тайлбар
+                  </TableHead>
+                  <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
+                    Ирсэн огноо
+                  </TableHead>
+                  <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
+                    Баталгаажуулах
+                  </TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody className="[&_tr:last-child]:border-0">
+                {allMaintenanceTickets.map((t, index) => (
+                  <TableRow
+                    key={t.id}
+                    className={[
+                      "border-b border-border/60",
+                      index % 2 === 0 ? "bg-white" : "bg-[#fafafa]",
+                    ].join(" ")}
+                  >
+                    <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
+                      {index + 1}
+                    </TableCell>
+                    <TableCell className="px-3 py-3 text-sm font-medium text-foreground md:px-4">
+                      <button
+                        type="button"
+                        className="text-left hover:underline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenAsset(t.assetId);
+                        }}
+                        title="Хөрөнгийн дэлгэрэнгүй"
+                      >
+                        {t.assetId}
+                      </button>
+                    </TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
+                      {(t as any)?.asset?.serialNumber ?? (t as any)?.serialNumber ?? "—"}
+                    </TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
+                      {(t as any)?.reporter?.email ?? (t as any)?.reporterId ?? "Админ хэрэглэгч"}
+                    </TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
+                      {t.description}
+                    </TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
+                      {new Date(t.createdAt).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="px-3 py-2 md:px-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          size="sm"
+                          className="h-8 gap-2 rounded-md bg-[#6b7280] text-white hover:bg-[#5b6473]"
+                          disabled
+                          title={`Одоогоор demo UI (status: ${MAINTENANCE_STATUS_LABELS[t.status] ?? t.status})`}
+                        >
+                          <Check className="h-4 w-4" />
+                          Батлах
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-8 gap-2 rounded-md" disabled>
+                          <X className="h-4 w-4" />
+                          Цуцлах
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </CardContent>
     </Card>

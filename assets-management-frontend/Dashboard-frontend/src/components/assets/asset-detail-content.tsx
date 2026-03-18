@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -138,6 +139,62 @@ function StatusChip({ status }: { status: string }) {
       />
       {STATUS_LABELS[status] || status || "—"}
     </span>
+  );
+}
+
+function AssetDetailSkeleton() {
+  return (
+    <div className="w-full overflow-hidden rounded-[28px] bg-white">
+      <div className="border-b border-slate-200 px-6 pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-6 pb-3">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-5 w-28" />
+          </div>
+          <div className="flex items-center gap-2 pb-3">
+            <Skeleton className="h-9 w-24 rounded-lg" />
+          </div>
+        </div>
+      </div>
+
+      <div className="px-6 pb-6 pt-5">
+        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-11 w-full rounded-lg" />
+                </div>
+              ))}
+              <div className="space-y-2 sm:col-span-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-24 w-full rounded-lg" />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-4 w-28" />
+                </div>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <Skeleton className="h-4 w-32" />
+              <div className="mt-3 space-y-2">
+                <Skeleton className="h-9 w-full rounded-lg" />
+                <Skeleton className="h-9 w-full rounded-lg" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -370,8 +427,7 @@ export function AssetDetailContent({
     }
   };
 
-  if (loading)
-    return <div className="p-10 text-center text-gray-400">Уншиж байна...</div>;
+  if (loading) return <AssetDetailSkeleton />;
   if (!asset) return null;
 
   const categoryKey = asset.category ?? "";
@@ -400,14 +456,14 @@ export function AssetDetailContent({
             <TabsList variant="line" className="h-auto gap-6 p-0">
               <TabsTrigger
                 value="details"
-                className="gap-2 rounded-none px-0 py-3 text-[14px] font-semibold text-slate-500 data-active:text-slate-950 after:bottom-[-1px] after:h-0.5"
+                className="gap-2 rounded-none px-0 py-3 text-[14px] font-semibold text-slate-500 data-active:text-slate-950 after:-bottom-px after:h-0.5"
               >
                 <Box className="h-4 w-4" />
                 Хөрөнгийн дэлгэрэнгүй
               </TabsTrigger>
               <TabsTrigger
                 value="history"
-                className="gap-2 rounded-none px-0 py-3 text-[14px] font-semibold text-slate-500 data-active:text-slate-950 after:bottom-[-1px] after:h-0.5"
+                className="gap-2 rounded-none px-0 py-3 text-[14px] font-semibold text-slate-500 data-active:text-slate-950 after:-bottom-px after:h-0.5"
               >
                 <History className="h-4 w-4" />
                 Хөрөнгийн түүх
@@ -599,7 +655,7 @@ export function AssetDetailContent({
                     </Select>
                   ) : (
                     <div
-                      className={cn(FIELD_BOX_CLASS, "break-words leading-6")}
+                      className={cn(FIELD_BOX_CLASS, "wrap-break-word leading-6")}
                     >
                       {asset.locationPath || "—"}
                     </div>
@@ -809,7 +865,7 @@ export function AssetDetailContent({
                         <SelectTrigger className="h-10 min-w-[184px] rounded-lg border-slate-200 bg-white px-3 text-[16px] font-semibold text-slate-900">
                           <SelectValue placeholder="Төлөв сонгох" />
                         </SelectTrigger>
-                        <SelectContent className="z-[90] rounded-xl border border-slate-200 bg-white p-1 shadow-[0_14px_32px_rgba(15,23,42,0.12)]">
+                        <SelectContent className="z-90 rounded-xl border border-slate-200 bg-white p-1 shadow-[0_14px_32px_rgba(15,23,42,0.12)]">
                           {Object.entries(STATUS_LABELS).map(([key, label]) => (
                             <SelectItem
                               key={key}

@@ -1,6 +1,13 @@
 "use client";
 
-import { Package, UserCheck, Wrench } from "lucide-react";
+import {
+  type LucideIcon,
+  Package,
+  UserCheck,
+  Wrench,
+  UserRoundX,
+  CircleDollarSign,
+} from "lucide-react";
 import { useQuery } from "@apollo/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -50,7 +57,7 @@ export function KPICards() {
       value: formatMoney(kpis?.unassignedValue ?? 0),
       subtitle: formatPercent(unassignedPercent),
       progress: unassignedPercent,
-      icon: UserCheck,
+      icon: UserRoundX,
       iconBorder: "border-orange-400",
       iconColor: "text-orange-400",
     },
@@ -59,7 +66,7 @@ export function KPICards() {
       value: formatMoney(kpis?.forSaleValue ?? 0),
       subtitle: formatPercent(sellablePercent),
       progress: sellablePercent,
-      icon: UserCheck,
+      icon: CircleDollarSign,
       iconBorder: "border-yellow-400",
       iconColor: "text-yellow-400",
     },
@@ -94,7 +101,7 @@ interface KPICardProps {
   value: string;
   subtitle: string;
   progress: number;
-  icon: any;
+  icon: LucideIcon;
   iconBorder?: string;
   iconColor: string;
   loading?: boolean;

@@ -2,14 +2,22 @@
 
 import React from "react";
 import { Check, Eye, ShieldCheck, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type { DisposalItem } from "./demo-it-utils";
 
 export type DemoITPendingDisposalsCardProps = {
   pendingDisposals: DisposalItem[];
   onSelectDisposal: (item: DisposalItem) => void;
+  onOpenAsset: (assetId: string) => void;
   onReject: (id: string) => void;
   approving: boolean;
   rejecting: boolean;
@@ -20,6 +28,7 @@ export type DemoITPendingDisposalsCardProps = {
 export function DemoITPendingDisposalsCard({
   pendingDisposals,
   onSelectDisposal,
+  onOpenAsset,
   onReject,
   approving,
   rejecting,
@@ -27,14 +36,13 @@ export function DemoITPendingDisposalsCard({
   normalizeAssetTag,
 }: DemoITPendingDisposalsCardProps) {
   return (
-    <Card className="mt-6 border-gray-200 bg-white">
+    <Card className="border border-border/60 bg-white">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base font-medium text-gray-900">
-          <ShieldCheck className="h-5 w-5" /> Устгах хүсэлтүүд (
-          {pendingDisposals.length})
+        <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+          <ShieldCheck className="h-5 w-5" /> Устгах хүсэлтүүд
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="pt-0">
         {pendingDisposals.length === 0 ? (
           <p className="rounded-lg border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-muted-foreground">
             Одоогоор хүлээгдэж буй устгах хүсэлт байхгүй. Ажилтан «Миний
@@ -42,92 +50,119 @@ export function DemoITPendingDisposalsCard({
             болно.
           </p>
         ) : (
-          pendingDisposals.map((req) => {
-            const r = req as DisposalItem;
-            const assetName = r.asset?.assetTag ?? r.assetId;
-            const categoryName = r.asset?.category ?? "—";
-            const requesterName = r.requestedBy
-              ? [r.requestedBy.firstName, r.requestedBy.lastName]
-                  .filter(Boolean)
-                  .join(" ") || r.requestedBy.email
-              : "—";
-            const displayAsset = normalizeAssetTag(assetName);
-            return (
-              <div
-                key={req.id}
-                className="flex flex-col justify-between gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:flex-row sm:items-center shadow-sm cursor-pointer hover:bg-gray-50 transition-colors"
-                onClick={() => {
-                  setIsDisposalChecked(false);
-                  onSelectDisposal(r);
-                }}
-              >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-900 text-white font-bold text-sm">
-                    {(assetName ?? "?").slice(0, 2).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-foreground">
-                      {displayAsset}{" "}
-                      <span className="text-muted-foreground font-normal">
-                        ({categoryName})
-                      </span>
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Хэнээс:{" "}
-                      <span className="font-medium text-foreground">
+          <div className="overflow-hidden rounded-2xl border border-border/60">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-0 bg-[#0b6fae] hover:bg-[#0b6fae]">
+                  <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
+                    №
+                  </TableHead>
+                  <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
+                    Хөрөнгийн ID
+                  </TableHead>
+                  <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
+                    Серийн дугаар
+                  </TableHead>
+                  <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
+                    Хэнээс
+                  </TableHead>
+                  <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
+                    Ирсэн огноо
+                  </TableHead>
+                  <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
+                    Баталгаажуулах
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="[&_tr:last-child]:border-0">
+                {pendingDisposals.map((req, index) => {
+                  const r = req as DisposalItem;
+                  const assetTag = normalizeAssetTag(r.asset?.assetTag ?? r.assetId);
+                  const serial = r.asset?.serialNumber ?? "—";
+                  const requesterName = r.requestedBy
+                    ? [r.requestedBy.firstName, r.requestedBy.lastName]
+                        .filter(Boolean)
+                        .join(" ") || r.requestedBy.email
+                    : "—";
+
+                  return (
+                    <TableRow
+                      key={r.id}
+                      className={[
+                        "border-b border-border/60",
+                        index % 2 === 0 ? "bg-white" : "bg-[#fafafa]",
+                      ].join(" ")}
+                    >
+                      <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
+                        {index + 1}
+                      </TableCell>
+                      <TableCell className="px-3 py-3 text-sm font-medium text-foreground md:px-4">
+                        <button
+                          type="button"
+                          className="text-left hover:underline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenAsset(r.assetId);
+                          }}
+                          title="Хөрөнгийн дэлгэрэнгүй"
+                        >
+                          {assetTag}
+                        </button>
+                      </TableCell>
+                      <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
+                        {serial}
+                      </TableCell>
+                      <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
                         {requesterName}
-                      </span>{" "}
-                      | Арга: {r.method} |{" "}
-                      {new Date(r.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-                <div
-                  className="flex items-center gap-2 shrink-0"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsDisposalChecked(false);
-                      onSelectDisposal(r);
-                    }}
-                  >
-                    <Eye className="h-3.5 w-3.5" /> Дэлгэрэнгүй
-                  </Button>
-                  <Badge
-                    variant="outline"
-                    className="bg-amber-50 text-amber-600 border-amber-200"
-                  >
-                    PENDING
-                  </Badge>
-                  <Button
-                    onClick={() => {
-                      setIsDisposalChecked(false);
-                      onSelectDisposal(r);
-                    }}
-                    className="gap-2 bg-gray-900 text-white hover:bg-gray-800"
-                    size="sm"
-                    disabled
-                  >
-                    <Check className="h-4 w-4" /> Батлах (IT)
-                  </Button>
-                  <Button
-                    onClick={() => onReject(r.id)}
-                    variant="outline"
-                    className="gap-2 border-gray-300 text-gray-700 hover:bg-gray-100"
-                    size="sm"
-                    disabled={approving || rejecting}
-                  >
-                    <X className="h-4 w-4" /> Цуцлах
-                  </Button>
-                </div>
-              </div>
-            );
-          })
+                      </TableCell>
+                      <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
+                        {new Date(r.createdAt).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="px-3 py-2 md:px-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 gap-2 rounded-md"
+                            onClick={() => {
+                              setIsDisposalChecked(false);
+                              onSelectDisposal(r);
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                            Дэлгэрэнгүй
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="h-8 gap-2 rounded-md bg-[#6b7280] text-white hover:bg-[#5b6473]"
+                            onClick={() => {
+                              // Logic өөрчлөхгүй: батлахын өмнө dialog (detail) нээнэ
+                              setIsDisposalChecked(false);
+                              onSelectDisposal(r);
+                            }}
+                            disabled={approving || rejecting}
+                          >
+                            <Check className="h-4 w-4" />
+                            Батлах
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 gap-2 rounded-md"
+                            onClick={() => onReject(r.id)}
+                            disabled={approving || rejecting}
+                          >
+                            <X className="h-4 w-4" />
+                            Цуцлах
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </CardContent>
     </Card>
