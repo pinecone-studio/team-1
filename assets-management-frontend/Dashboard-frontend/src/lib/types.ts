@@ -128,10 +128,16 @@ export interface AssetSummary {
 export type AssetStatus =
   | "AVAILABLE"
   | "ASSIGNED"
+  | "FOR_SALE"
   | "IN_REPAIR"
   | "PENDING_DISPOSAL"
-  | "DISPOSED";
-
+  | "DISPOSED"
+  | "RETURNING"
+  | "RETURNED"
+  | "DAMAGED"
+  | "DISPOSAL_REQUESTED"
+  | "ASSIGN_REQUESTED"
+  | "REPAIR_REQUESTED";
 export type AssetCategory =
   | "LAPTOP"
   | "DESKTOP"

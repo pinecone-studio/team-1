@@ -18,7 +18,7 @@ export default function DashboardPage() {
   const [activeTitle, setActiveTitle] = useState("Хянах самбар");
 
   return (
-    <div className="min-h-svh bg-muted/30">
+    <div className="min-h-svh bg-muted/30 ">
       <DashboardHeader />
 
       <SidebarProvider className="min-h-svh">
@@ -48,9 +48,7 @@ export default function DashboardPage() {
           activeTitle !== "Ажилтан демо" &&
           activeTitle !== "IT демо" &&
           activeTitle !== "HR демо" ? (
-            <div className="min-h-0 flex flex-1 overflow-auto p-6">
-              <div className="w-full rounded-xl bg-white" />
-            </div>
+            <div />
           ) : null}
         </SidebarInset>
       </SidebarProvider>
