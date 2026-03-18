@@ -7,6 +7,8 @@ import { useQuery } from "@apollo/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SignInButton, SignUpButton, UserButton, useAuth } from "@clerk/nextjs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   AssetFieldsFragmentDoc,
   EmployeesDocument,
@@ -191,6 +193,7 @@ function renderHighlightedText(
 }
 
 export function DashboardHeader({ sidebarOpen }: { sidebarOpen: boolean }) {
+  const { isSignedIn } = useAuth();
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [showAllAssetResults, setShowAllAssetResults] = useState(false);
@@ -349,7 +352,7 @@ export function DashboardHeader({ sidebarOpen }: { sidebarOpen: boolean }) {
                   </p>
                 ) : (
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-gradient-to-r from-slate-50 to-white px-3 py-2.5">
+                    <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-linear-to-r from-slate-50 to-white px-3 py-2.5">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                         Хайлтын үр дүн
                       </p>
@@ -523,9 +526,45 @@ export function DashboardHeader({ sidebarOpen }: { sidebarOpen: boolean }) {
         <Button variant="ghost" size="icon" className="h-8 w-8">
           <BellDot />
         </Button>
-        <Button variant="outline" size="sm" className="h-8 gap-2">
-          <UserIcon />
-        </Button>
+        {isSignedIn ? (
+          <UserButton
+            afterSignOutUrl="/"
+            appearance={{
+              elements: {
+                userButtonAvatarBox: "h-8 w-8",
+              },
+            }}
+          />
+        ) : (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="icon" className="h-8 w-8 rounded-full">
+                <UserIcon className="h-4 w-4" />
+                <span className="sr-only">Нэвтрэх / Бүртгүүлэх</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              sideOffset={10}
+              className="w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_24px_60px_rgba(15,23,42,0.18)]"
+            >
+              <div className="px-2 pb-2 pt-1">
+                <p className="text-sm font-semibold text-slate-900">Account</p>
+                <p className="text-xs text-slate-500">Нэвтрэх эсвэл бүртгүүлэх</p>
+              </div>
+              <div className="grid gap-2 p-2 pt-0">
+                <SignInButton mode="modal">
+                  <Button className="w-full justify-center">Sign in</Button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <Button variant="outline" className="w-full justify-center">
+                    Бүртгүүлэх
+                  </Button>
+                </SignUpButton>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
         <img src={"2SVG.svg"} alt="" className="h-8 w-8 object-contain" />
       </div>
     </header>

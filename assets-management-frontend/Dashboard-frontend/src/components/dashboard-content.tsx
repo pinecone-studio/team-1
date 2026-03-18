@@ -3,7 +3,7 @@
 import { KPICards } from "@/components/kpi-cards";
 
 import { AssetDistributionChart } from "@/components/charts/asset-distribution-chart";
-import { AssetDepreciationChart } from "@/components/charts/asset-depreciation-chart";
+
 import { RecentActivities } from "@/components/recent-activities";
 import { AssetRequestsTable } from "@/components/asset-requests-table";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Bell, ChevronDown, ChevronUp, ClipboardCheck } from "lucide-react";
+import { ChevronDown, ChevronUp, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -86,7 +86,7 @@ export function DemoEmployeeNotificationsCard({
     <Card className="mt-6 min-h-0 shrink-0 border-amber-200 bg-amber-50/50">
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-medium text-amber-800 flex items-center gap-2">
-          <Bell className="h-4 w-4" /> Мэдэгдлүүд
+          Мэдэгдлүүд
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0 min-h-[120px]">
@@ -211,7 +211,7 @@ export function DemoEmployeeNotificationsCard({
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {displayList.map((item) => {
+                        {displayList.map((item, index) => {
                           const canReturn = myAssetsList.some(
                             (m) => (m as AssignmentItem).assetId === item.id,
                           );
@@ -221,7 +221,9 @@ export function DemoEmployeeNotificationsCard({
                             (m) => (m as AssignmentItem).assetId === item.id,
                           ) as AssignmentItem | undefined;
                           return (
-                            <TableRow key={item.id}>
+                            <TableRow
+                              key={`${item.id}-${item.serialNumber}-${index}`}
+                            >
                               <TableCell>
                                 <input
                                   type="checkbox"

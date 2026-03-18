@@ -90,21 +90,21 @@ export function AppSidebar({
       )}
     >
       <SidebarContent className="bg-white overflow-visible group-data-[collapsible=icon]:overflow-visible">
-        <div className="relative h-12 w-full px-2">
+        <div className="relative h-9 w-full px-2">
           <SidebarTrigger className="absolute right-4 top-1/2 z-10 h-9 w-9 -translate-y-1/2 bg-transparent text-foreground hover:bg-muted/80 active:-translate-y-1/2" />
         </div>
-        <SidebarGroup className="bg-white">
+        <SidebarGroup className="bg-white p-0">
           <SidebarGroupContent>
             <SidebarMenu className="overflow-visible">
               {menuItems.map((item) => (
                 <SidebarMenuItem
                   key={item.title}
-                  className="pt-4 overflow-visible flex justify-center"
+                  className="pt-2 overflow-visible flex justify-center"
                 >
                   <SidebarMenuButton
                     isActive={activeTitle === item.title}
                     className={cn(
-                      "group/tooltip relative !overflow-visible",
+                      "group/tooltip relative overflow-visible!",
                       state === "expanded"
                         ? "justify-start px-3"
                         : "mx-auto h-10 w-10 justify-center px-0",

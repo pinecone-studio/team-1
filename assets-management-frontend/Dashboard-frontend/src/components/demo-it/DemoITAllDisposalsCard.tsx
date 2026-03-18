@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -13,101 +12,135 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { DisposalItem } from "./demo-it-utils";
+import { ShieldCheck } from "lucide-react";
 
 export type DemoITAllDisposalsCardProps = {
   allDisposals: DisposalItem[];
   DISPOSAL_STATUS_LABELS: Record<string, string>;
   normalizeAssetTag: (value?: string | null) => string;
+  onOpenAsset: (assetId: string) => void;
 };
 
 export function DemoITAllDisposalsCard({
   allDisposals,
   DISPOSAL_STATUS_LABELS,
   normalizeAssetTag,
+  onOpenAsset,
 }: DemoITAllDisposalsCardProps) {
   return (
-    <Card className="mt-6 border-border bg-card">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-base font-semibold">
-          Устгах хүсэлт — бараа, хэнээс, баталгаажуулсан
+    <Card className="border border-border/60 bg-white">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+          <ShieldCheck className="h-5 w-5" /> Баталгаажсан хүсэлтүүд
         </CardTitle>
-        <div className="relative w-48">
-          <Search className="absolute left-2 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-          <input
-            placeholder="Хайх..."
-            className="w-full rounded-md border border-input bg-transparent pl-8 py-1.5 text-xs outline-none"
-          />
-        </div>
       </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Хөрөнгө (нэр / ангилал)</TableHead>
-              <TableHead>Хэнээс ирсэн</TableHead>
-              <TableHead>Устгах арга</TableHead>
-              <TableHead>Огноо</TableHead>
-              <TableHead>Баталгаажуулсан</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {allDisposals.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={5}
-                  className="h-24 text-center text-muted-foreground text-sm"
-                >
-                  Устгах хүсэлт байхгүй байна.
-                </TableCell>
+      <CardContent className="pt-0">
+        <div className="overflow-hidden rounded-2xl border border-border/60">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-0 bg-[#0b6fae] hover:bg-[#0b6fae]">
+                <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
+                  №
+                </TableHead>
+                <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
+                  Хөрөнгийн нэр
+                </TableHead>
+                <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
+                  Хөрөнгийн ID
+                </TableHead>
+                <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
+                  Хэнээс
+                </TableHead>
+                <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
+                  Төрөл
+                </TableHead>
+                <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
+                  Ирсэн огноо
+                </TableHead>
+                <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
+                  Баталгаажуулсан
+                </TableHead>
               </TableRow>
-            ) : (
-              allDisposals.map((req) => {
-                const r = req as DisposalItem;
-                const assetName = r.asset?.assetTag ?? r.assetId;
-                const categoryName = r.asset?.category ?? "—";
-                const requesterName = r.requestedBy
-                  ? [r.requestedBy.firstName, r.requestedBy.lastName]
-                      .filter(Boolean)
-                      .join(" ") || r.requestedBy.email
-                  : "—";
-                const statusLabel =
-                  DISPOSAL_STATUS_LABELS[r.status] ?? r.status;
-                return (
-                  <TableRow key={r.id}>
-                    <TableCell className="font-medium">
-                      {normalizeAssetTag(assetName)}{" "}
-                      <span className="text-muted-foreground font-normal">
-                        ({categoryName})
-                      </span>
-                    </TableCell>
-                    <TableCell>{requesterName}</TableCell>
-                    <TableCell className="text-sm">{r.method}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {new Date(r.createdAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          r.status === "COMPLETED"
-                            ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                            : r.status === "REJECTED"
-                              ? "bg-rose-100 text-rose-700 border-rose-200"
-                              : r.status === "IT_APPROVED" ||
-                                  r.status === "FINANCE_APPROVED"
-                                ? "bg-blue-100 text-blue-700 border-blue-200"
-                                : "bg-amber-100 text-amber-600 border-amber-200"
-                        }
-                      >
-                        {statusLabel}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody className="[&_tr:last-child]:border-0">
+              {allDisposals.length === 0 ? (
+                <TableRow className="bg-white">
+                  <TableCell colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                    Баталгаажсан хүсэлт байхгүй байна.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                allDisposals.map((req, index) => {
+                  const r = req as DisposalItem;
+                  const assetName = r.asset?.assetTag ?? r.assetId;
+                  const requesterName = r.requestedBy
+                    ? [r.requestedBy.firstName, r.requestedBy.lastName]
+                        .filter(Boolean)
+                        .join(" ") || r.requestedBy.email
+                    : "—";
+                  const statusLabel = DISPOSAL_STATUS_LABELS[r.status] ?? r.status;
+
+                  return (
+                    <TableRow
+                      key={r.id}
+                      className={[
+                        "border-b border-border/60",
+                        index % 2 === 0 ? "bg-white" : "bg-[#fafafa]",
+                      ].join(" ")}
+                    >
+                      <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
+                        {index + 1}
+                      </TableCell>
+                      <TableCell className="px-3 py-3 text-sm font-medium text-foreground md:px-4">
+                        {r.asset?.name ?? r.asset?.category ?? "—"}
+                      </TableCell>
+                      <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
+                        <button
+                          type="button"
+                          className="text-left hover:underline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenAsset(r.assetId);
+                          }}
+                          title="Хөрөнгийн дэлгэрэнгүй"
+                        >
+                          {normalizeAssetTag(assetName)}
+                        </button>
+                      </TableCell>
+                      <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
+                        {requesterName}
+                      </TableCell>
+                      <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
+                        Хөрөнгө устгах
+                      </TableCell>
+                      <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
+                        {new Date(r.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="px-3 py-3 md:px-4">
+                        <Badge
+                          variant="outline"
+                          className={
+                            r.status === "IT_APPROVED"
+                              ? "bg-blue-50 text-blue-700 border-blue-200"
+                              : r.status === "FINANCE_APPROVED"
+                                ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                : r.status === "COMPLETED"
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : r.status === "REJECTED"
+                                    ? "bg-rose-50 text-rose-700 border-rose-200"
+                                    : "bg-slate-50 text-slate-700 border-slate-200"
+                          }
+                        >
+                          {statusLabel}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   );

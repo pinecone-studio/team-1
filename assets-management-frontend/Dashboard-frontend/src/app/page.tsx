@@ -22,7 +22,7 @@ export default function DashboardPage() {
   return (
     <div className="h-svh overflow-hidden bg-muted/30">
       <SidebarProvider
-        className="h-full pt-14"
+        className="h-full"
         defaultOpen={true}
         open={sidebarOpen}
         onOpenChange={setSidebarOpen}
@@ -42,31 +42,31 @@ export default function DashboardPage() {
         />
 
         <SidebarInset className="h-[calc(100svh-56px)] overflow-y-auto bg-transparent">
-          {activeTitle === "Хянах самбар" ? <DashboardContent /> : null}
-          {activeTitle === "Хөрөнгө" ? <AssetsContent /> : null}
-          {activeTitle === "Эд Хөрөнгө" ? <AssetFilter /> : null}
+          <div className="-mt-2">
+            {activeTitle === "Хянах самбар" ? <DashboardContent /> : null}
+            {activeTitle === "Хөрөнгө" ? <AssetsContent /> : null}
+            {activeTitle === "Эд Хөрөнгө" ? <AssetFilter /> : null}
           {/* {activeTitle === "Хөрөнгө хуваарилах" ? (
             <AssetAllocationContent />
           ) : null}
           {activeTitle === "Хөрөнгө шилжүүлэх" ? (
             <AssetTransferContent />
           ) : null} */}
-          {activeTitle === "Demo Ажилтан" ? <DemoEmployeeContent /> : null}
-          {activeTitle === "Demo IT" ? <DemoITContent /> : null}
-          {activeTitle === "Demo HR" ? <DemoHRContent /> : null}
-          {activeTitle === "QR тооллого" ? <QRCensusContent /> : null}
+            {activeTitle === "Demo Ажилтан" ? <DemoEmployeeContent /> : null}
+            {activeTitle === "Demo IT" ? <DemoITContent /> : null}
+            {activeTitle === "Demo HR" ? <DemoHRContent /> : null}
+            {activeTitle === "QR тооллого" ? <QRCensusContent /> : null}
 
-          {activeTitle !== "Хянах самбар" &&
-          activeTitle !== "Хөрөнгө" &&
-          activeTitle !== "Хөрөнгө хуваарилах" &&
-          activeTitle !== "QR тооллого" &&
-          activeTitle !== "Ажилтан демо" &&
-          activeTitle !== "IT демо" &&
-          activeTitle !== "HR демо" ? (
-            <div className="">
-              <div className="w-full rounded-xl bg-gray opacity-0" />
-            </div>
-          ) : null}
+            {activeTitle !== "Хянах самбар" &&
+            activeTitle !== "Хөрөнгө" &&
+            activeTitle !== "Хөрөнгө хуваарилах" &&
+            activeTitle !== "QR тооллого" &&
+            activeTitle !== "Ажилтан демо" &&
+            activeTitle !== "IT демо" &&
+            activeTitle !== "HR демо" ? (
+              <div />
+            ) : null}
+          </div>
         </SidebarInset>
       </SidebarProvider>
     </div>

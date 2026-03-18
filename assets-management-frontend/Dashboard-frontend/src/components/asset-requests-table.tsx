@@ -65,30 +65,30 @@ function AssetRequestsTableSkeleton() {
       {Array.from({ length: 5 }).map((_, index) => (
         <TableRow
           key={index}
-          className="border-0 bg-[#f7f7f7] hover:bg-[#f7f7f7]"
+          className="border-0 bg-white hover:bg-white"
         >
-          <TableCell className="rounded-l-2xl px-3 py-3.75 md:px-4">
+          <TableCell className="rounded-l-2xl px-3 py-3.5 md:px-4">
             <Skeleton className="h-4 w-6 bg-[#ececec]" />
           </TableCell>
-          <TableCell className="px-3 py-3.75 md:px-4">
+          <TableCell className="px-3 py-3.5 md:px-4">
             <Skeleton className="h-4 w-32 bg-[#ececec]" />
           </TableCell>
-          <TableCell className="px-3 py-3.75 md:px-4">
+          <TableCell className="px-3 py-3.5 md:px-4">
             <Skeleton className="h-4 w-24 bg-[#ececec]" />
           </TableCell>
-          <TableCell className="px-3 py-3.75 md:px-4">
+          <TableCell className="px-3 py-3.5 md:px-4">
             <Skeleton className="h-4 w-28 bg-[#ececec]" />
           </TableCell>
-          <TableCell className="px-3 py-3.75 md:px-4">
+          <TableCell className="px-3 py-3.5 md:px-4">
             <Skeleton className="h-4 w-28 bg-[#ececec]" />
           </TableCell>
-          <TableCell className="px-3 py-3.75 md:px-4">
+          <TableCell className="px-3 py-3.5 md:px-4">
             <Skeleton className="h-4 w-32 bg-[#ececec]" />
           </TableCell>
-          <TableCell className="rounded-r-2xl px-3 py-3.75 md:px-4">
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-9.5 w-9.5 rounded-full bg-[#ececec]" />
-              <Skeleton className="h-9.5 w-9.5 rounded-full bg-[#ececec]" />
+          <TableCell className="rounded-r-2xl px-3 py-3.5 md:px-4">
+            <div className="flex items-center justify-end gap-3">
+              <Skeleton className="h-8 w-8 rounded-full bg-[#ececec]" />
+              <Skeleton className="h-8 w-8 rounded-full bg-[#ececec]" />
             </div>
           </TableCell>
         </TableRow>
@@ -291,25 +291,25 @@ export function AssetRequestsTable() {
   };
 
   return (
-    <Card className="gap-4 rounded-[22px] border border-[#ececec] bg-[#ffffff] py-5 shadow-[0_2px_8px_rgba(15,23,42,0.03),0_14px_34px_rgba(15,23,42,0.04)]">
-      <CardHeader className="items-center px-6 pb-0">
-        <CardTitle className="text-[18px] font-semibold tracking-[-0.03em] text-[#242424] md:text-[19px]">
+    <Card className="border-0 bg-transparent p-0 shadow-none">
+      <CardHeader className="flex-row items-center justify-between gap-3 px-0 pb-3 pt-0">
+        <CardTitle className="text-[18px] font-semibold tracking-[-0.02em] text-[#111111]">
           Хөрөнгийн хүсэлтүүд
         </CardTitle>
         <CardAction>
           <Button
             variant="ghost"
-            className="h-auto gap-2 rounded-full px-1 py-1 text-[13px] font-medium text-[#6b6b6b] hover:bg-transparent hover:text-[#222222]"
+            className="h-auto gap-2 rounded-full px-0 py-1 text-[13px] font-medium text-[#6b6b6b] hover:bg-transparent hover:text-[#111111]"
           >
             Бүгдийг үзэх
-            <ArrowRight className="h-3.75 w-3.75" />
+            <ArrowRight className="h-4 w-4" />
           </Button>
         </CardAction>
       </CardHeader>
 
-      <CardContent className="px-6 pt-1">
-        <div className="overflow-hidden rounded-[18px] bg-[#fbfbfb] p-1.5">
-          <Table className="border-separate border-spacing-y-2.5">
+      <CardContent className="px-0 pt-0">
+        <div className="overflow-hidden rounded-2xl border border-[#efefef] bg-white">
+          <Table>
             <colgroup>
               <col className="w-13" />
               <col className="w-[19%]" />
@@ -320,26 +320,26 @@ export function AssetRequestsTable() {
               <col className="w-30" />
             </colgroup>
             <TableHeader>
-              <TableRow className="border-0 bg-[#f5f5f5] hover:bg-[#f5f5f5]">
-                <TableHead className="h-auto rounded-l-[14px] px-3 py-3.25 text-[13px] font-semibold text-[#202020] md:px-4 md:text-[14px]">
+              <TableRow className="border-0 bg-[#f3f3f3] hover:bg-[#f3f3f3]">
+                <TableHead className="h-auto px-3 py-3 text-[13px] font-semibold text-[#111111] md:px-4">
                   №
                 </TableHead>
-                <TableHead className="h-auto px-3 py-3.25 text-[13px] font-semibold text-[#202020] md:px-4 md:text-[14px]">
+                <TableHead className="h-auto px-3 py-3 text-[13px] font-semibold text-[#111111] md:px-4">
                   Хөрөнгийн нэр
                 </TableHead>
-                <TableHead className="h-auto px-3 py-3.25 text-[13px] font-semibold text-[#202020] md:px-4 md:text-[14px]">
+                <TableHead className="h-auto px-3 py-3 text-[13px] font-semibold text-[#111111] md:px-4">
                   Хөрөнгийн ID
                 </TableHead>
-                <TableHead className="h-auto px-3 py-3.25 text-[13px] font-semibold text-[#202020] md:px-4 md:text-[14px]">
+                <TableHead className="h-auto px-3 py-3 text-[13px] font-semibold text-[#111111] md:px-4">
                   Өмнөх хэрэглэгч
                 </TableHead>
-                <TableHead className="h-auto px-3 py-3.25 text-[13px] font-semibold text-[#202020] md:px-4 md:text-[14px]">
+                <TableHead className="h-auto px-3 py-3 text-[13px] font-semibold text-[#111111] md:px-4">
                   Шинэ хэрэглэгч
                 </TableHead>
-                <TableHead className="h-auto px-3 py-3.25 text-[13px] font-semibold text-[#202020] md:px-4 md:text-[14px]">
+                <TableHead className="h-auto px-3 py-3 text-[13px] font-semibold text-[#111111] md:px-4">
                   Шилжүүлгийн төрөл
                 </TableHead>
-                <TableHead className="h-auto rounded-r-[14px] px-3 py-3.25 text-[13px] font-semibold text-[#202020] md:px-4 md:text-[14px]">
+                <TableHead className="h-auto px-3 py-3 text-[13px] font-semibold text-[#111111] md:px-4">
                   Төлөв
                 </TableHead>
               </TableRow>
@@ -349,10 +349,10 @@ export function AssetRequestsTable() {
               {isLoading ? (
                 <AssetRequestsTableSkeleton />
               ) : rows.length === 0 ? (
-                <TableRow className="border-0 bg-[#f7f7f7] hover:bg-[#f7f7f7]">
+                <TableRow className="border-0 bg-white hover:bg-white">
                   <TableCell
                     colSpan={7}
-                    className="rounded-2xl px-4 py-6 text-center text-[14px] text-[#6b6b6b]"
+                    className="px-4 py-8 text-center text-[14px] text-[#6b6b6b]"
                   >
                     Одоогоор харагдах хүсэлт алга байна.
                   </TableCell>
@@ -361,45 +361,48 @@ export function AssetRequestsTable() {
                 rows.map((request, index) => (
                   <TableRow
                     key={request.id}
-                    className="border-0 bg-[#f7f7f7] hover:bg-[#f7f7f7]"
+                    className={[
+                      "border-b border-[#efefef] hover:bg-inherit",
+                      index % 2 === 0 ? "bg-white" : "bg-[#fafafa]",
+                    ].join(" ")}
                   >
-                    <TableCell className="rounded-l-2xl px-3 py-3.75 text-[14px] font-medium text-[#1f1f1f] md:px-4 md:text-[15px]">
+                    <TableCell className="px-3 py-3.5 text-[14px] font-medium text-[#111111] md:px-4">
                       {index + 1}
                     </TableCell>
-                    <TableCell className="px-3 py-3.75 text-[14px] font-medium tracking-[-0.015em] text-[#222222] md:px-4 md:text-[15px]">
+                    <TableCell className="px-3 py-3.5 text-[14px] font-medium text-[#111111] md:px-4">
                       {request.assetName}
                     </TableCell>
-                    <TableCell className="px-3 py-3.75 text-[14px] font-medium tracking-[-0.015em] text-[#333333] md:px-4 md:text-[15px]">
+                    <TableCell className="px-3 py-3.5 text-[14px] font-medium text-[#111111] md:px-4">
                       {request.assetCode}
                     </TableCell>
-                    <TableCell className="px-3 py-3.75 text-[14px] font-normal text-[#2f2f2f] md:px-4 md:text-[15px]">
+                    <TableCell className="px-3 py-3.5 text-[14px] font-normal text-[#111111] md:px-4">
                       {request.previousUser}
                     </TableCell>
-                    <TableCell className="px-3 py-3.75 text-[14px] font-normal text-[#2f2f2f] md:px-4 md:text-[15px]">
+                    <TableCell className="px-3 py-3.5 text-[14px] font-normal text-[#111111] md:px-4">
                       {request.nextUser}
                     </TableCell>
-                    <TableCell className="px-3 py-3.75 text-[14px] font-normal text-[#2f2f2f] md:px-4 md:text-[15px]">
+                    <TableCell className="px-3 py-3.5 text-[14px] font-normal text-[#111111] md:px-4">
                       {request.requestType}
                     </TableCell>
-                    <TableCell className="rounded-r-2xl px-3 py-3.75 md:px-4">
-                      <div className="flex items-center gap-3">
+                    <TableCell className="px-3 py-3.5 md:px-4">
+                      <div className="flex items-center justify-end gap-3">
                         <Button
                           variant="outline"
                           size="icon"
-                          className="size-9.5 rounded-full border-[#50d77a] bg-white text-[#2fc85a] shadow-none hover:bg-[#f6fff8] hover:text-[#29bf52]"
+                          className="h-8 w-8 rounded-full border-[#49d36f] bg-white text-[#2fc85a] shadow-none hover:bg-white hover:text-[#2fc85a]"
                           onClick={() => handleApprove(request)}
                           disabled={actionLoading}
                         >
-                          <Check className="h-4.25 w-4.25 stroke-[2.2]" />
+                          <Check className="h-4 w-4 stroke-[2.4]" />
                         </Button>
                         <Button
                           variant="outline"
                           size="icon"
-                          className="size-9.5 rounded-full border-[#ffb5b5] bg-white text-[#ff6f6f] shadow-none hover:bg-[#fff8f8] hover:text-[#ff6363]"
+                          className="h-8 w-8 rounded-full border-[#ffb0b0] bg-white text-[#ff6f6f] shadow-none hover:bg-white hover:text-[#ff6f6f]"
                           onClick={() => handleReject(request)}
                           disabled={actionLoading}
                         >
-                          <X className="h-4.25 w-4.25 stroke-[2.2]" />
+                          <X className="h-4 w-4 stroke-[2.4]" />
                         </Button>
                       </div>
                     </TableCell>
