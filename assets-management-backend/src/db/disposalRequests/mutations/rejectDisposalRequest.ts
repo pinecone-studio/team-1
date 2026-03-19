@@ -18,11 +18,16 @@ export async function rejectDisposalRequest(
   if (req.status === "COMPLETED")
     throw new Error("Cannot reject a completed disposal");
 
+  const fkRejectedBy =
+    rejectedBy === "FINANCE" || rejectedBy === "IT" ? null : rejectedBy;
+  const auditActorId =
+    rejectedBy === "FINANCE" || rejectedBy === "IT" ? null : rejectedBy;
+
   await db
     .update(disposalRequests)
     .set({
       status: "REJECTED",
-      rejectedBy,
+      rejectedBy: fkRejectedBy,
       rejectedAt: now,
       rejectionReason: rejectionReason ?? null,
       updatedAt: now,
@@ -38,18 +43,18 @@ export async function rejectDisposalRequest(
     "disposal_requests",
     id,
     "DISPOSAL_REJECTED",
-    rejectedBy,
+    auditActorId,
     { status: req.status },
-    { status: "REJECTED", rejectionReason },
+    { status: "REJECTED", rejectionReason, rejectedBy },
   );
   if (req.assetId) {
     await writeAuditLog(
       "assets",
       req.assetId,
       "DISPOSAL_REJECTED",
-      rejectedBy,
+      auditActorId,
       { status: req.status },
-      { status: "REJECTED", rejectionReason },
+      { status: "REJECTED", rejectionReason, rejectedBy },
     );
   }
 

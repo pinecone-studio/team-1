@@ -5,6 +5,8 @@ import { useMutation, useQuery } from "@apollo/client";
 import jsPDF from "jspdf";
 import { toast } from "sonner";
 import {
+  CreateDataWipeTaskDocument,
+  CreateMaintenanceTicketDocument,
   EmployeesDocument,
   GetEmployeeAssignmentsDocument,
   RequestDisposalDocument,
@@ -13,6 +15,7 @@ import {
   TransferAssetDocument,
   ReturnAssetDocument,
   AssignAssetDocument,
+  GetAssetsDocument,
   GetDashboardDocument,
   UserRole,
   CompleteAssetReturnDocument,
@@ -102,7 +105,7 @@ export function useDemoEmployee() {
       null,
     [employeesData?.employees, currentEmployeeId],
   );
-  const savedSignatureUrl = currentEmployee?.imageUrl ?? null;
+  const savedSignatureUrl = currentEmployee?.signUrl ?? null;
 
   useEffect(() => {
     if (!isSignModalOpen) return;
@@ -122,11 +125,28 @@ export function useDemoEmployee() {
 
   const [updateAssignmentStatus, { loading: updatingStatus }] = useMutation(
     UpdateAssignmentStatusDocument,
+    {
+      refetchQueries: [
+        { query: GetAssetsDocument },
+        {
+          query: GetDashboardDocument,
+          variables: {
+            role: UserRole.Employee,
+            employeeId: currentEmployeeId ?? "",
+          },
+        },
+      ],
+      awaitRefetchQueries: true,
+    },
   );
   const [requestDisposalMutation] = useMutation(RequestDisposalDocument);
   const [startOffboardingMutation, { loading: offboardingStarting }] =
     useMutation(StartOffboardingDocument);
   const [transferAssetMutation] = useMutation(TransferAssetDocument);
+  const [createDataWipeTaskMutation] = useMutation(CreateDataWipeTaskDocument);
+  const [createMaintenanceTicketMutation] = useMutation(
+    CreateMaintenanceTicketDocument,
+  );
   const [returnAssetMutation] = useMutation(ReturnAssetDocument);
   const [assignAssetMutation] = useMutation(AssignAssetDocument);
   const [completeAssetReturnMutation, { loading: completeReturnLoading }] =
@@ -435,7 +455,7 @@ export function useDemoEmployee() {
       await updateEmployeeMutation({
         variables: {
           id: currentEmployeeId,
-          input: { imageUrl: url },
+          input: { signUrl: url },
         },
       });
       await refetchEmployees();
@@ -676,6 +696,8 @@ export function useDemoEmployee() {
       );
       setSelectedAssignment(null);
       setDisposalReason("");
+      await Promise.all([refetchAssignRequested(), refetchPending(), refetchActive()]);
+      await refetchOffboarding();
     } catch {
       toast.error("Устгах хүсэлт илгээхэд алдаа гарлаа.");
     } finally {
@@ -825,32 +847,45 @@ export function useDemoEmployee() {
     }
   };
 
-  const handleTransferToIt = async () => {
-    if (
-      !selectedAssignment?.asset?.id ||
-      !currentEmployeeId ||
-      !transferToEmployeeId
-    ) {
-      toast.error("IT ажилтан сонгоно уу.");
-      return;
-    }
+  const handleTransferToIt = async (
+    kind: "DATA_WIPE" | "REPAIR",
+    opts?: { description?: string },
+  ) => {
+    if (!selectedAssignment?.asset?.id || !currentEmployeeId) return;
     setTransferSending(true);
     try {
-      await transferAssetMutation({
-        variables: {
-          assetId: selectedAssignment.asset.id,
-          fromEmployeeId: currentEmployeeId,
-          toEmployeeId: transferToEmployeeId,
-          reason: "IT ажилтан руу шилжүүлсэн",
-        },
-      });
-      toast.success("Хөрөнгийг IT ажилтан руу амжилттай шилжүүлэгдлээ.");
+      if (kind === "DATA_WIPE") {
+        // Employee-side data wipe request should arrive as a disposal request.
+        await requestDisposalMutation({
+          variables: {
+            assetId: selectedAssignment.asset.id,
+            requestedBy: currentEmployeeId,
+            method: "DATA_WIPE",
+            reason: "Data wipe хүсэлт",
+          },
+        });
+        toast.success("Data wipe (устгах) хүсэлт IT-д илгээгдлээ.");
+      } else {
+        const description = opts?.description?.trim();
+        if (!description) {
+          toast.error("Засварын тайлбар заавал бичнэ үү.");
+          return;
+        }
+        await createMaintenanceTicketMutation({
+          variables: {
+            assetId: selectedAssignment.asset.id,
+            reporterId: currentEmployeeId,
+            description,
+            severity: "MEDIUM",
+          },
+        });
+        toast.success("Засварын хүсэлт IT-д үүслээ.");
+      }
       setShowItTransferDialog(false);
-      setTransferToEmployeeId("");
       setSelectedAssignment(null);
       refetchActive();
     } catch {
-      toast.error("IT руу шилжүүлэхэд алдаа гарлаа.");
+      toast.error("IT хүсэлт үүсгэхэд алдаа гарлаа.");
     } finally {
       setTransferSending(false);
     }

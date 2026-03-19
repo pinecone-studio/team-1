@@ -2,14 +2,15 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useMutation } from "@apollo/client";
-import Link from "next/link";
 import { Plus, ArrowRightLeft, Undo2, QrCode } from "lucide-react";
 import { AssignAssetDocument } from "@/gql/graphql";
 import type { Asset } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { AssetFormDialog } from "../asset-form-dialog";
 import { AssetTransferDialog } from "../asset-transfer-dialog";
+import { AssetDetailContent } from "../asset-detail-content";
 
 import { openQrPdfPreviewWindow, openQrPrintWindow } from "./qrPrint";
 import { useAssetsData } from "./useAssetsData";
@@ -71,6 +72,8 @@ export function AssetFilter() {
     setQrAssets([asset]);
     setShowQrDialog(true);
   };
+
+  const [detailAssetId, setDetailAssetId] = useState<string | null>(null);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -271,10 +274,32 @@ export function AssetFilter() {
         </Button>
       </div>
 
+      <Dialog
+        open={!!detailAssetId}
+        onOpenChange={(open) => !open && setDetailAssetId(null)}
+      >
+        <DialogContent
+          showCloseButton={false}
+          className="w-[min(92vw,760px)] max-h-[90vh] overflow-hidden rounded-[28px] border border-slate-200 bg-white p-0 shadow-[0_32px_90px_rgba(15,23,42,0.18)]"
+        >
+          <DialogTitle className="sr-only">Хөрөнгийн дэлгэрэнгүй</DialogTitle>
+          <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1">
+            {detailAssetId && (
+              <AssetDetailContent
+                assetId={detailAssetId}
+                onClose={() => setDetailAssetId(null)}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <AssetFormDialog
         open={showAddDialog}
         onOpenChange={setShowAddDialog}
         onAddAssets={() => {
+          setStatusFilter("ASSIGNABLE");
+          setActiveAction("assign");
           refetch();
         }}
       />
@@ -328,6 +353,7 @@ export function AssetFilter() {
         onSelectAll={selectAll}
         onToggleSelect={toggleSelect}
         onOpenQrForSingle={openQrForSingle}
+        onOpenAsset={(assetId) => setDetailAssetId(assetId)}
       />
     </div>
   );

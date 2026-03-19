@@ -18,6 +18,7 @@ export const typeDefs = /* GraphQL */ `
     email: String!
     role: String!
     imageUrl: String
+    signUrl: String
     hireDate: Float!
     terminationDate: Float
     status: String!
@@ -239,6 +240,7 @@ export const typeDefs = /* GraphQL */ `
     lastNameEng: String!
     email: String!
     imageUrl: String
+    signUrl: String
     hireDate: Float!
     terminationDate: Float
     status: String
@@ -263,6 +265,7 @@ export const typeDefs = /* GraphQL */ `
     lastNameEng: String
     email: String
     imageUrl: String
+    signUrl: String
     hireDate: Float
     terminationDate: Float
     status: String
@@ -402,7 +405,7 @@ export const typeDefs = /* GraphQL */ `
     action: String!
     oldValueJson: String
     newValueJson: String
-    actorId: ID!
+    actorId: ID
     createdAt: Float!
   }
 

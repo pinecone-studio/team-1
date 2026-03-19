@@ -42,7 +42,14 @@ export async function getAssetKpis(office?: string): Promise<AssetKpis> {
       and ${assignments.returnedAt} is null
   )`;
 
-  const valueExpr = sql<number>`coalesce(${assets.currentBookValue}, ${assets.purchaseCost}, 0)`;
+  // Value rules:
+  // - For FOR_SALE, KPI should use the sale price (stored in currentBookValue).
+  // - Otherwise, use currentBookValue with fallback to purchaseCost.
+  // - Treat 0 as "unset" to avoid zeroing totals.
+  const valueExpr = sql<number>`case
+    when ${assets.status} = ${"FOR_SALE"} then coalesce(nullif(${assets.currentBookValue}, 0), nullif(${assets.purchaseCost}, 0), 0)
+    else coalesce(nullif(${assets.currentBookValue}, 0), ${assets.purchaseCost}, 0)
+  end`;
 
   const row = await db
     .select({

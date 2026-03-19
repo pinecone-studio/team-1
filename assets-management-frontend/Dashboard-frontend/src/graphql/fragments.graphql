@@ -25,6 +25,7 @@ fragment EmployeeFields on Employee {
   department
   branch
   imageUrl
+  signUrl
 }
 
 fragment CategoryFields on Category {

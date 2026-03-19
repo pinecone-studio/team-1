@@ -17,6 +17,7 @@ type Employee {
   email: String!
   role: String!
   imageUrl: String
+  signUrl: String
   hireDate: Float!
   terminationDate: Float
   status: String!
@@ -238,6 +239,7 @@ input EmployeeCreateInput {
   lastNameEng: String!
   email: String!
   imageUrl: String
+  signUrl: String
   hireDate: Float!
   terminationDate: Float
   status: String
@@ -262,6 +264,7 @@ input EmployeeUpdateInput {
   lastNameEng: String
   email: String
   imageUrl: String
+  signUrl: String
   hireDate: Float
   terminationDate: Float
   status: String
@@ -404,7 +407,7 @@ type AuditLog {
   action: String!
   oldValueJson: String
   newValueJson: String
-  actorId: ID!
+  actorId: ID
   createdAt: Float!
 }
 

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { getDb } from "../../client";
 import { getAssetById } from "../../assets/queries";
 import { writeAuditLog } from "../../auditLogger";
@@ -42,6 +42,26 @@ export async function assignAssetToEmployee(
 
   const now = Date.now();
   const assignmentId = crypto.randomUUID();
+
+  // Prevent duplicate / concurrent assignments for same asset.
+  // We consider an assignment "open" when returnedAt IS NULL and status is not terminal.
+  const openAssignment = await db
+    .select({ id: assignments.id, status: assignments.status })
+    .from(assignments)
+    .where(
+      and(
+        eq(assignments.assetId, assetId),
+        isNull(assignments.returnedAt),
+        inArray(assignments.status, ["ASSIGN_REQUESTED", "PENDING", "ACTIVE"]),
+      ),
+    )
+    .limit(1)
+    .get();
+  if (openAssignment) {
+    throw new Error(
+      "Asset already has an active/pending assignment. Энэ хөрөнгө дээр идэвхтэй/хүлээгдэж буй assignment байна.",
+    );
+  }
 
   await db.insert(assignments).values({
     id: assignmentId,

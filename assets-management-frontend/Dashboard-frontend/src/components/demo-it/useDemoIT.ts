@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@apollo/client";
 import jsPDF from "jspdf";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import {
   ApproveDisposalDocument,
   RejectDisposalDocument,
   UpdateDataWipeTaskDocument,
+  UpdateMaintenanceTicketDocument,
   EmployeesDocument,
   UserRole,
 } from "@/gql/graphql";
@@ -52,19 +53,20 @@ export function useDemoIT() {
     variables: { status: undefined },
     fetchPolicy: "network-only",
   });
-  const allMaintenanceTickets = (maintenanceData?.maintenanceTickets ??
-    []) as Array<{
-    id: string;
-    assetId: string;
-    reporterId: string;
-    description: string;
-    severity: string;
-    status: string;
-    repairCost?: number | null;
-    resolvedAt?: number | null;
-    createdAt: number;
-    updatedAt: number;
-  }>;
+  const allMaintenanceTickets = useMemo(() => {
+    const tickets = (maintenanceData?.maintenanceTickets ?? []) as Array<any>;
+    const employees = employeesData?.employees ?? [];
+    const employeeNameById = new Map(
+      employees.map((e) => [
+        e.id,
+        [e.firstName, e.lastName].filter(Boolean).join(" ") || e.email || e.id,
+      ]),
+    );
+    return tickets.map((t) => ({
+      ...t,
+      reporterName: employeeNameById.get(t.reporterId) ?? "Admin",
+    }));
+  }, [maintenanceData?.maintenanceTickets, employeesData?.employees]);
 
   const { data: wipeData, refetch: refetchWipe } = useQuery(
     GetDataWipeTasksDocument,
@@ -150,17 +152,18 @@ export function useDemoIT() {
   const [updateWipeTask, { loading: updatingWipe }] = useMutation(
     UpdateDataWipeTaskDocument,
   );
+  const [updateMaintenanceTicket, { loading: updatingMaintenance }] =
+    useMutation(UpdateMaintenanceTicketDocument, {
+      refetchQueries: [{ query: GetMaintenanceTicketsDocument }],
+      awaitRefetchQueries: true,
+    });
 
   const pendingDisposals = disposalsData?.disposalRequests ?? [];
 
   const handleApprove = async (id: string) => {
-    if (!demoApproverId) {
-      toast.error("Баталгаажуулах ажилтан олдсонгүй.");
-      return;
-    }
     try {
       await approveDisposal({
-        variables: { id, approvedBy: demoApproverId, stage: "IT_APPROVED" },
+        variables: { id, approvedBy: demoApproverId || "IT", stage: "IT_APPROVED" },
       });
       toast.success("Устгах хүсэлтийг IT-ээр баталгаажууллаа.");
     } catch (err) {
@@ -169,17 +172,39 @@ export function useDemoIT() {
   };
 
   const handleReject = async (id: string) => {
-    if (!demoApproverId) {
-      toast.error("Татгалзах ажилтан олдсонгүй.");
-      return;
-    }
     try {
       await rejectDisposal({
-        variables: { id, rejectedBy: demoApproverId, reason: "Татгалзсан" },
+        variables: {
+          id,
+          rejectedBy: demoApproverId || "IT",
+          reason: "Татгалзсан",
+        },
       });
       toast.error("Устгах хүсэлтийг татгалзлаа.");
     } catch (err) {
       toast.error("Татгалзах үед алдаа гарлаа.");
+    }
+  };
+
+  const handleApproveMaintenance = async (id: string) => {
+    try {
+      await updateMaintenanceTicket({
+        variables: { id, status: "RESOLVED", resolvedAt: Date.now() },
+      });
+      toast.success("Засварын хүсэлтийг шийдвэрлэсэн гэж тэмдэглэлээ.");
+    } catch {
+      toast.error("Засвар батлах үед алдаа гарлаа.");
+    }
+  };
+
+  const handleRejectMaintenance = async (id: string) => {
+    try {
+      await updateMaintenanceTicket({
+        variables: { id, status: "CLOSED" },
+      });
+      toast.error("Засварын хүсэлтийг хаалаа.");
+    } catch {
+      toast.error("Засвар цуцлах үед алдаа гарлаа.");
     }
   };
 
@@ -384,8 +409,11 @@ export function useDemoIT() {
     approving,
     rejecting,
     updatingWipe,
+    updatingMaintenance,
     handleApprove,
     handleReject,
+    handleApproveMaintenance,
+    handleRejectMaintenance,
     handleSaveSignature,
     handleClearSignature,
     uploadApprovalPdf,

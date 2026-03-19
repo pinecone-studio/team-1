@@ -1,0 +1,10 @@
+mutation CreateDataWipeTask($assetId: ID!) {
+  createDataWipeTask(assetId: $assetId) {
+    id
+    assetId
+    status
+    createdAt
+    updatedAt
+  }
+}
+

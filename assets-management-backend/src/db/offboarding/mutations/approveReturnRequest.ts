@@ -13,6 +13,9 @@ export async function approveReturnRequest(
   const db = await getDb();
   const now = Date.now();
 
+  // Demo-friendly: allow generic inspector labels like "HR".
+  const fkInspectedBy = inspectedBy === "HR" ? null : inspectedBy;
+
   const req = await db
     .select()
     .from(offboardingReturnRequests)
@@ -37,7 +40,7 @@ export async function approveReturnRequest(
     .set({
       status: "APPROVED_AVAILABLE",
       conditionHr,
-      inspectedBy,
+      inspectedBy: fkInspectedBy,
       updatedAt: now,
     })
     .where(eq(offboardingReturnRequests.id, returnRequestId));

@@ -41,7 +41,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} font-sans antialiased bg-muted/40`}>
+      <body
+        suppressHydrationWarning
+        className={`${inter.variable} font-sans antialiased bg-muted/40`}
+      >
         <AllProviders>
           {children}
           <Analytics />

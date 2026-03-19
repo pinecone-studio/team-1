@@ -1,9 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
-import { useMutation, useQuery } from "@apollo/client";
-import { ArrowRight, Check, X } from "lucide-react";
-import { toast } from "sonner";
+import { useMemo, useState } from "react";
+import { useQuery } from "@apollo/client";
+import { ArrowRight } from "lucide-react";
 
 import {
   Card,
@@ -23,13 +22,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  ApproveDisposalDocument,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   AssignmentsDocument,
   EmployeesDocument,
   GetAssetsDocument,
   GetDisposalRequestsDocument,
-  RejectDisposalDocument,
-  UpdateAssignmentStatusDocument,
   UserRole,
 } from "@/gql/graphql";
 
@@ -51,12 +54,12 @@ const formatEmployeeName = (
     email?: string | null;
   } | null,
 ) => {
-  if (!employee) return "Тодорхойгүй";
+  if (!employee) return "Admin";
   const fullName = [employee.firstName, employee.lastName]
     .filter(Boolean)
     .join(" ")
     .trim();
-  return fullName || employee.email || "Тодорхойгүй";
+  return fullName || employee.email || "Admin";
 };
 
 function AssetRequestsTableSkeleton() {
@@ -98,6 +101,8 @@ function AssetRequestsTableSkeleton() {
 }
 
 export function AssetRequestsTable() {
+  const [detailRow, setDetailRow] = useState<AssetRequestRow | null>(null);
+
   const { data: assignmentsData, loading: assignmentsLoading } = useQuery(
     AssignmentsDocument,
     {
@@ -127,42 +132,6 @@ export function AssetRequestsTable() {
     {
       variables: { status: "PENDING" },
       fetchPolicy: "network-only",
-    },
-  );
-  const [updateAssignmentStatus, { loading: updatingAssignment }] = useMutation(
-    UpdateAssignmentStatusDocument,
-    {
-      refetchQueries: [
-        { query: AssignmentsDocument },
-        {
-          query: GetDisposalRequestsDocument,
-          variables: { status: "PENDING" },
-        },
-      ],
-    },
-  );
-  const [approveDisposal, { loading: approvingDisposal }] = useMutation(
-    ApproveDisposalDocument,
-    {
-      refetchQueries: [
-        { query: AssignmentsDocument },
-        {
-          query: GetDisposalRequestsDocument,
-          variables: { status: "PENDING" },
-        },
-      ],
-    },
-  );
-  const [rejectDisposal, { loading: rejectingDisposal }] = useMutation(
-    RejectDisposalDocument,
-    {
-      refetchQueries: [
-        { query: AssignmentsDocument },
-        {
-          query: GetDisposalRequestsDocument,
-          variables: { status: "PENDING" },
-        },
-      ],
     },
   );
 
@@ -239,56 +208,23 @@ export function AssetRequestsTable() {
 
   const isLoading =
     assignmentsLoading || assetsLoading || employeesLoading || disposalsLoading;
-  const actionLoading =
-    updatingAssignment || approvingDisposal || rejectingDisposal;
 
-  const handleApprove = async (row: AssetRequestRow) => {
-    if (!approverId) {
-      toast.error("Зөвшөөрөх ажилтан олдсонгүй.");
-      return;
+  const detailTitle = useMemo(() => {
+    if (!detailRow) return "";
+    return `${detailRow.assetCode} — Төлөвийн дэлгэрэнгүй`;
+  }, [detailRow]);
+
+  const detailMessage = useMemo(() => {
+    if (!detailRow) return "";
+
+    // Minimal “who/where” explanation based on the row fields we already have.
+    if (detailRow.sourceType === "transfer") {
+      return `${detailRow.previousUser}-аас ${detailRow.nextUser}-руу шилжүүлэх хүсэлт. Одоогоор баталгаажуулаагүй байна.`;
     }
 
-    try {
-      if (row.sourceType === "transfer") {
-        await updateAssignmentStatus({
-          variables: { assignmentId: row.id, status: "ACTIVE" },
-        });
-        toast.success("Шилжүүлэх хүсэлтийг зөвшөөрлөө.");
-        return;
-      }
-
-      await approveDisposal({
-        variables: { id: row.id, approvedBy: approverId, stage: "IT_APPROVED" },
-      });
-      toast.success("Буцаах хүсэлтийг зөвшөөрлөө.");
-    } catch {
-      toast.error("Зөвшөөрөх үед алдаа гарлаа.");
-    }
-  };
-
-  const handleReject = async (row: AssetRequestRow) => {
-    if (!approverId) {
-      toast.error("Татгалзах ажилтан олдсонгүй.");
-      return;
-    }
-
-    try {
-      if (row.sourceType === "transfer") {
-        await updateAssignmentStatus({
-          variables: { assignmentId: row.id, status: "REJECTED" },
-        });
-        toast.success("Шилжүүлэх хүсэлтийг татгалзлаа.");
-        return;
-      }
-
-      await rejectDisposal({
-        variables: { id: row.id, rejectedBy: approverId, reason: "Татгалзсан" },
-      });
-      toast.success("Буцаах хүсэлтийг татгалзлаа.");
-    } catch {
-      toast.error("Татгалзах үед алдаа гарлаа.");
-    }
-  };
+    // disposal
+    return `${detailRow.previousUser} устгах хүсэлт илгээсэн. Одоогоор IT баталгаажуулах хүлээгдэж байна.`;
+  }, [detailRow]);
 
   return (
     <Card className="border-0 bg-transparent p-0 shadow-none">
@@ -387,22 +323,11 @@ export function AssetRequestsTable() {
                     <TableCell className="px-3 py-3.5 md:px-4">
                       <div className="flex items-center justify-end gap-3">
                         <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8 rounded-full border-[#49d36f] bg-white text-[#2fc85a] shadow-none hover:bg-white hover:text-[#2fc85a]"
-                          onClick={() => handleApprove(request)}
-                          disabled={actionLoading}
+                          variant="ghost"
+                          className="h-8 rounded-full px-3 text-[12px] font-semibold text-[#0b6fae] hover:bg-[#e9f3fb] hover:text-[#0b6fae]"
+                          onClick={() => setDetailRow(request)}
                         >
-                          <Check className="h-4 w-4 stroke-[2.4]" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8 rounded-full border-[#ffb0b0] bg-white text-[#ff6f6f] shadow-none hover:bg-white hover:text-[#ff6f6f]"
-                          onClick={() => handleReject(request)}
-                          disabled={actionLoading}
-                        >
-                          <X className="h-4 w-4 stroke-[2.4]" />
+                          Дэлгэрэнгүй
                         </Button>
                       </div>
                     </TableCell>
@@ -413,6 +338,17 @@ export function AssetRequestsTable() {
           </Table>
         </div>
       </CardContent>
+
+      <Dialog open={detailRow != null} onOpenChange={(open) => !open && setDetailRow(null)}>
+        <DialogContent className="max-w-[min(92vw,560px)]">
+          <DialogHeader>
+            <DialogTitle>{detailTitle}</DialogTitle>
+            <DialogDescription className="text-[13px] leading-5">
+              {detailMessage}
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

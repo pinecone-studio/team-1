@@ -5,7 +5,7 @@ export async function writeAuditLog(
   tableName: string,
   recordId: string,
   action: string,
-  actorId: string,
+  actorId: string | null,
   oldValue?: unknown,
   newValue?: unknown,
 ): Promise<void> {
@@ -15,7 +15,7 @@ export async function writeAuditLog(
     tableName,
     recordId,
     action,
-    actorId,
+    actorId: actorId ?? null,
     oldValueJson: oldValue !== undefined ? JSON.stringify(oldValue) : null,
     newValueJson: newValue !== undefined ? JSON.stringify(newValue) : null,
     createdAt: Date.now(),

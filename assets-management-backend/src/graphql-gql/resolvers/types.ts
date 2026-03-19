@@ -149,7 +149,8 @@ export const typeResolvers = {
   },
   OffboardingEvent: {
     employee: (oe: OffboardingEvent) => getEmployeeById(oe.employeeId),
-    initiatedBy: (oe: OffboardingEvent) => getEmployeeById(oe.initiatedBy),
+    initiatedBy: (oe: OffboardingEvent) =>
+      oe.initiatedBy ? getEmployeeById(oe.initiatedBy) : null,
     assetsToReturn: async (oe: OffboardingEvent) => {
       try {
         const ids = JSON.parse(oe.assetIdsJson || "[]") as string[];
