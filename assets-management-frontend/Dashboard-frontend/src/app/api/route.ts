@@ -5,6 +5,4 @@ export async function GET() {
     ok: true,
     service: "dashboard-frontend",
   });
-export async function GET() {
-  return Response.json({ ok: true });
 }

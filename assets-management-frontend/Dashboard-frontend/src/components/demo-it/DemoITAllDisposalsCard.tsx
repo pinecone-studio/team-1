@@ -92,7 +92,7 @@ export function DemoITAllDisposalsCard({
                         {index + 1}
                       </TableCell>
                       <TableCell className="px-3 py-3 text-sm font-medium text-foreground md:px-4">
-                        {r.asset?.name ?? r.asset?.category ?? "—"}
+                        {r.asset?.category ?? "—"}
                       </TableCell>
                       <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
                         <button

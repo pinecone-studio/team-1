@@ -78,7 +78,7 @@ export function DemoITPendingDisposalsCard({
                 {pendingDisposals.map((req, index) => {
                   const r = req as DisposalItem;
                   const assetTag = normalizeAssetTag(r.asset?.assetTag ?? r.assetId);
-                  const serial = r.asset?.serialNumber ?? "—";
+                  const serial = (r.asset as { serialNumber?: string } | undefined)?.serialNumber ?? "—";
                   const requesterName = r.requestedBy
                     ? [r.requestedBy.firstName, r.requestedBy.lastName]
                         .filter(Boolean)

@@ -66,10 +66,13 @@ export function DemoFinanceContent({
     useState<FinanceDisposalItem | null>(null);
   const [signatureData, setSignatureData] = useState<string | null>(null);
 
-  const { data: disposalData, loading } = useQuery(GetDisposalRequestsDocument, {
-    variables: { status: "IT_APPROVED" },
-    fetchPolicy: "network-only",
-  });
+  const { data: disposalData, loading } = useQuery(
+    GetDisposalRequestsDocument,
+    {
+      variables: { status: "IT_APPROVED" },
+      fetchPolicy: "network-only",
+    },
+  );
 
   const { data: employeesData } = useQuery(EmployeesDocument, {
     fetchPolicy: "cache-first",
@@ -79,7 +82,10 @@ export function DemoFinanceContent({
     ApproveDisposalDocument,
     {
       refetchQueries: [
-        { query: GetDisposalRequestsDocument, variables: { status: "IT_APPROVED" } },
+        {
+          query: GetDisposalRequestsDocument,
+          variables: { status: "IT_APPROVED" },
+        },
       ],
     },
   );
@@ -88,7 +94,10 @@ export function DemoFinanceContent({
     RejectDisposalDocument,
     {
       refetchQueries: [
-        { query: GetDisposalRequestsDocument, variables: { status: "IT_APPROVED" } },
+        {
+          query: GetDisposalRequestsDocument,
+          variables: { status: "IT_APPROVED" },
+        },
       ],
     },
   );
@@ -102,8 +111,6 @@ export function DemoFinanceContent({
     }>;
 
     return (
-      employees.find((employee) => employee.role === UserRole.FinanceManager)
-        ?.id ??
       employees.find((employee) => employee.role === UserRole.Finance)?.id ??
       employees.find((employee) => employee.role === UserRole.SuperAdmin)?.id ??
       ""
@@ -161,7 +168,8 @@ export function DemoFinanceContent({
       <div className="space-y-1">
         <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
         <p className="text-sm text-slate-500">
-          Санхүү рүү очсон disposal хүсэлтүүдийг шалгаж, гарын үсгээр баталгаажуулна.
+          Санхүү рүү очсон disposal хүсэлтүүдийг шалгаж, гарын үсгээр
+          баталгаажуулна.
         </p>
       </div>
 
@@ -272,7 +280,10 @@ export function DemoFinanceContent({
         </CardContent>
       </Card>
 
-      <Dialog open={!!selectedDisposal} onOpenChange={(open) => !open && handleCloseDetail()}>
+      <Dialog
+        open={!!selectedDisposal}
+        onOpenChange={(open) => !open && handleCloseDetail()}
+      >
         <DialogContent className="max-w-5xl w-full">
           <DialogHeader>
             <DialogTitle>Finance баталгаажуулалт</DialogTitle>
@@ -296,11 +307,14 @@ export function DemoFinanceContent({
 
               <div className="order-1 space-y-4 lg:order-2">
                 <div className="rounded-xl border border-muted bg-muted/30 p-4">
-                  <h4 className="mb-3 text-base font-semibold">Хүсэлтийн мэдээлэл</h4>
+                  <h4 className="mb-3 text-base font-semibold">
+                    Хүсэлтийн мэдээлэл
+                  </h4>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="text-muted-foreground">Хөрөнгийн ID:</div>
                     <div className="font-medium">
-                      {selectedDisposal.asset?.assetTag ?? selectedDisposal.assetId}
+                      {selectedDisposal.asset?.assetTag ??
+                        selectedDisposal.assetId}
                     </div>
                     <div className="text-muted-foreground">Ангилал:</div>
                     <div className="font-medium">
@@ -309,7 +323,9 @@ export function DemoFinanceContent({
                     <div className="text-muted-foreground">Устгах арга:</div>
                     <div className="font-medium">{selectedDisposal.method}</div>
                     <div className="text-muted-foreground">Шалтгаан:</div>
-                    <div className="font-medium">{selectedDisposal.reason ?? "—"}</div>
+                    <div className="font-medium">
+                      {selectedDisposal.reason ?? "—"}
+                    </div>
                     <div className="text-muted-foreground">Илгээсэн:</div>
                     <div className="font-medium">
                       {new Date(selectedDisposal.createdAt).toLocaleString()}
