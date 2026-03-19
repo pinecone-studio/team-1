@@ -18,9 +18,7 @@ export default function AssetHubMobile() {
   const [screen, setScreen] = useState<TestScreen>("home");
 
   return (
-    // h-[100dvh] ашигласнаар утасны browser дээр дэлгэц эвдрэхгүй
     <div className="flex flex-col h-[100dvh] bg-[#f8f9fb] font-sans text-slate-900 overflow-hidden">
-      {/* 1. FIXED HEADER */}
       <header className="shrink-0 bg-white border-b border-slate-100 px-5 h-16 flex items-center gap-3">
         {screen === "detail" || screen === "results" || screen === "scanner" ? (
           <button
