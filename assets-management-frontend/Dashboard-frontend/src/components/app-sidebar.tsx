@@ -37,14 +37,14 @@ const menuItems = [
     title: "Эд Хөрөнгө",
     icon: Package,
   },
-  {
-    title: "Хөрөнгө хуваарилах",
-    icon: UserCheck,
-  },
-  {
-    title: "Хөрөнгө шилжүүлэх",
-    icon: ArrowLeftRight,
-  },
+  // {
+  //   title: "Хөрөнгө хуваарилах",
+  //   icon: UserCheck,
+  // },
+  // {
+  //   title: "Хөрөнгө шилжүүлэх",
+  //   icon: ArrowLeftRight,
+  // },
   {
     title: "QR тооллого",
     icon: QrCode,
