@@ -5,13 +5,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useDemoIT } from "./useDemoIT";
 import { DemoITHeader } from "./DemoITHeader";
 import { DemoITDataWipeCard } from "./DemoITDataWipeCard";
-import { DemoITNotificationsCard } from "./DemoITNotificationsCard";
 import { DemoITPendingDisposalsCard } from "./DemoITPendingDisposalsCard";
 import { DemoITMaintenanceCard } from "./DemoITMaintenanceCard";
 import { DemoITAllDisposalsCard } from "./DemoITAllDisposalsCard";
 import { DemoITDisposalDetailDialog } from "./DemoITDisposalDetailDialog";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { AssetDetailContent } from "@/components/assets/asset-detail-content";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DISPOSAL_STATUS_LABELS,
   MAINTENANCE_STATUS_LABELS,
@@ -24,6 +24,7 @@ export function DemoITContent({
 }) {
   const s = useDemoIT();
   const [detailAssetId, setDetailAssetId] = useState<string | null>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const handleCloseDialog = () => {
     s.setSelectedDisposal(null);
@@ -63,7 +64,44 @@ export function DemoITContent({
           </DialogContent>
         </Dialog>
 
-        <DemoITHeader title={title} />
+        <DemoITHeader
+          title={title}
+          notificationCount={s.itNotifications.length}
+          notificationsOpen={showNotifications}
+          onToggleNotifications={() => setShowNotifications((prev) => !prev)}
+        />
+        {showNotifications ? (
+          <Card className="border border-border/60 bg-white">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold text-foreground">
+                IT мэдэгдлүүд ({s.itNotifications.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {s.itNotifications.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-gray-200 bg-white p-4 text-sm text-muted-foreground">
+                  Шинэ мэдэгдэл алга байна.
+                </p>
+              ) : (
+                <ul className="space-y-3">
+                  {s.itNotifications.map((n) => (
+                    <li key={n.id} className="rounded-lg border border-slate-200 bg-white p-3">
+                      <p className="text-sm font-medium text-foreground">{n.title}</p>
+                      {n.message ? (
+                        <p className="mt-1 text-sm text-muted-foreground">{n.message}</p>
+                      ) : null}
+                      {n.createdAt ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {new Date(n.createdAt).toLocaleString()}
+                        </p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
         <DemoITPendingDisposalsCard
           pendingDisposals={s.pendingDisposals}
           onSelectDisposal={s.setSelectedDisposal}

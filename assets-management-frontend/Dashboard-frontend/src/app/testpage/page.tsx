@@ -15,7 +15,7 @@ import {
   Search,
   Square,
 } from "lucide-react";
-import { GetAssetsDocument } from "@/gql/graphql";
+import { GetAssetsDocument, type AssetFieldsFragment } from "@/gql/graphql";
 
 type TestScreen = "home" | "inventory" | "scanner" | "results" | "detail";
 type ScanStatus = "idle" | "starting" | "scanning" | "unsupported" | "error";
@@ -28,6 +28,7 @@ declare global {
           source: CanvasImageSource,
         ) => Promise<Array<{ rawValue?: string }>>;
       };
+      getSupportedFormats?: () => Promise<string[]>;
     };
   }
 }
@@ -70,7 +71,13 @@ export default function AssetHubMobile() {
     },
   });
 
-  const assets = useMemo(() => data?.assets ?? [], [data?.assets]);
+  const assets = useMemo(
+    () =>
+      (data?.assets ?? []).map(
+        (asset) => asset as unknown as AssetFieldsFragment,
+      ),
+    [data?.assets],
+  );
 
   const scannedAssets = useMemo(() => {
     const byId = new Map(assets.map((asset) => [asset.id, asset]));
@@ -85,7 +92,8 @@ export default function AssetHubMobile() {
   );
 
   const activeAsset =
-    scannedAssets.find((asset) => asset.id === activeAssetId) ?? scannedAssets[0];
+    scannedAssets.find((asset) => asset.id === activeAssetId) ??
+    scannedAssets[0];
 
   useEffect(() => {
     if (screen !== "scanner") {
@@ -332,13 +340,17 @@ export default function AssetHubMobile() {
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-slate-800">
                     {scanStatus === "starting" && "Камер асаж байна..."}
-                    {scanStatus === "scanning" && "QR кодыг камер луу чиглүүлнэ үү"}
+                    {scanStatus === "scanning" &&
+                      "QR кодыг камер луу чиглүүлнэ үү"}
                     {scanStatus === "idle" && "Scan зогссон байна"}
-                    {scanStatus === "unsupported" && "QR scan дэмжигдэхгүй байна"}
+                    {scanStatus === "unsupported" &&
+                      "QR scan дэмжигдэхгүй байна"}
                     {scanStatus === "error" && "Камерын алдаа гарлаа"}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {scanError || lastScannedValue || "QR уншуулсны дараа asset нээгдэнэ"}
+                    {scanError ||
+                      lastScannedValue ||
+                      "QR уншуулсны дараа asset нээгдэнэ"}
                   </p>
                 </div>
               </div>
@@ -465,7 +477,10 @@ export default function AssetHubMobile() {
                     Үнэ
                   </span>
                   <span className="text-[14px] font-bold">
-                    {(activeAsset.currentBookValue ?? 0).toLocaleString("mn-MN")}₮
+                    {(activeAsset.currentBookValue ?? 0).toLocaleString(
+                      "mn-MN",
+                    )}
+                    ₮
                   </span>
                 </div>
                 <div className="flex flex-col gap-1.5 border-t border-slate-50 pt-2">

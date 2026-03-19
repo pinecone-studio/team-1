@@ -8,6 +8,7 @@ import {
   Users,
   Monitor,
   Building2,
+  Landmark,
   LogOut,
 } from "lucide-react";
 
@@ -65,6 +66,10 @@ const menuItems = [
   {
     title: "Demo HR",
     icon: Building2,
+  },
+  {
+    title: "Demo Finance",
+    icon: Landmark,
   },
   {
     title: "Ажлаас гарах явц",

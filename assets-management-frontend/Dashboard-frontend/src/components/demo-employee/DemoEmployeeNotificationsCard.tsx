@@ -21,6 +21,7 @@ type NotificationItem = {
   type?: string;
   isRead?: boolean;
   createdAt?: number;
+  link?: string | null;
 };
 
 type AssetReturnItem = {
@@ -49,6 +50,7 @@ export type DemoEmployeeNotificationsCardProps = {
   completeReturnLoading: boolean;
   activeOffboarding: unknown;
   normalizeAssetTag: (value?: string | null) => string;
+  currentEmployeeId?: string | null;
 };
 
 export function DemoEmployeeNotificationsCard({
@@ -71,6 +73,7 @@ export function DemoEmployeeNotificationsCard({
   completeReturnLoading,
   activeOffboarding,
   normalizeAssetTag,
+  currentEmployeeId,
 }: DemoEmployeeNotificationsCardProps) {
   // Offboarding идэвхтэй байсан ч "Мэдэгдлүүд" хэсэгт offboarding хүсэлтийг харуулах хэрэгтэй.
   // (Bell -> "Дэлгэрэнгүй" дархад expand хийх тул activeOffboarding дээр null return хийхгүй.)
@@ -87,11 +90,11 @@ export function DemoEmployeeNotificationsCard({
   return (
     <Card
       id="demo-employee-notifications-card-section"
-      className="mt-6 min-h-0 shrink-0 border-amber-200 bg-amber-50/50"
+      className="mt-6 min-h-0 shrink-0 border-slate-200 bg-slate-50/80"
     >
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-medium text-amber-800 flex items-center gap-2">
-          Мэдэгдлүүд
+        <CardTitle className="text-base font-medium text-slate-800 flex items-center gap-2">
+          Ажлаас гарах — хөрөнгө буцаах
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0 min-h-[120px]">
@@ -106,7 +109,7 @@ export function DemoEmployeeNotificationsCard({
             return (
               <li
                 key={n.id}
-                className={`rounded-lg border p-4 text-sm min-h-0 overflow-visible ${n.isRead ? "border-gray-200 bg-white" : "border-amber-300 bg-amber-50"}`}
+                className={`rounded-lg border p-4 text-sm min-h-0 overflow-visible ${n.isRead ? "border-slate-200 bg-white" : "border-slate-300 bg-slate-50"}`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -120,7 +123,7 @@ export function DemoEmployeeNotificationsCard({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="shrink-0 gap-1 text-amber-700 hover:text-amber-800"
+                    className="shrink-0 gap-1 text-slate-600 hover:text-slate-800"
                     onClick={() =>
                       setExpandedNotificationId(isExpanded ? null : n.id)
                     }
@@ -134,8 +137,9 @@ export function DemoEmployeeNotificationsCard({
                   </Button>
                 </div>
                 {isExpanded && (
-                  <div className="mt-4 space-y-4 border-t border-amber-200 pt-4">
-                    <p className="text-sm font-medium text-amber-900">
+                  <div className="mt-4 space-y-4 border-t border-slate-200 pt-4">
+                    <React.Fragment>
+                    <p className="text-sm font-medium text-slate-800">
                       Буцаах эцсийн хугацаа:{" "}
                       {n.message.includes("Буцаах эцсийн хугацаа:")
                         ? (n.message
@@ -148,7 +152,7 @@ export function DemoEmployeeNotificationsCard({
                       Хөрөнгийн жагсаалт — доорх хөрөнгө бүр дээр буцаах хүсэлт
                       илгээнэ үү.
                     </p>
-                    <div className="rounded-lg border border-amber-200 bg-white/70 p-3 text-sm text-amber-900">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-sm text-slate-800">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
@@ -157,7 +161,7 @@ export function DemoEmployeeNotificationsCard({
                             onChange={(e) =>
                               setBulkReturnInstructionsRead(e.target.checked)
                             }
-                            className="rounded border-amber-600"
+                            className="rounded border-slate-500"
                           />
                           <span>
                             Би буцаах зааврыг уншсан. Гэмтэл, дутуу байвал
@@ -166,7 +170,7 @@ export function DemoEmployeeNotificationsCard({
                         </label>
                         <Button
                           size="sm"
-                          className="gap-2 bg-amber-700 hover:bg-amber-800 text-white"
+                          className="gap-2 bg-slate-600 hover:bg-slate-700 text-white"
                           onClick={handleBulkSubmitReturnRequests}
                           disabled={
                             bulkReturnSending ||
@@ -196,19 +200,19 @@ export function DemoEmployeeNotificationsCard({
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-[44px]">
-                            <input
-                              type="checkbox"
-                              aria-label="Бүгдийг сонгох"
-                              checked={
-                                eligibleReturnAssignmentsLength > 0 &&
-                                selectedReturnAssetIds.size ===
-                                  eligibleReturnAssignmentsLength
-                              }
-                              onChange={(e) =>
-                                selectAllEligibleReturns(e.target.checked)
-                              }
-                              className="rounded border-amber-600"
-                            />
+                                <input
+                                  type="checkbox"
+                                  aria-label="Бүгдийг сонгох"
+                                  checked={
+                                    eligibleReturnAssignmentsLength > 0 &&
+                                    selectedReturnAssetIds.size ===
+                                      eligibleReturnAssignmentsLength
+                                  }
+                                  onChange={(e) =>
+                                    selectAllEligibleReturns(e.target.checked)
+                                  }
+                                  className="rounded border-slate-500"
+                                />
                           </TableHead>
                           <TableHead>Хөрөнгө</TableHead>
                           <TableHead>Serial</TableHead>
@@ -241,7 +245,7 @@ export function DemoEmployeeNotificationsCard({
                                     )
                                   }
                                   disabled={!canReturn || hasPendingRequest}
-                                  className="rounded border-amber-600"
+                                  className="rounded border-slate-500"
                                 />
                               </TableCell>
                               <TableCell className="font-medium">
@@ -254,7 +258,7 @@ export function DemoEmployeeNotificationsCard({
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="gap-1.5 border-amber-600 text-amber-700 hover:bg-amber-100"
+                                  className="gap-1.5 border-slate-500 text-slate-700 hover:bg-slate-100"
                                   onClick={() => {
                                     if (hasPendingRequest) return;
                                     onOpenReturnRequest(
@@ -295,6 +299,7 @@ export function DemoEmployeeNotificationsCard({
                         Таны нэр дээр буцаах хөрөнгө бүртгэгдээгүй байна.
                       </p>
                     )}
+                    </React.Fragment>
                   </div>
                 )}
               </li>

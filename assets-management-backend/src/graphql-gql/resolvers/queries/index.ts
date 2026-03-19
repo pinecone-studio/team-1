@@ -8,6 +8,7 @@ import { offboardingQueries } from "./offboardingQueries";
 import { dashboardQueries } from "./dashboardQueries";
 import { catalogQueries } from "./catalogQueries";
 import { miscQueries } from "./miscQueries";
+import { censusQueries } from "./censusQueries";
 
 export const Query = {
   ...employeeQueries,
@@ -20,4 +21,5 @@ export const Query = {
   ...dashboardQueries,
   ...catalogQueries,
   ...miscQueries,
+  ...censusQueries,
 };

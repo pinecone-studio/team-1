@@ -409,6 +409,79 @@ export const typeDefs = /* GraphQL */ `
     createdAt: Float!
   }
 
+  type CensusEvent {
+    id: ID!
+    name: String!
+    scope: String!
+    scopeFilter: String
+    createdBy: ID!
+    startedAt: Float!
+    closedAt: Float
+    createdAt: Float!
+    updatedAt: Float!
+  }
+
+  type CensusVerifierProgress {
+    employee: Employee
+    total: Int!
+    responded: Int!
+    done: Boolean!
+  }
+
+  type CensusProgress {
+    event: CensusEvent!
+    totalTasks: Int!
+    respondedTasks: Int!
+    unassignedTasks: Int!
+    verifierProgress: [CensusVerifierProgress!]!
+  }
+
+  type CensusTaskAsset {
+    id: ID!
+    assetTag: String!
+    serialNumber: String
+    category: String
+    status: String
+    imageUrl: String
+  }
+
+  type CensusTask {
+    id: ID!
+    censusId: ID!
+    assetId: ID!
+    status: String!
+    reason: String
+    transferredToEmployeeId: ID
+    respondedAt: Float
+    asset: CensusTaskAsset!
+  }
+
+  type CensusTaskDetail {
+    id: ID!
+    assetId: ID!
+    verifierId: ID
+    status: String!
+    reason: String
+    transferredToEmployeeId: ID
+    respondedAt: Float
+    asset: CensusTaskAsset!
+    verifier: Employee
+  }
+
+  input StartCensusInput {
+    name: String!
+    scope: String!
+    scopeEmployeeIds: [ID!]
+    createdBy: ID!
+  }
+
+  input CensusResponseInput {
+    assetId: ID!
+    status: String!
+    reason: String
+    transferredToEmployeeId: ID
+  }
+
   type AssetKpis {
     totalCount: Int!
     totalValue: Float!
@@ -456,6 +529,10 @@ export const typeDefs = /* GraphQL */ `
     vendors: [Vendor!]!
     locations: [Location!]!
     auditLogs(tableName: String, recordId: String): [AuditLog!]!
+    censusProgress(censusId: ID!): CensusProgress!
+    openCensusProgress: CensusProgress
+    employeeCensusTasks(censusId: ID!, employeeId: ID!): [CensusTask!]!
+    censusTaskDetails(censusId: ID!): [CensusTaskDetail!]!
     maintenanceTickets(status: String): [MaintenanceTicket!]!
   dataWipeTasks(status: String): [DataWipeTask!]!
   }
@@ -678,6 +755,14 @@ export const typeDefs = /* GraphQL */ `
 
     sendNotification(input: NotificationInput!): Notification!
     markNotificationAsRead(id: ID!): Boolean!
+
+    startCensus(input: StartCensusInput!): CensusProgress!
+    submitCensusResponses(
+      censusId: ID!
+      employeeId: ID!
+      responses: [CensusResponseInput!]!
+    ): Boolean!
+    closeCensus(censusId: ID!, closedBy: ID!): Boolean!
 
     adminOverrideDisposal(id: ID!, status: String!): DisposalRequest!
     adminOverridePurchase(token: String!, status: String!): [PurchaseRequest!]!
