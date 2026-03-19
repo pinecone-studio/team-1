@@ -3,7 +3,7 @@ export const QR_TILES_PER_A4_PAGE = 28;
 export const STATUS_LABELS = {
   AVAILABLE: {
     label: "Эзэмшигчгүй",
-    className: "bg-green-100 text-green-800",
+    className: "bg-green-100  text-green-800",
   },
 
   ASSIGNED: {
