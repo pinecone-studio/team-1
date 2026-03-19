@@ -13,6 +13,7 @@ import { DemoHRContent } from "@/components/demo-hr/demo-hr";
 import { AssetFilter } from "@/components/assets/asset-filter";
 import { QRCensusContent } from "@/components/qr/qr-census-content";
 import OffboardingContent from "@/components/offboarding/offboarding-content";
+import { ReportContent } from "@/components/reports/report-content";
 
 export default function DashboardPage() {
   const [activeTitle, setActiveTitle] = useState("Хянах самбар");
@@ -45,6 +46,7 @@ export default function DashboardPage() {
             {activeTitle === "Хянах самбар" ? <DashboardContent /> : null}
             {activeTitle === "Хөрөнгө" ? <AssetsContent /> : null}
             {activeTitle === "Эд Хөрөнгө" ? <AssetFilter /> : null}
+            {activeTitle === "Тайлан" ? <ReportContent /> : null}
 
             {activeTitle === "Demo Ажилтан" ? <DemoEmployeeContent /> : null}
             {activeTitle === "Demo IT" ? <DemoITContent /> : null}
@@ -54,6 +56,7 @@ export default function DashboardPage() {
 
             {activeTitle !== "Хянах самбар" &&
             activeTitle !== "Хөрөнгө" &&
+            activeTitle !== "Тайлан" &&
             activeTitle !== "Хөрөнгө хуваарилах" &&
             activeTitle !== "QR тооллого" &&
             activeTitle !== "Ажилтан демо" &&

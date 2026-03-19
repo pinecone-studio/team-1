@@ -18,13 +18,6 @@ const formatMoney = (value: number) =>
 
 const formatPercent = (value: number) => `${Math.round(value)}%`;
 
-const formatPartAndPercent = (part: number, total: number) => {
-  const safeTotal = Number.isFinite(total) && total > 0 ? total : 0;
-  const safePart = Number.isFinite(part) && part >= 0 ? part : 0;
-  const pct = safeTotal > 0 ? (safePart / safeTotal) * 100 : 0;
-  return `${formatMoney(safePart)} / ${pct.toFixed(1)}%`;
-};
-
 export function KPICards() {
   const { data, loading: assetsLoading } = useQuery(GetAssetsDocument, {
     variables: {
@@ -37,14 +30,11 @@ export function KPICards() {
 
   const normalizedAssets =
     data?.assets?.map((asset) => {
-      const currentBookValue = asset.currentBookValue ?? asset.purchaseCost ?? 0;
-      const status =
-        asset.status === "AVAILABLE" && currentBookValue > 0
-          ? "FOR_SALE"
-          : asset.status;
+      const currentBookValue =
+        asset.currentBookValue ?? asset.purchaseCost ?? 0;
 
       return {
-        status,
+        status: asset.status,
         currentBookValue,
       };
     }) ?? [];
@@ -99,11 +89,10 @@ export function KPICards() {
   const valuePercentOfTotal = (value: number) =>
     totalValue > 0 ? (value / totalValue) * 100 : 0;
 
-  const assignedValuePercent = valuePercentOfTotal(kpis?.assignedValue ?? 0);
-  const unassignedValuePercent = valuePercentOfTotal(kpis?.unassignedValue ?? 0);
-  const forSaleValuePercent =
-    totalValue > 0 ? ((kpis?.forSaleValue ?? 0) / totalValue) * 100 : 0;
-  const brokenValuePercent = valuePercentOfTotal(kpis?.brokenValue ?? 0);
+  const assignedValuePercent = valuePercentOfTotal(assignedValue);
+  const unassignedValuePercent = valuePercentOfTotal(unassignedValue);
+  const forSaleValuePercent = valuePercentOfTotal(sellableValue);
+  const brokenValuePercent = valuePercentOfTotal(brokenValue);
 
   const kpiData = [
     {
@@ -117,7 +106,7 @@ export function KPICards() {
     },
     {
       title: "Эзэмшигчтэй",
-      value: formatMoney(kpis?.assignedValue ?? 0),
+      value: formatMoney(assignedValue),
       valueSuffix: `/${assignedValuePercent.toFixed(1)}%`,
       subtitle: formatPercent(assignedPercent),
       progress: assignedPercent,
@@ -127,7 +116,7 @@ export function KPICards() {
     },
     {
       title: "Эзэмшигчгүй",
-      value: formatMoney(kpis?.unassignedValue ?? 0),
+      value: formatMoney(unassignedValue),
       valueSuffix: `/${unassignedValuePercent.toFixed(1)}%`,
       subtitle: formatPercent(unassignedPercent),
       progress: unassignedPercent,
@@ -137,7 +126,7 @@ export function KPICards() {
     },
     {
       title: "Зарж болох",
-      value: formatMoney(kpis?.forSaleValue ?? 0),
+      value: formatMoney(sellableValue),
       valueSuffix: `/${forSaleValuePercent.toFixed(1)}%`,
       subtitle: formatPercent(sellablePercent),
       progress: sellablePercent,
@@ -147,7 +136,7 @@ export function KPICards() {
     },
     {
       title: "Эвдрэлтэй",
-      value: formatMoney(kpis?.brokenValue ?? 0),
+      value: formatMoney(brokenValue),
       valueSuffix: `/${brokenValuePercent.toFixed(1)}%`,
       subtitle: formatPercent(brokenPercent),
       progress: brokenPercent,
