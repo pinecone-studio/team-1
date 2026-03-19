@@ -65,6 +65,19 @@ const HISTORY_EVENT_LABELS: Record<string, string> = {
   REGISTERED: "Бүртгэсэн",
   UPDATED: "Шинэчлэгдсэн",
   ASSET_UPDATED: "Шинэчлэгдсэн",
+  // Disposal / approvals (assetHistory uses auditLogs.action as eventType)
+  DISPOSAL_REQUESTED: "Устгах хүсэлт илгээсэн",
+  DISPOSAL_IT_APPROVED: "IT баталгаажуулсан",
+  DISPOSAL_FINANCE_APPROVED: "Санхүү баталгаажуулсан",
+  DISPOSAL_REJECTED: "Устгах хүсэлт татгалзсан",
+  ASSET_DISPOSED: "Устгасан",
+  ASSET_RETURNED: "Эзэмшигчээс буцаасан",
+  OFFBOARDING_EMPLOYEE_SUBMITTED_RETURN: "Буцаах хүсэлт (ажлаас гарах)",
+  OFFBOARDING_HR_RECEIVED_RETURN: "HR хүлээн авсан",
+  OFFBOARDING_HR_UPDATED_RETURN_STATUS: "HR төлөв шинэчилсөн",
+  REPAIR_REQUESTED: "Засварын хүсэлт",
+  ASSIGNMENT_ACCEPTED: "Эзэмшигч зөвшөөрсөн",
+  ASSIGNMENT_REJECTED: "Эзэмшигч татгалзсан",
 };
 
 const STATUS_BADGE_CLASSES: Record<string, string> = {
@@ -336,6 +349,11 @@ export function AssetDetailContent({
       imageUrl?: string | null;
     } | null;
   }>;
+  const sortedHistoryItems = [...historyItems].sort(
+    (a, b) =>
+      (new Date(a.timestamp).getTime() || 0) -
+      (new Date(b.timestamp).getTime() || 0),
+  );
 
   const locationOptions = useMemo(() => {
     return (
@@ -1329,23 +1347,34 @@ export function AssetDetailContent({
             className="m-0 max-h-[420px] overflow-y-auto border-t border-slate-100 bg-white"
           >
             <div className="space-y-4 p-6">
-              {historyItems.length ? (
-                historyItems.map((h) => {
-                  const actorName = h.actor
-                    ? `${h.actor.lastName?.[0] ?? ""}.${h.actor.firstName ?? ""}`
-                    : "—";
+              {sortedHistoryItems.length ? (
+                sortedHistoryItems.map((h) => {
+                  const hasActorName =
+                    Boolean(h.actor?.firstName) || Boolean(h.actor?.lastName);
+                  const actorName =
+                    h.actor && hasActorName
+                      ? `${h.actor.lastName?.[0] ?? ""}.${h.actor.firstName ?? ""}`
+                      : "Admin";
                   const eventLabel =
                     HISTORY_EVENT_LABELS[h.eventType] ?? h.eventType ?? "—";
                   const when = new Date(h.timestamp);
                   const formatted = `${when.toLocaleDateString()} ${when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
                   const isOpen = expandedHistoryId === h.id;
+                  const desc = h.description ?? "";
+                  const shortDesc =
+                    desc.length > 90 ? `${desc.slice(0, 90)}…` : desc;
                   return (
                     <div
                       key={h.id}
                       className="flex items-center justify-between rounded-2xl border border-slate-200 px-5 py-4"
                     >
-                      <div className="text-[16px] font-semibold text-slate-900">
-                        {eventLabel}
+                      <div className="flex flex-col gap-1">
+                        <div className="text-[16px] font-semibold text-slate-900">
+                          {eventLabel}
+                        </div>
+                        <div className="text-[13px] text-slate-600">
+                          {isOpen ? desc : shortDesc || "—"}
+                        </div>
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-3">

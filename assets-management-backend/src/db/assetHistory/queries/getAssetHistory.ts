@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { getDb } from "../../client";
 import {
   assetMovements,
@@ -8,6 +8,7 @@ import {
   disposalRecords,
   maintenanceTickets,
   transfers,
+  employees,
 } from "@/schema";
 import type { AssetTimelineEvent } from "../types";
 
@@ -53,22 +54,63 @@ export async function getAssetHistory(
   ]);
   const assetAuditRows = auditRows.filter((r) => r.tableName === "assets");
 
+  // Pre-resolve employee names referenced from assignments/transfers/audit newValueJson.
+  // This avoids showing raw employee IDs in the UI description.
+  const referencedEmployeeIds = new Set<string>();
+
+  for (const a of assignmentRows) referencedEmployeeIds.add(a.employeeId);
+  for (const t of transferRows) {
+    referencedEmployeeIds.add(t.fromEmployeeId);
+    referencedEmployeeIds.add(t.toEmployeeId);
+  }
+
+  for (const al of assetAuditRows) {
+    if (!al.newValueJson) continue;
+    try {
+      const newVal = JSON.parse(al.newValueJson) as Record<string, unknown>;
+      const action = al.action;
+      if (action === "ASSIGNED" && typeof newVal.employeeId === "string") {
+        referencedEmployeeIds.add(newVal.employeeId);
+      }
+      if (
+        action === "TRANSFERRED" &&
+        typeof newVal.fromEmployeeId === "string" &&
+        typeof newVal.toEmployeeId === "string"
+      ) {
+        referencedEmployeeIds.add(newVal.fromEmployeeId);
+        referencedEmployeeIds.add(newVal.toEmployeeId);
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }
+
+  const employeeNameById = new Map<string, string>();
+  if (referencedEmployeeIds.size > 0) {
+    const employeeRows = await db
+      .select({ id: employees.id, firstName: employees.firstName, lastName: employees.lastName, email: employees.email })
+      .from(employees)
+      .where(inArray(employees.id, Array.from(referencedEmployeeIds)))
+      .all();
+    for (const e of employeeRows) {
+      const name = [e.firstName, e.lastName].filter(Boolean).join(" ").trim() || e.email || e.id;
+      employeeNameById.set(e.id, name);
+    }
+  }
+
+  const describeEmployee = (id: unknown) => {
+    if (typeof id !== "string") return "—";
+    return employeeNameById.get(id) ?? id;
+  };
+
   const events: AssetTimelineEvent[] = [];
 
   if (assetRow) {
-    if (assetRow.purchaseDate) {
-      events.push({
-        id: `${assetId}:PURCHASED`,
-        eventType: "PURCHASED",
-        description: `Asset purchased${assetRow.purchaseCost != null ? ` for ${assetRow.purchaseCost}` : ""}`,
-        actorId: null,
-        timestamp: new Date(assetRow.purchaseDate).toISOString(),
-      });
-    }
+    // UX: "Худалдан авсан" түүхийг анхдагчаар харуулахгүй.
     events.push({
       id: `${assetId}:REGISTERED`,
       eventType: "REGISTERED",
-      description: `Asset registered with tag ${assetRow.assetTag} (S/N: ${assetRow.serialNumber})`,
+      description: `Бүртгэгдсэн: ${assetRow.assetTag} (S/N: ${assetRow.serialNumber})`,
       actorId: null,
       timestamp: new Date(assetRow.createdAt).toISOString(),
     });
@@ -78,7 +120,7 @@ export async function getAssetHistory(
     events.push({
       id: `${a.id}:ASSIGNED`,
       eventType: "ASSIGNED",
-      description: `Assigned to employee ${a.employeeId} — condition: ${a.conditionAtAssign}`,
+      description: `Олгосон — нөхцөл: ${a.conditionAtAssign}`,
       actorId: a.employeeId,
       timestamp: new Date(a.assignedAt).toISOString(),
     });
@@ -87,7 +129,7 @@ export async function getAssetHistory(
       events.push({
         id: `${a.id}:RETURNED`,
         eventType: "RETURNED",
-        description: `Returned by employee ${a.employeeId}${a.conditionAtReturn ? ` — condition: ${a.conditionAtReturn}` : ""}`,
+        description: `Буцаасан${a.conditionAtReturn ? ` — нөхцөл: ${a.conditionAtReturn}` : ""}`,
         actorId: a.employeeId,
         timestamp: new Date(a.returnedAt).toISOString(),
       });
@@ -98,7 +140,7 @@ export async function getAssetHistory(
     events.push({
       id: `${t.id}:TRANSFERRED`,
       eventType: "TRANSFERRED",
-      description: `Transferred from ${t.fromEmployeeId} to ${t.toEmployeeId}${t.reason ? ` — reason: ${t.reason}` : ""}`,
+      description: `Шилжүүлсэн${t.reason ? ` — шалтгаан: ${t.reason}` : ""}`,
       actorId: t.approvedBy ?? t.fromEmployeeId,
       timestamp: new Date(t.transferredAt).toISOString(),
     });
@@ -145,14 +187,27 @@ export async function getAssetHistory(
   }
 
   for (const al of assetAuditRows) {
+    // Duplicates:
+    // - REGISTERED / ASSIGNED / TRANSFERRED / PURCHASED are already represented by
+    //   assetRow/assignmentRows/transferRows derived events above.
+    // - auditLogs for these actions would otherwise show the same event twice.
+    if (
+      al.action === "REGISTERED" ||
+      al.action === "PURCHASED" ||
+      al.action === "ASSIGNED" ||
+      al.action === "TRANSFERRED"
+    ) {
+      continue;
+    }
+
     let description = al.action;
     try {
       const newVal = al.newValueJson ? JSON.parse(al.newValueJson) as Record<string, unknown> : null;
       if (newVal) {
         if (al.action === "TRANSFERRED" && newVal.fromEmployeeId && newVal.toEmployeeId) {
-          description = `Шилжүүлсэн: ${newVal.fromEmployeeId} → ${newVal.toEmployeeId}${newVal.reason ? ` (${newVal.reason})` : ""}`;
+          description = `Шилжүүлсэн: ${describeEmployee(newVal.fromEmployeeId)} → ${describeEmployee(newVal.toEmployeeId)}${newVal.reason ? ` (${newVal.reason})` : ""}`;
         } else if (al.action === "ASSIGNED" && newVal.employeeId) {
-          description = `Олгосон: ажилтан ${newVal.employeeId}`;
+          description = `Олгосон: ${describeEmployee(newVal.employeeId)}`;
         } else if (al.action === "DISPOSAL_REQUESTED") {
           description = `Устгах хүсэлт илгээсэн${newVal.method ? ` (${newVal.method})` : ""}`;
         } else if (al.action === "DISPOSAL_IT_APPROVED") {
@@ -164,7 +219,42 @@ export async function getAssetHistory(
         } else if (al.action === "ASSET_DISPOSED") {
           description = "Устгасан (IT/санхүү)";
         } else if (al.action === "ASSET_RETURNED") {
-          description = "Эзэмшигчээс буцаасан";
+          if (newVal.offboardingInspection) {
+            const who =
+              typeof newVal.inspectedBy === "string" ? newVal.inspectedBy : "HR";
+            description = `Ажлаас гарах — HR шалгалт (${who}), хөрөнгийн төлөв: ${String(newVal.status ?? "")}`;
+          } else {
+            description = "Эзэмшигчээс буцаасан";
+          }
+        } else if (al.action === "OFFBOARDING_EMPLOYEE_SUBMITTED_RETURN") {
+          description =
+            typeof newVal.messageMn === "string"
+              ? newVal.messageMn
+              : "Ажилтан буцаах хүсэлт илгээсэн (HR хүлээгдэж байна)";
+        } else if (al.action === "OFFBOARDING_HR_RECEIVED_RETURN") {
+          description =
+            typeof newVal.messageMn === "string"
+              ? newVal.messageMn
+              : "HR буцаагдсан хөрөнгийг хүлээн авч шалгасан";
+          if (typeof newVal.inspectedBy === "string" && newVal.inspectedBy) {
+            description += ` (${newVal.inspectedBy})`;
+          }
+        } else if (al.action === "OFFBOARDING_HR_UPDATED_RETURN_STATUS") {
+          description =
+            typeof newVal.messageMn === "string"
+              ? newVal.messageMn
+              : "HR буцаах хүсэлтийн төлөв болон хөрөнгийн статусыг шинэчилсэн";
+          if (typeof newVal.inspectedBy === "string" && newVal.inspectedBy) {
+            description += ` (${newVal.inspectedBy})`;
+          }
+        } else if (
+          al.action === "REPAIR_REQUESTED" &&
+          newVal.offboardingReturnRequestId
+        ) {
+          description =
+            typeof newVal.messageMn === "string"
+              ? newVal.messageMn
+              : "HR засварын хүсэлт (ажлаас гарах)";
         } else if (al.action === "REGISTERED") {
           description = `Бүртгэгдсэн: ${newVal.assetTag ?? ""} (S/N: ${newVal.serialNumber ?? ""})`;
         } else if (al.action === "ASSIGNMENT_ACCEPTED") {

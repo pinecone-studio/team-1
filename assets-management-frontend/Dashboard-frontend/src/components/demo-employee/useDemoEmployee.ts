@@ -285,7 +285,10 @@ export function useDemoEmployee() {
   });
 
   const pendingLoading = loadingAssignRequested || loadingPending;
-  const pendingList = useMemo(() => {
+  // Memo бишээр derived list-уудыг бодож гаргая.
+  // Заримдаа Apollo refetch үед arrays ижил refernce-эээр ирэх (or in-place update) тохиолдол
+  // гардаг тул `useMemo` stale data өгч, accept болсны дараа UI шууд шинэчлэгдэхгүй мэт харагддаг.
+  const pendingList = (() => {
     const a = dataAssignRequested?.employeeAssignments ?? [];
     const b = dataPending?.employeeAssignments ?? [];
     const seen = new Set<string>();
@@ -294,13 +297,10 @@ export function useDemoEmployee() {
       seen.add(x.id);
       return true;
     });
-  }, [
-    dataAssignRequested?.employeeAssignments,
-    dataPending?.employeeAssignments,
-  ]);
+  })();
   const currentPending = pendingList[0] ?? null;
   const activeAssignments = activeData?.employeeAssignments ?? [];
-  const myAssetsList = useMemo(() => {
+  const myAssetsList = (() => {
     const seen = new Set<string>();
     const list: Array<(typeof activeAssignments)[0] & { status: string }> = [];
     activeAssignments.forEach((a) => {
@@ -317,7 +317,7 @@ export function useDemoEmployee() {
       }
     });
     return list;
-  }, [activeAssignments, pendingList]);
+  })();
 
   const assetsToReturnList = useMemo(() => {
     const fromEvent = (

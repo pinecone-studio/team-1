@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "@apollo/client";
+import { useApolloClient, useMutation, useQuery } from "@apollo/client";
 import { Check, Eye, ShieldCheck, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -35,6 +35,9 @@ import {
 import {
   ApproveDisposalDocument,
   EmployeesDocument,
+  GetAssetDocument,
+  GetAssetKpisDocument,
+  GetAssetsDocument,
   GetDisposalRequestsDocument,
   RejectDisposalDocument,
   UserRole,
@@ -66,6 +69,8 @@ export function DemoFinanceContent({
     useState<FinanceDisposalItem | null>(null);
   const [signatureData, setSignatureData] = useState<string | null>(null);
 
+  const client = useApolloClient();
+
   const { data: disposalData, loading } = useQuery(
     GetDisposalRequestsDocument,
     {
@@ -82,11 +87,16 @@ export function DemoFinanceContent({
     ApproveDisposalDocument,
     {
       refetchQueries: [
+        // Finance approval нь asset-ийн status-ийг DISPOSED болгож өөрчилнө.
+        // Тиймээс хөрөнгө/КПИ өгөгдлийг шууд refresh хийх хэрэгтэй.
+        { query: GetAssetsDocument },
+        { query: GetAssetKpisDocument },
         {
           query: GetDisposalRequestsDocument,
           variables: { status: "IT_APPROVED" },
         },
       ],
+      awaitRefetchQueries: true,
     },
   );
 
@@ -103,6 +113,14 @@ export function DemoFinanceContent({
   );
 
   const pendingDisposals = disposalData?.disposalRequests ?? [];
+
+  const getEmployeeName = (e: any) => {
+    const first = e?.firstName;
+    const last = e?.lastName;
+    const email = e?.email;
+    const id = e?.id;
+    return [last, first].filter(Boolean).join(" ") || email || id || "Admin";
+  };
 
   const financeApproverId = useMemo(() => {
     const employees = (employeesData?.employees ?? []) as Array<{
@@ -138,6 +156,16 @@ export function DemoFinanceContent({
           stage: "FINANCE_APPROVED",
         },
       });
+
+      // Нэмэлт баталгаа: тухайн asset detail modal нээлттэй байж магадгүй тул
+      // тухайн asset-ийн query-г мөн refetch хийнэ.
+      if (selectedDisposal.assetId) {
+        await client.query({
+          query: GetAssetDocument,
+          variables: { id: selectedDisposal.assetId },
+          fetchPolicy: "network-only",
+        });
+      }
       toast.success("Хүсэлтийг санхүүгээр баталгаажууллаа.");
       handleCloseDetail();
     } catch {
@@ -326,7 +354,13 @@ export function DemoFinanceContent({
                     <div className="font-medium">
                       {selectedDisposal.reason ?? "—"}
                     </div>
-                    <div className="text-muted-foreground">Илгээсэн:</div>
+                    <div className="text-muted-foreground">
+                      Хэнээс IT admin руу илгээсэн:
+                    </div>
+                    <div className="font-medium">
+                      {getEmployeeName(selectedDisposal.requestedBy)}
+                    </div>
+                    <div className="text-muted-foreground">Илгээсэн огноо:</div>
                     <div className="font-medium">
                       {new Date(selectedDisposal.createdAt).toLocaleString()}
                     </div>

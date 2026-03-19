@@ -1,5 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { getDb } from "../../client";
+import { writeAuditLog } from "../../auditLogger";
 import {
   assignments,
   offboardingEvents,
@@ -86,5 +87,22 @@ export async function submitReturnRequest(
     .where(eq(offboardingReturnRequests.id, id))
     .get();
   if (!row) throw new Error("Failed to create return request");
+
+  await writeAuditLog(
+    "assets",
+    assetId,
+    "OFFBOARDING_EMPLOYEE_SUBMITTED_RETURN",
+    employeeId,
+    { offboardingReturnRequest: "none" },
+    {
+      returnRequestId: id,
+      offboardingEventId: event.id,
+      conditionEmployee: conditionDisplay,
+      returnRequestStatus: "PENDING_HR",
+      messageMn:
+        "Ажилтан ажлаас гарах урсгалд хөрөнгө буцаах хүсэлт илгээсэн (HR шалгалт хүлээгдэж байна)",
+    },
+  );
+
   return row;
 }

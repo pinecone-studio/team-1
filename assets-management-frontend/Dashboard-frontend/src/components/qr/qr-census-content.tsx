@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import { toast } from "sonner";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -16,9 +17,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Checkbox } from "@/components/ui/checkbox";
-import type { CensusProgress } from "@/gql/graphql";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  CategoriesDocument,
   CensusTaskDetailsDocument,
   CloseCensusDocument,
   EmployeesDocument,
@@ -27,6 +34,7 @@ import {
 } from "@/gql/graphql";
 
 type Scope = "ORG" | "EMPLOYEES";
+type CoverageMode = "ALL_ORG" | "BY_DEPARTMENT" | "BY_CATEGORY";
 
 const CENSUS_POLL_INTERVAL_MS = 8000;
 
@@ -41,17 +49,17 @@ function formatDate(value?: number | null) {
 
 export function QRCensusContent() {
   const [startOpen, setStartOpen] = useState(false);
-  const [scope, setScope] = useState<Scope>("ORG");
   const [name, setName] = useState("1-р улирлын тооллого");
-  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<Set<string>>(
-    new Set(),
-  );
-  const [activeCensusId, setActiveCensusId] = useState<string | null>(null);
-  const [lastProgress, setLastProgress] = useState<CensusProgress | null>(null);
+  const [coverageMode, setCoverageMode] = useState<CoverageMode | "">("");
+  const [selectedDepartment, setSelectedDepartment] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [lastProgress, setLastProgress] = useState<any>(null);
   const [endDialogOpen, setEndDialogOpen] = useState(false);
 
-  const { data: employeesData } = useQuery(EmployeesDocument);
+  const { data: employeesData, refetch: refetchEmployees } =
+    useQuery(EmployeesDocument);
   const employees = employeesData?.employees ?? [];
+  const { data: categoriesData } = useQuery(CategoriesDocument);
 
   const {
     data: openData,
@@ -63,24 +71,25 @@ export function QRCensusContent() {
   });
 
   useEffect(() => {
-    const hasOpenCensus =
-      activeCensusId != null || openData?.openCensusProgress?.event.id != null;
-    if (hasOpenCensus) startPolling(CENSUS_POLL_INTERVAL_MS);
-    else stopPolling();
+    startPolling(CENSUS_POLL_INTERVAL_MS);
     return () => stopPolling();
-  }, [
-    activeCensusId,
-    openData?.openCensusProgress?.event.id,
-    startPolling,
-    stopPolling,
-  ]);
+  }, [startPolling, stopPolling]);
 
+  const openProgress = openData?.openCensusProgress ?? null;
   const effectiveCensusId =
-    activeCensusId ?? openData?.openCensusProgress?.event.id ?? null;
-  const progress: CensusProgress | undefined =
-    openData?.openCensusProgress?.event.id === effectiveCensusId
-      ? openData.openCensusProgress
-      : (lastProgress ?? undefined);
+    openProgress?.event?.id ?? lastProgress?.event?.id ?? null;
+  const progress = openProgress ?? lastProgress ?? undefined;
+
+  useEffect(() => {
+    if (openProgress?.event?.id) {
+      setLastProgress(openProgress);
+      return;
+    }
+
+    if (openData && openProgress == null) {
+      setLastProgress(null);
+    }
+  }, [openProgress, openData]);
 
   const { data: taskDetailsData } = useQuery(CensusTaskDetailsDocument, {
     variables: { censusId: effectiveCensusId ?? "" },
@@ -88,19 +97,7 @@ export function QRCensusContent() {
     fetchPolicy: "network-only",
   });
 
-  const [startCensus, { loading: starting }] = useMutation(
-    StartCensusDocument,
-    {
-      onCompleted: (res) => {
-        const censusProgress = res.startCensus;
-        setLastProgress(censusProgress);
-        setActiveCensusId(censusProgress.event.id);
-        setStartOpen(false);
-        toast.success("Тооллого эхэллээ. Мэдэгдлүүд илгээгдлээ.");
-      },
-      onError: () => toast.error("Тооллого эхлүүлэхэд алдаа гарлаа."),
-    },
-  );
+  const [startCensus, { loading: starting }] = useMutation(StartCensusDocument);
 
   const [closeCensus, { loading: closing }] = useMutation(CloseCensusDocument, {
     onError: () => toast.error("Census хаахад алдаа гарлаа."),
@@ -112,46 +109,148 @@ export function QRCensusContent() {
   const pending = Math.max(0, total - responded);
   const percent = total > 0 ? Math.round((responded / total) * 100) : 0;
   const verifierRows = progress?.verifierProgress ?? [];
-  const doneCount = verifierRows.filter((v) => v.done).length;
+  const doneCount = verifierRows.filter((v: any) => v.done).length;
   const taskDetails = taskDetailsData?.censusTaskDetails ?? [];
-
-  const sortedEmployees = useMemo(
+  const departmentOptions = useMemo(
     () =>
-      [...employees].sort((a, b) =>
-        (a.firstName ?? a.email ?? "").localeCompare(
-          b.firstName ?? b.email ?? "",
+      Array.from(
+        new Set(
+          employees
+            .map((employee) => employee.department?.trim())
+            .filter((department): department is string => Boolean(department)),
         ),
-      ),
+      ).sort((left, right) => left.localeCompare(right)),
     [employees],
   );
-
-  const toggleEmployee = (id: string, next: boolean) => {
-    setSelectedEmployeeIds((prev) => {
-      const set = new Set(prev);
-      if (next) set.add(id);
-      else set.delete(id);
-      return set;
-    });
-  };
+  const categoryOptions = useMemo(() => {
+    const rows = categoriesData?.categories ?? [];
+    const flattened = rows.flatMap((category) => [
+      { id: category.id, name: category.name },
+      ...(category.subcategories ?? []).map((sub) => ({
+        id: sub.id,
+        name: sub.name,
+      })),
+    ]);
+    const byId = new Map<string, { id: string; name: string }>();
+    for (const item of flattened) {
+      if (!item.id || !item.name) continue;
+      byId.set(item.id, item);
+    }
+    return Array.from(byId.values()).sort((left, right) =>
+      left.name.localeCompare(right.name),
+    );
+  }, [categoriesData?.categories]);
 
   const handleStart = async () => {
-    const createdBy = employees[0]?.id;
+    let createdBy = employees[0]?.id;
     if (!createdBy) {
-      toast.error("Employees data олдсонгүй (createdBy хэрэгтэй).");
+      const latest = await refetchEmployees();
+      createdBy = latest.data?.employees?.[0]?.id;
+    }
+    if (!createdBy) createdBy = "SYSTEM_CENSUS_ACTOR";
+    const safeName = name.trim() || "Шинэ тооллого";
+    const safeCoverageMode: CoverageMode = coverageMode || "ALL_ORG";
+
+    if (safeCoverageMode === "BY_DEPARTMENT" && !selectedDepartment) {
+      toast.error("Алба, хэлтэс сонгоно уу.");
       return;
     }
-    const scopeEmployeeIds =
-      scope === "EMPLOYEES" ? Array.from(selectedEmployeeIds) : undefined;
-    if (scope === "EMPLOYEES" && scopeEmployeeIds.length === 0) {
-      toast.error("Ажилтан сонгоно уу.");
+    if (safeCoverageMode === "BY_CATEGORY" && !selectedCategory) {
+      toast.error("Ангилал сонгоно уу.");
       return;
     }
 
-    await startCensus({
-      variables: {
-        input: { name, scope, scopeEmployeeIds, createdBy },
-      },
-    });
+    let scope: Scope = "ORG";
+    let scopeEmployeeIds: string[] | undefined;
+    let department: string | undefined;
+    let categoryId: string | undefined;
+    if (safeCoverageMode === "BY_DEPARTMENT") {
+      scope = "EMPLOYEES";
+      department = selectedDepartment;
+      scopeEmployeeIds = employees
+        .filter((employee) => employee.department === selectedDepartment)
+        .map((employee) => employee.id);
+
+      if (scopeEmployeeIds.length === 0) {
+        toast.error("Сонгосон албанд ажилтан олдсонгүй.");
+        return;
+      }
+    }
+
+    if (safeCoverageMode === "BY_CATEGORY") {
+      scope = "ORG";
+      categoryId = selectedCategory;
+    }
+
+    const applyStarted = (started: any) => {
+      if (!started?.event?.id) return false;
+      setLastProgress(started);
+      setStartOpen(false);
+      toast.success("Тооллого эхэллээ.");
+      return true;
+    };
+
+    try {
+      const advancedResult = await startCensus({
+        variables: {
+          input: {
+            name: safeName,
+            scope,
+            createdBy,
+            scopeEmployeeIds,
+          },
+        },
+      });
+      if (applyStarted(advancedResult.data?.startCensus)) return;
+    } catch (error: any) {
+      const msg =
+        error?.graphQLErrors?.[0]?.message ||
+        error?.networkError?.message ||
+        error?.message ||
+        "";
+
+      const isInputSchemaMismatch =
+        msg.includes("coverageMode") ||
+        msg.includes("department") ||
+        msg.includes("categoryId") ||
+        msg.includes("StartCensusInput");
+
+      if (isInputSchemaMismatch) {
+        try {
+          const legacyResult = await startCensus({
+            variables: {
+              input: {
+                name: safeName,
+                scope,
+                scopeEmployeeIds,
+                createdBy,
+              },
+            },
+          });
+          if (applyStarted(legacyResult.data?.startCensus)) return;
+        } catch (legacyError: any) {
+          const legacyMessage =
+            legacyError?.graphQLErrors?.[0]?.message ||
+            legacyError?.networkError?.message ||
+            legacyError?.message ||
+            "Тооллого эхлүүлэхэд алдаа гарлаа.";
+          toast.error(legacyMessage);
+        }
+      }
+
+      const latestOpen = await refetchOpenCensus();
+      const fallback = latestOpen.data?.openCensusProgress;
+      if (fallback?.event?.id) {
+        setLastProgress(fallback);
+        setStartOpen(false);
+        toast.info("Нээлттэй тооллого руу шилжүүллээ.");
+        return;
+      }
+
+      if (!isInputSchemaMismatch) {
+        toast.error(msg || "Тооллого эхлүүлэхэд алдаа гарлаа.");
+      }
+    }
   };
 
   const handleCloseCensus = async () => {
@@ -163,23 +262,21 @@ export function QRCensusContent() {
 
     await closeCensus({ variables: { censusId: effectiveCensusId, closedBy } });
     await refetchOpenCensus();
-    stopPolling();
-    setActiveCensusId(null);
     setLastProgress(null);
     setEndDialogOpen(false);
     toast.success("Census хаагдлаа.");
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col rounded-2xl border border-slate-200 bg-[#f5f7fb] p-5 md:p-6">
+    <div className="flex min-h-[calc(100svh-140px)] flex-1 flex-col bg-[#f3f4f6] p-5 md:p-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-[36px] font-semibold leading-none text-slate-900">
-            Эд хөрөнгийн тооллого
+          <h1 className="text-[25px] font-semibold leading-none text-slate-900">
+            Хөрөнгийн тооллого
           </h1>
           {effectiveCensusId ? (
             <>
-              <p className="mt-5 text-2xl font-semibold text-slate-900">
+              <p className="mt-5 text-[18px] font-semibold text-slate-900">
                 {progress?.event.name ?? name}
               </p>
               <p className="mt-1 text-base text-slate-600">
@@ -199,7 +296,7 @@ export function QRCensusContent() {
           ) : (
             <>
               <Button
-                className="h-10 gap-2 rounded-lg bg-[#0b5f8a] px-5 text-[15px] font-medium text-white hover:bg-[#0a5278]"
+                className="h-10 gap-2 rounded-lg bg-[#0f4c6e] px-5 text-[15px] font-medium text-white hover:bg-[#0a5278]"
                 onClick={() => setEndDialogOpen(true)}
               >
                 Тооллого дуусгах
@@ -309,7 +406,7 @@ export function QRCensusContent() {
                 </p>
                 <div className="max-h-[260px] overflow-y-auto rounded-xl border border-slate-200">
                   <ul className="divide-y">
-                    {verifierRows.map((v) => {
+                    {verifierRows.map((v: any) => {
                       const label =
                         [v.employee?.firstName, v.employee?.lastName]
                           .filter(Boolean)
@@ -349,103 +446,127 @@ export function QRCensusContent() {
       ) : null}
 
       <Dialog open={startOpen} onOpenChange={setStartOpen}>
-        <DialogContent className="max-w-[min(92vw,620px)]">
-          <DialogHeader>
-            <DialogTitle>Start Census</DialogTitle>
-            <DialogDescription>
-              Scope сонгоод эхлүүлнэ. Employee scope дээр тодорхой ажилтнууд
-              сонгоно.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="grid gap-2">
-              <Label>Нэр</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} />
+        <DialogContent
+          showCloseButton={false}
+          className="w-[min(96vw,980px)] border-0 bg-transparent p-0 shadow-none"
+        >
+          <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">
+                Тооллого эхлүүлэх
+              </h2>
+              <button
+                type="button"
+                onClick={() => setStartOpen(false)}
+                className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
 
-            <div className="grid gap-2">
-              <Label>Scope</Label>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button
-                  type="button"
-                  variant={scope === "ORG" ? "default" : "outline"}
-                  className={
-                    scope === "ORG" ? "bg-[#0b6fae] hover:bg-[#095f93]" : ""
-                  }
-                  onClick={() => setScope("ORG")}
-                >
-                  By Organization
-                </Button>
-                <Button
-                  type="button"
-                  variant={scope === "EMPLOYEES" ? "default" : "outline"}
-                  className={
-                    scope === "EMPLOYEES"
-                      ? "bg-[#0b6fae] hover:bg-[#095f93]"
-                      : ""
-                  }
-                  onClick={() => setScope("EMPLOYEES")}
-                >
-                  By Employees
-                </Button>
+            <div className="space-y-4">
+              <div className="grid gap-1.5">
+                <Label className="text-xs text-slate-700">
+                  Тооллогын нэрийг оруулна уу
+                </Label>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="h-10 rounded-md border-slate-200 bg-[#f3f4f6] text-sm"
+                />
               </div>
-            </div>
 
-            {scope === "EMPLOYEES" ? (
-              <div className="grid gap-2">
-                <Label>Employees</Label>
-                <div className="max-h-[260px] overflow-y-auto rounded-xl border border-slate-200 bg-white">
-                  <ul className="divide-y">
-                    {sortedEmployees.map((e) => {
-                      const checked = selectedEmployeeIds.has(e.id);
-                      const label =
-                        [e.firstName, e.lastName].filter(Boolean).join(" ") ||
-                        e.email ||
-                        e.id;
-                      return (
-                        <li key={e.id} className="flex items-center gap-3 p-3">
-                          <Checkbox
-                            checked={checked}
-                            onCheckedChange={(value) =>
-                              toggleEmployee(e.id, Boolean(value))
-                            }
-                          />
-                          <span className="text-sm text-foreground">
-                            {label}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
+              <div className="grid gap-1.5">
+                <Label className="text-xs text-slate-700">
+                  Цар хүрээ сонгох
+                </Label>
+                <Select
+                  value={coverageMode}
+                  onValueChange={(value) => {
+                    setCoverageMode(value as CoverageMode);
+                    setSelectedDepartment("");
+                    setSelectedCategory("");
+                  }}
+                >
+                  <SelectTrigger className="h-10 rounded-md border-slate-200 bg-[#f3f4f6] text-sm">
+                    <SelectValue placeholder="Сонгоно уу" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL_ORG">Байгууллага бүхлдээ</SelectItem>
+                    <SelectItem value="BY_DEPARTMENT">
+                      Алба, хэлтсээр
+                    </SelectItem>
+                    <SelectItem value="BY_CATEGORY">Ангиллаар</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {coverageMode === "BY_DEPARTMENT" ? (
+                <div className="grid gap-1.5">
+                  <Label className="text-xs text-slate-700">
+                    Алба, хэлтэс сонгох
+                  </Label>
+                  <Select
+                    value={selectedDepartment}
+                    onValueChange={setSelectedDepartment}
+                  >
+                    <SelectTrigger className="h-10 rounded-md border-slate-200 bg-[#f3f4f6] text-sm">
+                      <SelectValue placeholder="Алба, хэлтэс сонгоно уу" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departmentOptions.map((department) => (
+                        <SelectItem key={department} value={department}>
+                          {department}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
-            ) : null}
+              ) : null}
 
-            {starting ? (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">Initializing...</p>
-                <Progress value={40} />
-              </div>
-            ) : null}
+              {coverageMode === "BY_CATEGORY" ? (
+                <div className="grid gap-1.5">
+                  <Label className="text-xs text-slate-700">
+                    Ангилал сонгох
+                  </Label>
+                  <Select
+                    value={selectedCategory}
+                    onValueChange={setSelectedCategory}
+                  >
+                    <SelectTrigger className="h-10 rounded-md border-slate-200 bg-[#f3f4f6] text-sm">
+                      <SelectValue placeholder="Ангилал сонгоно уу" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categoryOptions.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setStartOpen(false)}
+                disabled={starting}
+                className="h-9 border-[#0b5f8a] px-4 text-xs text-slate-700"
+              >
+                Болих
+              </Button>
+              <Button
+                className="h-9 bg-[#0b5f8a] px-4 text-xs text-white hover:bg-[#0a5278]"
+                onClick={() => void handleStart()}
+                disabled={starting}
+              >
+                {starting ? "Түр хүлээнэ үү..." : "Тооллого эхлүүлэх"}
+              </Button>
+            </div>
           </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setStartOpen(false)}
-              disabled={starting}
-            >
-              Болих
-            </Button>
-            <Button
-              className="bg-[#0b6fae] text-white hover:bg-[#095f93]"
-              onClick={() => void handleStart()}
-              disabled={starting}
-            >
-              {starting ? "Эхлүүлж байна..." : "Эхлүүлэх"}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

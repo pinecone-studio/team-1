@@ -74,7 +74,8 @@ export async function transferAsset(
     employeeId: toEmployeeId,
     assignedAt: now,
     conditionAtAssign: conditionNoted,
-    status: "ACTIVE",
+    // Transfer is pending employee acceptance.
+    status: "PENDING",
     createdAt: now,
     updatedAt: now,
   });
@@ -82,7 +83,8 @@ export async function transferAsset(
   const assetBefore = await getAssetById(assetId);
   await db
     .update(assets)
-    .set({ status: "ASSIGNED", updatedAt: now })
+    // Keep asset not-yet-confirmed until employee calls updateAssignmentStatus(ACTIVE).
+    .set({ status: "AVAILABLE", updatedAt: now })
     .where(eq(assets.id, assetId));
 
   if (assetBefore) {
@@ -92,7 +94,7 @@ export async function transferAsset(
       "TRANSFERRED",
       fromEmployeeId,
       { status: assetBefore.status, assignedTo: fromEmployeeId },
-      { status: "ASSIGNED", fromEmployeeId, toEmployeeId, reason },
+      { status: "AVAILABLE", fromEmployeeId, toEmployeeId, reason, assignmentStatus: "PENDING" },
     );
   }
 
@@ -101,7 +103,7 @@ export async function transferAsset(
     await createNotification({
       employeeId: toEmployeeId,
       title: "Asset Transferred to You",
-      message: `Asset ${asset.assetTag} has been transferred to you from ${fromEmployeeId}.`,
+      message: `Asset ${asset.assetTag} has been transferred to you from ${fromEmployeeId}. Waiting for your confirmation.`,
       type: "INFO",
       link: `/my-assets/${assetId}`,
     });

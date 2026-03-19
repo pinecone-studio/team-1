@@ -69,7 +69,15 @@ export async function requestRepair(
     "REPAIR_REQUESTED",
     actorId,
     { status: "RETURNING" },
-    { status: "REPAIR_REQUESTED", conditionHr, photoR2Key: photoR2Key ?? undefined },
+    {
+      status: "REPAIR_REQUESTED",
+      conditionHr,
+      photoR2Key: photoR2Key ?? undefined,
+      inspectedBy,
+      offboardingReturnRequestId: returnRequestId,
+      messageMn:
+        "HR хүлээн авч шалгаж, засвар шаардлагатай гэж тэмдэглэж хөрөнгийн төлөвийг өөрчилсөн",
+    },
   );
 
   await db
