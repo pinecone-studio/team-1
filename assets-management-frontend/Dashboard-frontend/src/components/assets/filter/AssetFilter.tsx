@@ -294,6 +294,7 @@ export function AssetFilter() {
         allSelected={allSelected}
         onSelectAll={selectAll}
         onToggleSelect={toggleSelect}
+        onOpenAsset={(assetId) => setDetailAssetId(assetId)}
         onOpenQrForSingle={(a) => {
           setQrAssets([a]);
           setShowQrDialog(true);

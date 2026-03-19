@@ -214,9 +214,13 @@ function AssetDetailSkeleton() {
 export function AssetDetailContent({
   assetId,
   onClose,
+  offboardingConfirmMode = false,
+  onOffboardingConfirmed,
 }: {
   assetId: string;
   onClose?: () => void;
+  offboardingConfirmMode?: boolean;
+  onOffboardingConfirmed?: () => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isStatusEditing, setIsStatusEditing] = useState(false);
@@ -272,22 +276,28 @@ export function AssetDetailContent({
       awaitRefetchQueries: true,
     },
   );
-  const [assignAsset, { loading: assigning }] = useMutation(AssignAssetDocument, {
-    refetchQueries: [
-      { query: GetAssetDocument, variables: { id: assetId } },
-      { query: GetAssetKpisDocument },
-      { query: GetAssetsDocument },
-    ],
-    awaitRefetchQueries: true,
-  });
-  const [returnAsset, { loading: returning }] = useMutation(ReturnAssetDocument, {
-    refetchQueries: [
-      { query: GetAssetDocument, variables: { id: assetId } },
-      { query: GetAssetKpisDocument },
-      { query: GetAssetsDocument },
-    ],
-    awaitRefetchQueries: true,
-  });
+  const [assignAsset, { loading: assigning }] = useMutation(
+    AssignAssetDocument,
+    {
+      refetchQueries: [
+        { query: GetAssetDocument, variables: { id: assetId } },
+        { query: GetAssetKpisDocument },
+        { query: GetAssetsDocument },
+      ],
+      awaitRefetchQueries: true,
+    },
+  );
+  const [returnAsset, { loading: returning }] = useMutation(
+    ReturnAssetDocument,
+    {
+      refetchQueries: [
+        { query: GetAssetDocument, variables: { id: assetId } },
+        { query: GetAssetKpisDocument },
+        { query: GetAssetsDocument },
+      ],
+      awaitRefetchQueries: true,
+    },
+  );
   const [transferAsset, { loading: transferring }] = useMutation(
     TransferAssetDocument,
     {
@@ -304,6 +314,12 @@ export function AssetDetailContent({
   const [showTransferDialog, setShowTransferDialog] = useState(false);
   const [assignEmployeeId, setAssignEmployeeId] = useState("");
   const [transferToEmployeeId, setTransferToEmployeeId] = useState("");
+  const [confirmStatus, setConfirmStatus] = useState("AVAILABLE");
+  const [confirmLocationId, setConfirmLocationId] = useState("");
+  const [confirmSendTo, setConfirmSendTo] = useState<"HR" | "IT" | "Agniruu">(
+    "HR",
+  );
+  const [confirming, setConfirming] = useState(false);
   const actionLoading = assigning || returning || transferring;
 
   const asset = data?.asset as
@@ -392,6 +408,13 @@ export function AssetDetailContent({
     });
     setHasInitializedEdit(true);
   }, [asset, hasInitializedEdit]);
+
+  useEffect(() => {
+    if (!asset) return;
+    setConfirmStatus(asset.status ?? "ASSIGNED");
+    setConfirmLocationId(asset.locationId ?? "");
+    setConfirmSendTo("HR");
+  }, [asset]);
 
   const handleSave = async () => {
     const hasSalePriceInput = editData.salePrice.trim().length > 0;
@@ -513,6 +536,43 @@ export function AssetDetailContent({
     }
   };
 
+  const handleOffboardingConfirm = async () => {
+    if (!asset) return;
+    setConfirming(true);
+    const nextStatus =
+      confirmStatus === "ASSIGNED" ? "AVAILABLE" : confirmStatus;
+    const routingNote = `Offboarding баталгаажуулалт -> ${confirmSendTo}`;
+    const currentNotes = (asset.notes ?? "").trim();
+    const nextNotes = currentNotes
+      ? `${currentNotes}\n${routingNote}`
+      : routingNote;
+
+    try {
+      await updateAsset({
+        variables: {
+          id: assetId,
+          input: {
+            status: nextStatus,
+            locationId: confirmLocationId || undefined,
+            notes: nextNotes,
+          },
+        },
+      });
+      await refetch();
+      await client.refetchQueries({
+        include: [GetAssetsDocument, GetAssetKpisDocument],
+      });
+      toast.success("Хөрөнгө амжилттай баталгаажлаа.");
+      onOffboardingConfirmed?.();
+      onClose?.();
+    } catch (e) {
+      console.error(e);
+      toast.error("Баталгаажуулах үед алдаа гарлаа.");
+    } finally {
+      setConfirming(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (
       !window.confirm("Энэ хөрөнгийг устгах уу? Энэ үйлдлийг буцааж болохгүй.")
@@ -630,17 +690,19 @@ export function AssetDetailContent({
                 <Box className="h-4 w-4" />
                 Хөрөнгийн дэлгэрэнгүй
               </TabsTrigger>
-              <TabsTrigger
-                value="history"
-                className="gap-2 rounded-none px-0 py-3 text-[14px] font-semibold text-slate-500 data-active:text-slate-950 after:-bottom-px after:h-0.5"
-              >
-                <History className="h-4 w-4" />
-                Хөрөнгийн түүх
-              </TabsTrigger>
+              {!offboardingConfirmMode ? (
+                <TabsTrigger
+                  value="history"
+                  className="gap-2 rounded-none px-0 py-3 text-[14px] font-semibold text-slate-500 data-active:text-slate-950 after:-bottom-px after:h-0.5"
+                >
+                  <History className="h-4 w-4" />
+                  Хөрөнгийн түүх
+                </TabsTrigger>
+              ) : null}
             </TabsList>
 
             <div className="flex items-center gap-2 pb-3">
-              {!isEditing && (
+              {!isEditing && !offboardingConfirmMode && (
                 <Button
                   type="button"
                   variant="outline"
@@ -1029,37 +1091,76 @@ export function AssetDetailContent({
                       <Box className="h-10 w-10 text-slate-300" />
                     )}
                   </div>
+                </div>
 
-                  <div className="pt-1">
+                {!offboardingConfirmMode ? (
+                  <div className="flex min-w-[150px] flex-col items-center gap-2 pt-1">
                     <p className="text-[18px] font-semibold text-slate-500">
-                      Хөрөнгийн нэр
+                      Эзэмшигч
                     </p>
-                    <p className="mt-1 text-[18px] font-semibold leading-tight text-slate-950">
-                      {asset.assetTag || "—"}
-                    </p>
-                    <p className="mt-2 text-[16px] text-slate-500">
-                      {asset.serialNumber || "—"}
-                    </p>
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-sm font-semibold text-slate-700">
+                      {ownerInitials}
+                    </div>
                   </div>
-                </div>
-
-                <div className="flex min-w-[150px] flex-col items-center gap-2 pt-1">
-                  <p className="text-[18px] font-semibold text-slate-500">
-                    Эзэмшигч
-                  </p>
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-sm font-semibold text-slate-700">
-                    {ownerInitials}
-                  </div>
-                </div>
+                ) : null}
               </div>
 
               <div className="grid grid-cols-1 gap-x-12 gap-y-7 border-b border-slate-200 pb-6 md:grid-cols-2">
+                <div className="flex items-center">
+                  <p className="min-w-[145px] text-[18px] text-slate-500">
+                    Серийн дугаар
+                  </p>
+                  <p className="text-[17px] font-semibold text-slate-950">
+                    {asset.serialNumber || "—"}
+                  </p>
+                </div>
+
+                {!offboardingConfirmMode ? (
+                  <div className="flex items-center">
+                    <p className="min-w-[145px] text-[18px] text-slate-500">
+                      Ангилал
+                    </p>
+                    <p className="text-[17px] font-semibold text-black">
+                      {mainCategoryLabel}
+                    </p>
+                  </div>
+                ) : null}
+
+                {!offboardingConfirmMode ? (
+                  <div className="flex items-center ">
+                    <p className="min-w-[145px] text-[18px] text-slate-500">
+                      Дэд ангилал
+                    </p>
+                    <p className="text-[17px] font-semibold text-slate-950">
+                      {subCategoryLabel}
+                    </p>
+                  </div>
+                ) : null}
+
+                <div className="flex items-center ">
+                  <p className="min-w-[145px] text-[18px] text-slate-500">
+                    Авсан үнэ
+                  </p>
+                  <p className="text-[17px] font-semibold text-slate-950">
+                    {formatCurrency(asset.purchaseCost)}
+                  </p>
+                </div>
                 <div className="flex items-center ">
                   <p className="min-w-[145px] text-[18px] text-slate-500">
                     Төлөв
                   </p>
                   <div className="flex items-center gap-4">
-                    {isStatusEditing ? (
+                    {offboardingConfirmMode ? (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmStatus("AVAILABLE")}
+                        className="inline-flex h-10 min-w-[220px] items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-[16px] font-semibold text-slate-900 hover:bg-slate-50"
+                      >
+                        {confirmStatus === "AVAILABLE"
+                          ? "Эзэмшигчгүй"
+                          : `${STATUS_LABELS[confirmStatus] ?? confirmStatus} -> Эзэмшигчгүй`}
+                      </button>
+                    ) : isStatusEditing ? (
                       <Select
                         open={isStatusEditing}
                         onOpenChange={setIsStatusEditing}
@@ -1068,9 +1169,6 @@ export function AssetDetailContent({
                           void handleStatusQuickSave(value);
                         }}
                       >
-                        <SelectTrigger className="h-10 min-w-[184px] rounded-lg border-slate-200 bg-white px-3 text-[16px] font-semibold text-slate-900">
-                          <SelectValue placeholder="Төлөв сонгох" />
-                        </SelectTrigger>
                         <SelectContent className="z-90 rounded-xl border border-slate-200 bg-white p-1 shadow-[0_14px_32px_rgba(15,23,42,0.12)]">
                           {Object.entries(STATUS_LABELS).map(([key, label]) => (
                             <SelectItem
@@ -1086,74 +1184,105 @@ export function AssetDetailContent({
                     ) : (
                       <StatusChip status={resolvedStatus} />
                     )}
-                    <button
-                      type="button"
-                      onClick={() => setIsStatusEditing(true)}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100"
-                      aria-label="Төлөв засах"
-                    >
-                      <Pencil className="h-5 w-5" />
-                    </button>
+                    {!offboardingConfirmMode ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsStatusEditing(true)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100"
+                        aria-label="Төлөв засах"
+                      >
+                        <Pencil className="h-5 w-5" />
+                      </button>
+                    ) : null}
                   </div>
                 </div>
 
-                <div className="flex items-center">
-                  <p className="min-w-[145px] text-[18px] text-slate-500">
-                    Серийн дугаар
-                  </p>
-                  <p className="text-[17px] font-semibold text-slate-950">
-                    {asset.serialNumber || "—"}
-                  </p>
-                </div>
+                {!offboardingConfirmMode ? (
+                  <div className="flex items-center ">
+                    <p className="min-w-[145px] text-[18px] text-slate-500">
+                      Зарах үнэ
+                    </p>
+                    <p className="text-[17px] font-semibold text-slate-950">
+                      {salePriceValue ? formatCurrency(salePriceValue) : "-"}
+                    </p>
+                  </div>
+                ) : null}
 
-                <div className="flex items-center">
-                  <p className="min-w-[145px] text-[18px] text-slate-500">
-                    Ангилал
-                  </p>
-                  <p className="text-[17px] font-semibold text-black">
-                    {mainCategoryLabel}
-                  </p>
-                </div>
+                {offboardingConfirmMode ? (
+                  <div className="flex items-center">
+                    <p className="min-w-[145px] text-[18px] text-slate-500">
+                      Байршил
+                    </p>
+                    <div className="w-full max-w-[260px]">
+                      <Select
+                        value={confirmLocationId || undefined}
+                        onValueChange={setConfirmLocationId}
+                      >
+                        <SelectTrigger className="h-10 rounded-lg border-slate-200">
+                          <SelectValue placeholder="Байршил сонгох" />
+                        </SelectTrigger>
+                        <SelectContent className={FIELD_SELECT_CONTENT_CLASS}>
+                          {locationOptions.map((loc) => (
+                            <SelectItem key={loc.id} value={loc.id}>
+                              {loc.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ) : null}
 
-                <div className="flex items-center ">
-                  <p className="min-w-[145px] text-[18px] text-slate-500">
-                    Дэд ангилал
-                  </p>
-                  <p className="text-[17px] font-semibold text-slate-950">
-                    {subCategoryLabel}
-                  </p>
-                </div>
+                {offboardingConfirmMode ? (
+                  <div className="flex items-center">
+                    <p className="min-w-[145px] text-[18px] text-slate-500">
+                      Хэнд явуулах
+                    </p>
+                    <div className="w-full max-w-[260px]">
+                      <Select
+                        value={confirmSendTo}
+                        onValueChange={(value) =>
+                          setConfirmSendTo(value as "HR" | "IT" | "Agniruu")
+                        }
+                      >
+                        <SelectTrigger className="h-10 rounded-lg border-slate-200">
+                          <SelectValue placeholder="Хэнд явуулах" />
+                        </SelectTrigger>
+                        <SelectContent className={FIELD_SELECT_CONTENT_CLASS}>
+                          <SelectItem value="HR">HR</SelectItem>
+                          <SelectItem value="IT">IT</SelectItem>
+                          <SelectItem value="Agniruu">Agniruu</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ) : null}
 
-                <div className="flex items-center ">
-                  <p className="min-w-[145px] text-[18px] text-slate-500">
-                    Авсан үнэ
-                  </p>
-                  <p className="text-[17px] font-semibold text-slate-950">
-                    {formatCurrency(asset.purchaseCost)}
-                  </p>
-                </div>
-
-                <div className="flex items-center ">
-                  <p className="min-w-[145px] text-[18px] text-slate-500">
-                    Зарах үнэ
-                  </p>
-                  <p className="text-[17px] font-semibold text-slate-950">
-                    {salePriceValue ? formatCurrency(salePriceValue) : "-"}
-                  </p>
-                </div>
-
-                <div className="flex items-start  md:col-span-2">
-                  <p className="min-w-[145px] pt-0.5 text-[18px] text-slate-500">
-                    Байршил
-                  </p>
-                  <p className="text-[17px] font-semibold leading-relaxed text-slate-950">
-                    {asset.locationPath || "—"}
-                  </p>
-                </div>
+                {!offboardingConfirmMode ? (
+                  <div className="flex items-start  md:col-span-2">
+                    <p className="min-w-[145px] pt-0.5 text-[18px] text-slate-500">
+                      Байршил
+                    </p>
+                    <p className="text-[17px] font-semibold leading-relaxed text-slate-950">
+                      {asset.locationPath || "—"}
+                    </p>
+                  </div>
+                ) : null}
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-4 pt-5">
-                {asset.assignedTo ? (
+                {offboardingConfirmMode ? (
+                  <div className="flex w-full justify-end">
+                    <Button
+                      type="button"
+                      disabled={confirming}
+                      onClick={handleOffboardingConfirm}
+                      className="h-12 rounded-xl bg-[#0b4d78] px-9 text-[18px] text-white hover:bg-[#0a4166]"
+                    >
+                      {confirming ? "Баталгаажуулж байна..." : "Баталгаажуулах"}
+                    </Button>
+                  </div>
+                ) : asset.assignedTo ? (
                   <>
                     <Button
                       type="button"
@@ -1194,77 +1323,78 @@ export function AssetDetailContent({
           )}
         </TabsContent>
 
-        {/* History Content */}
-        <TabsContent
-          value="history"
-          className="m-0 max-h-[420px] overflow-y-auto border-t border-slate-100 bg-white"
-        >
-          <div className="space-y-4 p-6">
-            {historyItems.length ? (
-              historyItems.map((h) => {
-                const actorName = h.actor
-                  ? `${h.actor.lastName?.[0] ?? ""}.${h.actor.firstName ?? ""}`
-                  : "—";
-                const eventLabel =
-                  HISTORY_EVENT_LABELS[h.eventType] ?? h.eventType ?? "—";
-                const when = new Date(h.timestamp);
-                const formatted = `${when.toLocaleDateString()} ${when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-                const isOpen = expandedHistoryId === h.id;
-                return (
-                  <div
-                    key={h.id}
-                    className="flex items-center justify-between rounded-2xl border border-slate-200 px-5 py-4"
-                  >
-                    <div className="text-[16px] font-semibold text-slate-900">
-                      {eventLabel}
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100 text-[11px] text-slate-500">
-                          {h.actor?.imageUrl ? (
-                            <img
-                              src={h.actor.imageUrl}
-                              alt={actorName}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            actorName.slice(0, 1)
-                          )}
-                        </div>
-                        <div className="leading-tight">
-                          <div className="text-[15px] font-semibold text-slate-900">
-                            {actorName}
-                          </div>
-                          <div className="text-[13px] text-slate-500">
-                            {formatted}
-                          </div>
-                        </div>
+        {!offboardingConfirmMode ? (
+          <TabsContent
+            value="history"
+            className="m-0 max-h-[420px] overflow-y-auto border-t border-slate-100 bg-white"
+          >
+            <div className="space-y-4 p-6">
+              {historyItems.length ? (
+                historyItems.map((h) => {
+                  const actorName = h.actor
+                    ? `${h.actor.lastName?.[0] ?? ""}.${h.actor.firstName ?? ""}`
+                    : "—";
+                  const eventLabel =
+                    HISTORY_EVENT_LABELS[h.eventType] ?? h.eventType ?? "—";
+                  const when = new Date(h.timestamp);
+                  const formatted = `${when.toLocaleDateString()} ${when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+                  const isOpen = expandedHistoryId === h.id;
+                  return (
+                    <div
+                      key={h.id}
+                      className="flex items-center justify-between rounded-2xl border border-slate-200 px-5 py-4"
+                    >
+                      <div className="text-[16px] font-semibold text-slate-900">
+                        {eventLabel}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExpandedHistoryId(isOpen ? null : h.id)
-                        }
-                        className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50"
-                        aria-label="Дэлгэрэнгүй"
-                      >
-                        <ChevronDown
-                          className={`h-4 w-4 transition-transform ${
-                            isOpen ? "rotate-180" : ""
-                          }`}
-                        />
-                      </button>
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100 text-[11px] text-slate-500">
+                            {h.actor?.imageUrl ? (
+                              <img
+                                src={h.actor.imageUrl}
+                                alt={actorName}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              actorName.slice(0, 1)
+                            )}
+                          </div>
+                          <div className="leading-tight">
+                            <div className="text-[15px] font-semibold text-slate-900">
+                              {actorName}
+                            </div>
+                            <div className="text-[13px] text-slate-500">
+                              {formatted}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedHistoryId(isOpen ? null : h.id)
+                          }
+                          className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50"
+                          aria-label="Дэлгэрэнгүй"
+                        >
+                          <ChevronDown
+                            className={`h-4 w-4 transition-transform ${
+                              isOpen ? "rotate-180" : ""
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="flex h-32 items-center justify-center text-[13px] italic text-slate-300">
-                Түүх олдсонгүй.
-              </div>
-            )}
-          </div>
-        </TabsContent>
+                  );
+                })
+              ) : (
+                <div className="flex h-32 items-center justify-center text-[13px] italic text-slate-300">
+                  Түүх олдсонгүй.
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        ) : null}
       </Tabs>
 
       <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
@@ -1293,10 +1423,7 @@ export function AssetDetailContent({
             </Select>
           </div>
           <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setShowAssignDialog(false)}
-            >
+            <Button variant="ghost" onClick={() => setShowAssignDialog(false)}>
               Цуцлах
             </Button>
             <Button

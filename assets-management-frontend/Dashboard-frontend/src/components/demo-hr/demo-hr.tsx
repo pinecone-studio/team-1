@@ -272,8 +272,19 @@ export function DemoHRContent() {
           inspectedBy: "demo-hr",
         },
       });
+      const normalized = conditionHr.trim().toUpperCase();
+      const damaged = new Set([
+        "DAMAGED",
+        "BROKEN",
+        "DESTROYED",
+        "FAULTY",
+        "NON_FUNCTIONAL",
+        "LOST",
+      ]).has(normalized);
       toast.success(
-        "Буцаах хүсэлт зөвшөөрөгдөж, хөрөнгө боломжтой боллоо. IT data wipe даалгавар үүслээ.",
+        damaged
+          ? "Буцаах хүсэлт зөвшөөрөгдөж, IT data wipe даалгавар үүслээ."
+          : "Буцаалт баталгаажлаа. Ажилтан TERMINATED, хөрөнгө AVAILABLE боллоо.",
       );
       await refetchOffboardingRequests();
       await refetch();
@@ -475,21 +486,6 @@ export function DemoHRContent() {
               >
                 <LogOut className="h-4 w-4" />
                 Ажлаас гаргах
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSelectedEmployeeForRequests(
-                    employeesSorted.length > 0
-                      ? employeesSorted[0].id
-                      : "__mock__",
-                  );
-                  setShowReturnRequestsModal(true);
-                }}
-                className="h-11 shrink-0 rounded-[10px] border-amber-400 bg-amber-50 px-4 text-base font-medium text-amber-800 shadow-sm hover:bg-amber-100"
-              >
-                <Bell className="h-4 w-4" />
-                Буцаах хүсэлтийн жишээ харах
               </Button>
             </div>
 
@@ -1000,7 +996,7 @@ export function DemoHRContent() {
                 {selectedEmployeeForRequests === "__mock__"
                   ? "Жишээ (mock): ажилтнаас ирсэн буцаах хүсэлт хэрхэн HR дээр харагдахыг харуулна. Backend deploy хийгээгүй үед ч энэ товчоор харна."
                   : selectedEmployeeName
-                    ? `${selectedEmployeeName}-аас ирсэн буцаах хүсэлтүүд. Нөхцөл шалгаад зөв бол зөвшөөрөх (assignment хаагдана, asset AVAILABLE, IT wipe); эвдрэлтэй бол зураг оруулж засвар хүсэх (assignment хаагдана, asset REPAIR_REQUESTED, IT засвар).`
+                    ? ``
                     : "Ажилтан сонгоно уу."}
               </DialogDescription>
             </DialogHeader>
@@ -1127,11 +1123,11 @@ export function DemoHRContent() {
                                     className="gap-1 text-green-700 border-green-600 hover:bg-green-50"
                                     onClick={() =>
                                       toast.info(
-                                        "Mock: Зөвшөөрөх → AVAILABLE + IT wipe.",
+                                        "Mock: Хүсэлт илгээх → AVAILABLE + IT wipe.",
                                       )
                                     }
                                   >
-                                    Зөвшөөрөх (AVAILABLE + wipe)
+                                    Хүсэлт илгээх
                                   </Button>
                                 ) : (
                                   <Button
@@ -1159,29 +1155,6 @@ export function DemoHRContent() {
                 <>
                   {pendingRequests.length > 0 ? (
                     <>
-                      <div className="rounded-lg border border-green-200 bg-green-50/80 p-3 text-sm text-green-900">
-                        <p className="font-medium mb-1">
-                          Энэ ажилтнаас ирсэн буцаах хүсэлтүүд (бодит)
-                        </p>
-                        <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-                          <li>
-                            Нөхцөл шалгаад «HR шалгасан нөхцөл»-д оруулна
-                            (GOOD/FAIR/DAMAGED).
-                          </li>
-                          <li>
-                            <strong>Зөв (GOOD/FAIR)</strong> бол «Зөвшөөрөх»
-                            дарна → хүсэлт хүлээн авна, assignment хаагдана,
-                            asset status AVAILABLE, IT руу wipe даалгавар явна.
-                          </li>
-                          <li>
-                            <strong>Эвдрэлтэй (DAMAGED)</strong> бол нөхцөл
-                            сонгоод «Эвдрэлтэй үед зураг»-аас зураг оруулж
-                            хадгална, «Засвар хүсэх» дарна → assignment
-                            хаагдана, asset status REPAIR_REQUESTED, IT руу
-                            засварын хүсэлт явна.
-                          </li>
-                        </ul>
-                      </div>
                       <div className="w-full overflow-x-auto">
                         <Table className="min-w-[980px]">
                           <TableHeader>
@@ -1289,7 +1262,7 @@ export function DemoHRContent() {
                                           )
                                         }
                                       >
-                                        Зөвшөөрөх (AVAILABLE + wipe)
+                                        Хүсэлт илгээх
                                       </Button>
                                     ) : (
                                       <Button
@@ -1320,16 +1293,7 @@ export function DemoHRContent() {
                     </>
                   ) : (
                     /* Бодит хүсэлт байхгүй үед бодит урсгалтай ижил UI (нөхцөл, зураг, товч) mock-оор */
-                    <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-4">
-                      <p className="text-sm font-medium text-amber-900 mb-1">
-                        {selectedEmployeeName || "Энэ ажилтан"}-аас ирсэн буцаах
-                        хүсэлтүүд
-                      </p>
-                      <p className="text-muted-foreground text-xs mb-3">
-                        Одоогоор энэ ажилтан буцаах хүсэлт илгээгээгүй байна.
-                        Доор жишээ (mock) — нөхцөл сонгоод товчнуудыг туршина
-                        уу.
-                      </p>
+                    <div className="rounded-lg border border-dashed border-sky-300 bg-sky-50/70 p-4">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -1443,11 +1407,11 @@ export function DemoHRContent() {
                                       className="gap-1 text-green-700 border-green-600 hover:bg-green-50"
                                       onClick={() =>
                                         toast.info(
-                                          "Mock: бодит хүсэлт байхгүй тул үйлдэл хийгдэхгүй. Зөвшөөрөх → AVAILABLE + IT wipe.",
+                                          "Mock: бодит хүсэлт байхгүй тул үйлдэл хийгдэхгүй. Хүсэлт илгээх → AVAILABLE + IT wipe.",
                                         )
                                       }
                                     >
-                                      Зөвшөөрөх (AVAILABLE + wipe)
+                                      Хүсэлт илгээх
                                     </Button>
                                   ) : (
                                     <Button
