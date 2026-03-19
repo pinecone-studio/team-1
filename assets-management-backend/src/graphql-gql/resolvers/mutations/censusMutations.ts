@@ -14,6 +14,9 @@ export const censusMutations = {
         scope: string;
         scopeEmployeeIds?: string[] | null;
         createdBy: string;
+        coverageMode?: string | null;
+        department?: string | null;
+        categoryId?: string | null;
       };
     },
   ) => {
@@ -22,6 +25,9 @@ export const censusMutations = {
       scope: (args.input.scope as any) ?? "ORG",
       scopeEmployeeIds: args.input.scopeEmployeeIds ?? null,
       createdBy: args.input.createdBy,
+      coverageMode: args.input.coverageMode ?? null,
+      department: args.input.department ?? null,
+      categoryId: args.input.categoryId ?? null,
     });
     return getCensusProgress(started.id);
   },
@@ -56,4 +62,3 @@ export const censusMutations = {
     },
   ) => closeCensus(args.censusId, args.closedBy),
 };
-

@@ -473,6 +473,9 @@ export const typeDefs = /* GraphQL */ `
     scope: String!
     scopeEmployeeIds: [ID!]
     createdBy: ID!
+    coverageMode: String
+    department: String
+    categoryId: ID
   }
 
   input CensusResponseInput {
