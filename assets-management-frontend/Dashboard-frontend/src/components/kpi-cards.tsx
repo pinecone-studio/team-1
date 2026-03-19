@@ -11,7 +11,7 @@ import {
 import { useQuery } from "@apollo/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { GetAssetKpisDocument } from "@/gql/graphql";
+import { GetAssetsDocument } from "@/gql/graphql";
 
 const formatMoney = (value: number) =>
   `${new Intl.NumberFormat("mn-MN").format(value)}₮`;
@@ -26,19 +26,75 @@ const formatPartAndPercent = (part: number, total: number) => {
 };
 
 export function KPICards() {
-  const { data, loading: assetsLoading } = useQuery(GetAssetKpisDocument);
+  const { data, loading: assetsLoading } = useQuery(GetAssetsDocument, {
+    variables: {
+      office: undefined,
+      categoryIds: undefined,
+      subCategoryIds: undefined,
+      locationIds: undefined,
+    },
+  });
 
-  const kpis = data?.assetKpis;
-  const totalAssets = kpis?.totalCount ?? 0;
-  const totalValue = kpis?.totalValue ?? 0;
+  const normalizedAssets =
+    data?.assets?.map((asset) => {
+      const currentBookValue = asset.currentBookValue ?? asset.purchaseCost ?? 0;
+      const status =
+        asset.status === "AVAILABLE" && currentBookValue > 0
+          ? "FOR_SALE"
+          : asset.status;
+
+      return {
+        status,
+        currentBookValue,
+      };
+    }) ?? [];
+
+  const totalAssets = normalizedAssets.length;
+  const totalValue = normalizedAssets.reduce(
+    (sum, asset) => sum + asset.currentBookValue,
+    0,
+  );
+
+  const assignedAssets = normalizedAssets.filter(
+    (asset) => asset.status === "ASSIGNED",
+  );
+  const unassignedAssets = normalizedAssets.filter(
+    (asset) => asset.status === "AVAILABLE",
+  );
+  const sellableAssets = normalizedAssets.filter(
+    (asset) => asset.status === "FOR_SALE",
+  );
+  const brokenAssets = normalizedAssets.filter((asset) =>
+    ["DAMAGED", "DISPOSAL_REQUESTED", "PENDING_DISPOSAL", "DISPOSED"].includes(
+      asset.status ?? "",
+    ),
+  );
+
+  const assignedValue = assignedAssets.reduce(
+    (sum, asset) => sum + asset.currentBookValue,
+    0,
+  );
+  const unassignedValue = unassignedAssets.reduce(
+    (sum, asset) => sum + asset.currentBookValue,
+    0,
+  );
+  const sellableValue = sellableAssets.reduce(
+    (sum, asset) => sum + asset.currentBookValue,
+    0,
+  );
+  const brokenValue = brokenAssets.reduce(
+    (sum, asset) => sum + asset.currentBookValue,
+    0,
+  );
+
   const assignedPercent =
-    totalAssets > 0 ? ((kpis?.assignedCount ?? 0) / totalAssets) * 100 : 0;
+    totalAssets > 0 ? (assignedAssets.length / totalAssets) * 100 : 0;
   const unassignedPercent =
-    totalAssets > 0 ? ((kpis?.unassignedCount ?? 0) / totalAssets) * 100 : 0;
+    totalAssets > 0 ? (unassignedAssets.length / totalAssets) * 100 : 0;
   const sellablePercent =
-    totalAssets > 0 ? ((kpis?.forSaleCount ?? 0) / totalAssets) * 100 : 0;
+    totalAssets > 0 ? (sellableAssets.length / totalAssets) * 100 : 0;
   const brokenPercent =
-    totalAssets > 0 ? ((kpis?.brokenCount ?? 0) / totalAssets) * 100 : 0;
+    totalAssets > 0 ? (brokenAssets.length / totalAssets) * 100 : 0;
 
   const valuePercentOfTotal = (value: number) =>
     totalValue > 0 ? (value / totalValue) * 100 : 0;

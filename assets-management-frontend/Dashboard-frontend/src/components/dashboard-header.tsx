@@ -8,7 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SignInButton, SignUpButton, UserButton, useAuth } from "@clerk/nextjs";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   AssetFieldsFragmentDoc,
   EmployeesDocument,
@@ -91,9 +95,7 @@ function normalizeSearchChunk(value: string) {
 }
 
 function getHighlightRanges(value: string, query: string) {
-  const terms = normalizeSearchText(query)
-    .split(/\s+/)
-    .filter(Boolean);
+  const terms = normalizeSearchText(query).split(/\s+/).filter(Boolean);
 
   if (terms.length === 0) return [];
 
@@ -166,7 +168,9 @@ function renderHighlightedText(
   ranges.forEach(([start, end], index) => {
     if (cursor < start) {
       parts.push(
-        <span key={`text-${index}-${cursor}`}>{value.slice(cursor, start)}</span>,
+        <span key={`text-${index}-${cursor}`}>
+          {value.slice(cursor, start)}
+        </span>,
       );
     }
 
@@ -180,7 +184,7 @@ function renderHighlightedText(
         }
       >
         {value.slice(start, end)}
-      </span>
+      </span>,
     );
     cursor = end;
   });
@@ -283,9 +287,7 @@ export function DashboardHeader({ sidebarOpen }: { sidebarOpen: boolean }) {
   }, []);
 
   const dividerWidth = sidebarOpen ? "0.5px" : "1px";
-  const dividerLeft = sidebarOpen
-    ? "calc(240px - 0.5px)"
-    : "calc(72px - 1px)";
+  const dividerLeft = sidebarOpen ? "calc(240px - 0.5px)" : "calc(72px - 1px)";
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center justify-between border-b bg-white">
@@ -345,12 +347,12 @@ export function DashboardHeader({ sidebarOpen }: { sidebarOpen: boolean }) {
 
             {isOpen && trimmedQuery.length > 0 && (
               <div
-                className="absolute left-0 top-full z-50 mt-3 max-h-[560px] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-slate-200/90 bg-white/95 p-3 shadow-[0_20px_48px_rgba(15,23,42,0.16)] backdrop-blur transition-all duration-300 ease-out"
+                className="absolute left-0 top-full z-50 mt-3 max-h-140 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-slate-200/90 bg-white/95 p-3 shadow-[0_20px_48px_rgba(15,23,42,0.16)] backdrop-blur transition-all duration-300 ease-out"
                 style={{
                   width: sidebarOpen ? "min(74vw, 820px)" : "min(86vw, 920px)",
                 }}
               >
-                <span className="absolute -top-[7px] left-12 h-3.5 w-3.5 rotate-45 border-l border-t border-slate-200 bg-white" />
+                <span className="absolute -top-1.75 left-12 h-3.5 w-3.5 rotate-45 border-l border-t border-slate-200 bg-white" />
                 {matchedAssets.length === 0 && matchedEmployees.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-slate-200 px-3 py-6 text-center text-sm text-slate-500">
                     Тохирох үр дүн олдсонгүй.
@@ -362,7 +364,7 @@ export function DashboardHeader({ sidebarOpen }: { sidebarOpen: boolean }) {
                         Хайлтын үр дүн
                       </p>
                       <div className="flex items-center gap-2">
-                        <span className="max-w-[220px] truncate rounded-md bg-slate-100 px-2 py-1 text-[11px] text-slate-600">
+                        <span className="max-w-55 truncate rounded-md bg-slate-100 px-2 py-1 text-[11px] text-slate-600">
                           “{query.trim()}”
                         </span>
                         <span className="rounded-full bg-slate-700 px-2 py-0.5 text-[11px] font-semibold text-white">
@@ -545,7 +547,11 @@ export function DashboardHeader({ sidebarOpen }: { sidebarOpen: boolean }) {
         ) : (
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="icon" className="h-8 w-8 rounded-full">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-full"
+              >
                 <UserIcon className="h-4 w-4" />
                 <span className="sr-only">Нэвтрэх / Бүртгүүлэх</span>
               </Button>
@@ -557,7 +563,9 @@ export function DashboardHeader({ sidebarOpen }: { sidebarOpen: boolean }) {
             >
               <div className="px-2 pb-2 pt-1">
                 <p className="text-sm font-semibold text-slate-900">Account</p>
-                <p className="text-xs text-slate-500">Нэвтрэх эсвэл бүртгүүлэх</p>
+                <p className="text-xs text-slate-500">
+                  Нэвтрэх эсвэл бүртгүүлэх
+                </p>
               </div>
               <div className="grid gap-2 p-2 pt-0">
                 <SignInButton mode="modal">

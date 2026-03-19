@@ -105,6 +105,10 @@ export function useAssetsData(statusFilter: string) {
             : a.purchaseCost ?? 0;
       const categoryName = typeof a.category === "string" ? a.category : "";
       const rawLocationPath = (a.locationPath ?? "").trim();
+      const normalizedStatus =
+        a.status === "AVAILABLE" && (a.currentBookValue ?? 0) > 0
+          ? "FOR_SALE"
+          : a.status;
       const friendlyLocation =
         rawLocationPath && !/^[0-9a-f-]{20,}$/i.test(rawLocationPath)
           ? rawLocationPath
