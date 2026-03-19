@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { DashboardHeader } from "@/components/dashboard-header";
@@ -17,8 +18,34 @@ import OffboardingContent from "@/components/offboarding/offboarding-content";
 import { ReportContent } from "@/components/reports/report-content";
 
 export default function DashboardPage() {
-  const [activeTitle, setActiveTitle] = useState("Хянах самбар");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const resolvedTitle = useMemo(() => {
+    const section = searchParams.get("section");
+    if (section === "assets") return "Эд Хөрөнгө";
+    return "Хянах самбар";
+  }, [searchParams]);
+
+  const [activeTitle, setActiveTitle] = useState(resolvedTitle);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    setActiveTitle(resolvedTitle);
+  }, [resolvedTitle]);
+
+  const handleOpenAssets = (status: string) => {
+    setActiveTitle("Эд Хөрөнгө");
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("section", "assets");
+    if (status === "all") {
+      params.delete("status");
+    } else {
+      params.set("status", status);
+    }
+
+    router.replace(`/?${params.toString()}`);
+  };
 
   return (
     <div className="h-svh overflow-hidden bg-muted/30">
@@ -44,7 +71,9 @@ export default function DashboardPage() {
 
         <SidebarInset className="h-[calc(100svh-56px)] overflow-y-auto bg-transparent">
           <div className="-mt-2">
-            {activeTitle === "Хянах самбар" ? <DashboardContent /> : null}
+            {activeTitle === "Хянах самбар" ? (
+              <DashboardContent onOpenAssets={handleOpenAssets} />
+            ) : null}
             {activeTitle === "Хөрөнгө" ? <AssetsContent /> : null}
             {activeTitle === "Эд Хөрөнгө" ? <AssetFilter /> : null}
             {activeTitle === "Тайлан" ? <ReportContent /> : null}

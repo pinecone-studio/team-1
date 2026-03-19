@@ -290,7 +290,7 @@ export function DashboardHeader({ sidebarOpen }: { sidebarOpen: boolean }) {
   const dividerLeft = sidebarOpen ? "calc(240px - 0.5px)" : "calc(72px - 1px)";
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center justify-between border-b bg-white">
+    <header className="fixed inset-x-0 top-0 z-50 flex h-14 pr-7 items-center justify-between border-b bg-white">
       <span
         className="absolute top-0 hidden h-14 bg-sidebar-border/90 transition-[left,width] duration-300 ease-out md:block"
         style={{ left: dividerLeft, width: dividerWidth }}
@@ -529,7 +529,7 @@ export function DashboardHeader({ sidebarOpen }: { sidebarOpen: boolean }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 ">
         <Button variant="ghost" size="icon" className="h-8 w-8">
           <BellDot />
         </Button>
@@ -580,7 +580,6 @@ export function DashboardHeader({ sidebarOpen }: { sidebarOpen: boolean }) {
             </PopoverContent>
           </Popover>
         )}
-        <img src={"2SVG.svg"} alt="" className="h-8 w-8 object-contain" />
       </div>
     </header>
   );

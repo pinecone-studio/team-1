@@ -41,7 +41,7 @@ const statusMap: Record<string, string> = {
   PENDING_DISPOSAL: "Устгал хүлээгдэж буй",
   DISPOSED: "Устсан",
   FOR_SALE: "Зарж болох",
-  ASIGN_REQUESTED: "Хуваарилалт хүссэн",
+  ASSIGN_REQUESTED: "Хуваарилалт хүссэн",
   RETURNING: "Буцааж байна",
   RETURNED: "Буцаасан",
   DAMAGED: "Эвдрэлтэй",
@@ -182,6 +182,11 @@ export function AssetsTable({
     dateRange,
   ]);
 
+  const emptyStateMessage =
+    dateFilter || dateRange
+      ? "Сонгосон хугацаанд утга олдсонгүй."
+      : "Утга олдсонгүй.";
+
   const locationSource = allAssets ?? assets;
 
   type LocationNode = { name: string; children: Map<string, LocationNode> };
@@ -282,7 +287,7 @@ export function AssetsTable({
       className="rounded-md font-inter  h-full overflow-auto"
       onClick={() => setOpenFilter(null)}
     >
-      <Table className="table-fixed w-full border-separate pb-20 border-spacing-y-2">
+      <Table className="table-fixed w-full border-separate pb-50 border-spacing-y-2">
         <TableHeader>
           <TableRow className="bg-[#0f4c6e] text-white hover:bg-[#0f4c6e]!">
             <TableHead className="w-10 text-white">
@@ -815,7 +820,7 @@ export function AssetsTable({
                 colSpan={12}
                 className="py-8 text-center text-sm text-muted-foreground"
               >
-                Утга олдсонгүй.
+                {emptyStateMessage}
               </TableCell>
             </TableRow>
           )}
@@ -863,8 +868,15 @@ export function AssetsTable({
                   <StatusBadge status={asset.status} />
                 </TableCell>
 
-                <TableCell className="py-2 truncate max-w-40">
-                  {asset.location ?? "—"}
+                <TableCell className="group relative py-2 max-w-40">
+                  <span className="block truncate">
+                    {asset.location ?? "—"}
+                  </span>
+                  {asset.location ? (
+                    <div className="pointer-events-none absolute left-0 top-full z-50 mt-1 hidden max-w-72 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-lg group-hover:block">
+                      {asset.location}
+                    </div>
+                  ) : null}
                 </TableCell>
 
                 <TableCell className="py-2 text-left pl-6 truncate max-w-35">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
   type LucideIcon,
   Package,
@@ -18,7 +19,12 @@ const formatMoney = (value: number) =>
 
 const formatPercent = (value: number) => `${Math.round(value)}%`;
 
-export function KPICards() {
+export function KPICards({
+  onOpenAssets,
+}: {
+  onOpenAssets?: (status: string) => void;
+}) {
+  const router = useRouter();
   const { data, loading: assetsLoading } = useQuery(GetAssetsDocument, {
     variables: {
       office: undefined,
@@ -104,6 +110,7 @@ export function KPICards() {
       icon: Package,
       iconBorder: "border-sky-400",
       iconColor: "text-sky-400",
+      targetStatus: "all",
     },
     {
       title: "Эзэмшигчтэй",
@@ -114,6 +121,7 @@ export function KPICards() {
       icon: UserCheck,
       iconBorder: "border-green-400",
       iconColor: "text-green-400",
+      targetStatus: "ASSIGNED",
     },
     {
       title: "Эзэмшигчгүй",
@@ -124,6 +132,7 @@ export function KPICards() {
       icon: UserRoundX,
       iconBorder: "border-orange-400",
       iconColor: "text-orange-400",
+      targetStatus: "AVAILABLE",
     },
     {
       title: "Зарж болох",
@@ -134,6 +143,7 @@ export function KPICards() {
       icon: CircleDollarSign,
       iconBorder: "border-yellow-400",
       iconColor: "text-yellow-400",
+      targetStatus: "FOR_SALE",
     },
     {
       title: "Эвдрэлтэй",
@@ -144,8 +154,18 @@ export function KPICards() {
       icon: Wrench,
       iconBorder: "border-red-400",
       iconColor: "text-red-400",
+      targetStatus: "BROKEN",
     },
   ];
+
+  const handleOpenAssets = (status: string) => {
+    onOpenAssets?.(status);
+    const params = new URLSearchParams({ section: "assets" });
+    if (status !== "all") {
+      params.set("status", status);
+    }
+    router.push(`/?${params.toString()}`);
+  };
 
   return (
     <div className="space-y-6">
@@ -155,7 +175,12 @@ export function KPICards() {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {kpiData.map((kpi) => (
-          <KPICard key={kpi.title} {...kpi} loading={assetsLoading} />
+          <KPICard
+            key={kpi.title}
+            {...kpi}
+            loading={assetsLoading}
+            onOpen={() => handleOpenAssets(kpi.targetStatus)}
+          />
         ))}
       </div>
     </div>
@@ -173,6 +198,7 @@ interface KPICardProps {
   iconBorder?: string;
   iconColor: string;
   loading?: boolean;
+  onOpen?: () => void;
 }
 
 function KPICard({
@@ -186,6 +212,7 @@ function KPICard({
   iconBorder,
   iconColor,
   loading,
+  onOpen,
 }: KPICardProps) {
   if (loading) {
     return (
@@ -208,7 +235,18 @@ function KPICard({
   }
 
   return (
-    <Card className="rounded-xl border bg-white shadow-sm">
+    <Card
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen?.();
+        }
+      }}
+      className="cursor-pointer rounded-xl border bg-white shadow-sm transition-colors hover:border-black"
+    >
       <CardContent className=" space-y-5">
         <div className="flex justify-between items-start">
           <div>
