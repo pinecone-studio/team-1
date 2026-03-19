@@ -53,7 +53,7 @@ export function DemoITPendingDisposalsCard({
           <div className="overflow-hidden rounded-2xl border border-border/60">
             <Table>
               <TableHeader>
-                <TableRow className="border-0 bg-[#0b6fae] hover:bg-[#0b6fae]">
+                <TableRow className="border-0 bg-[#0f4c6e] hover:bg-[#0b6fae]">
                   <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
                     №
                   </TableHead>
@@ -77,8 +77,12 @@ export function DemoITPendingDisposalsCard({
               <TableBody className="[&_tr:last-child]:border-0">
                 {pendingDisposals.map((req, index) => {
                   const r = req as DisposalItem;
-                  const assetTag = normalizeAssetTag(r.asset?.assetTag ?? r.assetId);
-                  const serial = (r.asset as { serialNumber?: string } | undefined)?.serialNumber ?? "—";
+                  const assetTag = normalizeAssetTag(
+                    r.asset?.assetTag ?? r.assetId,
+                  );
+                  const serial =
+                    (r.asset as { serialNumber?: string } | undefined)
+                      ?.serialNumber ?? "—";
                   const requesterName = r.requestedBy
                     ? [r.requestedBy.firstName, r.requestedBy.lastName]
                         .filter(Boolean)

@@ -562,7 +562,7 @@ export function ReportContent() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="space-y-2">
-            <h1 className="text-[38px] font-bold tracking-[-0.03em] text-[#111827]">
+            <h1 className="text-[25px] font-bold tracking-[-0.03em] text-[#111827]">
               Тайлан
             </h1>
           </div>

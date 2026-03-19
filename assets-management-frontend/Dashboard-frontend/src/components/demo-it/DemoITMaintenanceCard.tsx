@@ -39,7 +39,9 @@ export function DemoITMaintenanceCard({
   onReject,
   updatingMaintenance,
 }: DemoITMaintenanceCardProps) {
-  const [detailTicket, setDetailTicket] = useState<MaintenanceItem | null>(null);
+  const [detailTicket, setDetailTicket] = useState<MaintenanceItem | null>(
+    null,
+  );
 
   return (
     <>
@@ -58,7 +60,7 @@ export function DemoITMaintenanceCard({
             <div className="overflow-hidden rounded-2xl border border-border/60">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-0 bg-[#0b6fae] hover:bg-[#0b6fae]">
+                  <TableRow className="border-0 bg-[#0f4c6e] hover:bg-[#0b6fae]">
                     <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
                       №
                     </TableHead>
@@ -140,7 +142,7 @@ export function DemoITMaintenanceCard({
                         <div className="flex items-center justify-end gap-2">
                           <Button
                             size="sm"
-                            className="h-8 gap-2 rounded-md bg-[#0b6fae] text-white hover:bg-[#095f93]"
+                            className="h-8 gap-2 rounded-md bg-[#0f4c6e] text-white hover:bg-[#095f93]"
                             onClick={() => onApprove(t.id)}
                             disabled={
                               updatingMaintenance ||
@@ -209,7 +211,9 @@ export function DemoITMaintenanceCard({
             </div>
             <div>
               <span className="font-medium">Ирсэн огноо:</span>{" "}
-              {detailTicket ? new Date(detailTicket.createdAt).toLocaleString() : "—"}
+              {detailTicket
+                ? new Date(detailTicket.createdAt).toLocaleString()
+                : "—"}
             </div>
             <div className="rounded-md border bg-muted/20 p-3">
               <p className="mb-1 font-medium">Ирсэн тайлбар / comment</p>

@@ -38,7 +38,7 @@ export function DemoITAllDisposalsCard({
         <div className="overflow-hidden rounded-2xl border border-border/60">
           <Table>
             <TableHeader>
-              <TableRow className="border-0 bg-[#0b6fae] hover:bg-[#0b6fae]">
+              <TableRow className="border-0 bg-[#0f4c6e] hover:bg-[#0b6fae]">
                 <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
                   №
                 </TableHead>
@@ -65,7 +65,10 @@ export function DemoITAllDisposalsCard({
             <TableBody className="[&_tr:last-child]:border-0">
               {allDisposals.length === 0 ? (
                 <TableRow className="bg-white">
-                  <TableCell colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  <TableCell
+                    colSpan={7}
+                    className="px-4 py-8 text-center text-sm text-muted-foreground"
+                  >
                     Баталгаажсан хүсэлт байхгүй байна.
                   </TableCell>
                 </TableRow>
@@ -78,7 +81,8 @@ export function DemoITAllDisposalsCard({
                         .filter(Boolean)
                         .join(" ") || r.requestedBy.email
                     : "—";
-                  const statusLabel = DISPOSAL_STATUS_LABELS[r.status] ?? r.status;
+                  const statusLabel =
+                    DISPOSAL_STATUS_LABELS[r.status] ?? r.status;
 
                   return (
                     <TableRow

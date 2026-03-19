@@ -174,12 +174,12 @@ export function QRCensusContent() {
     <div className="flex min-h-0 flex-1 flex-col rounded-2xl border border-slate-200 bg-[#f5f7fb] p-5 md:p-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-[36px] font-semibold leading-none text-slate-900">
+          <h1 className="text-[25px] font-semibold leading-none text-slate-900">
             Эд хөрөнгийн тооллого
           </h1>
           {effectiveCensusId ? (
             <>
-              <p className="mt-5 text-2xl font-semibold text-slate-900">
+              <p className="mt-5 text-[18px] font-semibold text-slate-900">
                 {progress?.event.name ?? name}
               </p>
               <p className="mt-1 text-base text-slate-600">
@@ -199,7 +199,7 @@ export function QRCensusContent() {
           ) : (
             <>
               <Button
-                className="h-10 gap-2 rounded-lg bg-[#0b5f8a] px-5 text-[15px] font-medium text-white hover:bg-[#0a5278]"
+                className="h-10 gap-2 rounded-lg bg-[#0f4c6e] px-5 text-[15px] font-medium text-white hover:bg-[#0a5278]"
                 onClick={() => setEndDialogOpen(true)}
               >
                 Тооллого дуусгах

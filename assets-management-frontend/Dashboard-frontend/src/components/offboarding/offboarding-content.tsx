@@ -57,7 +57,8 @@ function getConditionLabel(value: string): string {
 }
 
 function getConditionTone(value: string): string {
-  if (value === "GOOD") return "border-emerald-300 bg-emerald-50 text-emerald-700";
+  if (value === "GOOD")
+    return "border-emerald-300 bg-emerald-50 text-emerald-700";
   if (value === "FAIR") return "border-amber-300 bg-amber-50 text-amber-700";
   if (value === "DAMAGED") return "border-red-300 bg-red-50 text-red-700";
   if (value === "LOST") return "border-slate-300 bg-slate-100 text-slate-700";
@@ -189,7 +190,6 @@ function AssetRow({
           </div>
         </button>
       </div>
-
     </div>
   );
 }
@@ -227,7 +227,9 @@ function OffboardingEmployeeCard({
     variables: { employeeId: employee.id },
     fetchPolicy: "network-only",
   });
-  const [submitReturnRequestMutation] = useMutation(SubmitReturnRequestDocument);
+  const [submitReturnRequestMutation] = useMutation(
+    SubmitReturnRequestDocument,
+  );
 
   if (eventLoading || assignmentsLoading) {
     return (
@@ -365,7 +367,9 @@ function OffboardingEmployeeCard({
       }
 
       if (failedCount > 0) {
-        toast.error(`${failedCount} хөрөнгө дээр хүсэлт илгээхэд алдаа гарлаа.`);
+        toast.error(
+          `${failedCount} хөрөнгө дээр хүсэлт илгээхэд алдаа гарлаа.`,
+        );
       }
     } catch (error) {
       toast.error("HR руу илгээх үед алдаа гарлаа.");
@@ -413,12 +417,12 @@ function OffboardingEmployeeCard({
                 <p className="text-sm font-medium text-slate-700">
                   Тайлбар (заавал биш)
                 </p>
-              <textarea
-                className="h-10 w-full resize-none rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-sky-400"
-                placeholder="Нэмэлт тайлбар бичиж болно..."
-                value={returnComment}
-                onChange={(event) => setReturnComment(event.target.value)}
-              />
+                <textarea
+                  className="h-10 w-full resize-none rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-sky-400"
+                  placeholder="Нэмэлт тайлбар бичиж болно..."
+                  value={returnComment}
+                  onChange={(event) => setReturnComment(event.target.value)}
+                />
               </div>
             </div>
 
@@ -427,49 +431,51 @@ function OffboardingEmployeeCard({
                 Сонгосон хөрөнгүүд
               </p>
               {selectedPendingAssets.length === 0 ? (
-                <p className="text-xs text-slate-500">Сонголт хийгдээгүй байна.</p>
+                <p className="text-xs text-slate-500">
+                  Сонголт хийгдээгүй байна.
+                </p>
               ) : (
                 <div className="overflow-x-auto pb-1">
                   <div className="flex min-w-max gap-3">
-                  {selectedPendingAssets.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex min-w-[320px] items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3"
-                    >
-                      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
-                        {item.imageUrl ? (
-                          <img
-                            src={item.imageUrl}
-                            alt={item.assetTag}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-slate-400">
-                            <Package className="h-4 w-4" />
-                          </div>
-                        )}
+                    {selectedPendingAssets.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex min-w-[320px] items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3"
+                      >
+                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
+                          {item.imageUrl ? (
+                            <img
+                              src={item.imageUrl}
+                              alt={item.assetTag}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-slate-400">
+                              <Package className="h-4 w-4" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-900">
+                            {item.assetTag}
+                          </p>
+                          <p className="truncate text-xs text-slate-500">
+                            ID: {item.id}
+                          </p>
+                          <p className="truncate text-xs text-slate-500">
+                            Serial: {item.serialNumber}
+                          </p>
+                          <p className="truncate text-xs text-slate-500">
+                            Нөхцөл:{" "}
+                            {item.conditionStatus === "GOOD"
+                              ? "Хэвийн"
+                              : item.conditionStatus === "DAMAGED"
+                                ? "Эвдрэлтэй"
+                                : "Тодорхойгүй"}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-900">
-                          {item.assetTag}
-                        </p>
-                        <p className="truncate text-xs text-slate-500">
-                          ID: {item.id}
-                        </p>
-                        <p className="truncate text-xs text-slate-500">
-                          Serial: {item.serialNumber}
-                        </p>
-                        <p className="truncate text-xs text-slate-500">
-                          Нөхцөл:{" "}
-                          {item.conditionStatus === "GOOD"
-                            ? "Хэвийн"
-                            : item.conditionStatus === "DAMAGED"
-                              ? "Эвдрэлтэй"
-                              : "Тодорхойгүй"}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
                   </div>
                 </div>
               )}
@@ -544,7 +550,7 @@ function OffboardingEmployeeCard({
                 </div>
                 <Button
                   type="button"
-                  className="rounded-lg bg-sky-600 px-4 text-white hover:bg-sky-700 disabled:bg-slate-300"
+                  className="rounded-lg bg-[#0f4c6e] px-4 text-white hover:bg-sky-700 disabled:bg-slate-300"
                   disabled={selectedPendingAssets.length === 0}
                   onClick={() => {
                     setReturnCondition("");
@@ -658,7 +664,7 @@ export default function OffboardingContent() {
         </DialogContent>
       </Dialog>
 
-      <h1 className="mb-6 text-xl font-semibold text-slate-900">
+      <h1 className="mb-6 text-[25px] font-semibold text-slate-900">
         Ажлаас гарах явц
       </h1>
 
