@@ -26,14 +26,31 @@ export async function approveReturnRequest(
   if (req.status !== "PENDING_HR")
     throw new Error("Return request is not pending HR approval");
 
+  const normalizedCondition = conditionHr.trim().toUpperCase();
+  const damagedConditions = new Set([
+    "DAMAGED",
+    "BROKEN",
+    "DESTROYED",
+    "FAULTY",
+    "NON_FUNCTIONAL",
+    "LOST",
+  ]);
+  const isDamaged = damagedConditions.has(normalizedCondition);
+
   const asset = await completeAssetReturn(
     req.assetId,
     req.employeeId,
     conditionHr,
     inspectedBy,
+    {
+      // Non-damaged asset: HR can finalize directly without IT data wipe flow.
+      forceFinalizeOffboarding: !isDamaged,
+    },
   );
 
-  await createDataWipeTask(req.assetId);
+  if (isDamaged) {
+    await createDataWipeTask(req.assetId);
+  }
 
   await db
     .update(offboardingReturnRequests)
