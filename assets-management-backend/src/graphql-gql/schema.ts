@@ -248,7 +248,7 @@ export const typeDefs = /* GraphQL */ `
     github: String
     department: String!
     branch: String!
-    employeeCode: String!
+    employeeCode: String
     level: String!
     isKpi: Int
     isSalaryCompany: Int
