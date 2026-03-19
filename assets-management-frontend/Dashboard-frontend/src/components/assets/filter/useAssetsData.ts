@@ -154,10 +154,17 @@ export function useAssetsData(statusFilter: string) {
       };
     });
 
-    return mapped.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+    // Sort by most recently updated asset first (not just createdAt).
+    return mapped.sort((a, b) => {
+      const aUpdated = new Date(a.updatedAt).getTime();
+      const bUpdated = new Date(b.updatedAt).getTime();
+      // Fallback to createdAt if updatedAt is missing/unparseable.
+      const aSort = Number.isFinite(aUpdated) ? aUpdated : new Date(a.createdAt).getTime();
+      const bSort = Number.isFinite(bUpdated) ? bUpdated : new Date(b.createdAt).getTime();
+      if (bSort !== aSort) return bSort - aSort;
+      // Stable-ish tie-breaker: newer createdAt first.
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
   }, [data?.assets, mainCategoryBySubName, employeeNameById, locationPathById]);
 
   const visibleAssets = useMemo(() => {

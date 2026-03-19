@@ -9,6 +9,7 @@ export async function completeAssetReturn(
   employeeId: string,
   condition: string,
   inspectedBy: string,
+  options?: { forceFinalizeOffboarding?: boolean },
 ) {
   const db = await getDb();
   const now = Date.now();
@@ -43,6 +44,7 @@ export async function completeAssetReturn(
         returnedAt: now,
         conditionAtReturn: condition,
         status: "RETURNED",
+        deletedAt: now,
         updatedAt: now,
       })
       .where(eq(assignments.id, openAssignment.id));
@@ -82,12 +84,16 @@ export async function completeAssetReturn(
 
   if (event) {
     const newReturnedCount = (event.returnedAssets ?? 0) + 1;
-    const allDone = newReturnedCount >= (event.totalAssets ?? 0);
+    const allDoneByCount = newReturnedCount >= (event.totalAssets ?? 0);
+    const allDone = options?.forceFinalizeOffboarding ? true : allDoneByCount;
+    const nextReturnedCount = options?.forceFinalizeOffboarding
+      ? Math.max(event.totalAssets ?? 0, newReturnedCount)
+      : newReturnedCount;
 
     await db
       .update(offboardingEvents)
       .set({
-        returnedAssets: newReturnedCount,
+        returnedAssets: nextReturnedCount,
         status: allDone ? "COMPLETED" : "IN_PROGRESS",
         completedAt: allDone ? now : null,
         updatedAt: now,

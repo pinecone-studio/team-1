@@ -25,6 +25,17 @@ export type AssignmentItem = {
     assetTag?: string;
     category?: string;
     serialNumber?: string;
+    locationId?: string | null;
+    locationPath?: string | null;
+    purchaseCost?: number | null;
+    currentBookValue?: number | null;
+    assignedTo?: string | null;
+  } | null;
+  employee?: {
+    id: string;
+    email?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
   } | null;
   financing?: {
     assignedValue?: number | null;

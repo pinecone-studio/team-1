@@ -214,12 +214,17 @@ export function DemoEmployeeMyAssetsCard({
                         {assetAny?.locationPath ?? assetAny?.locationId ?? "—"}
                       </TableCell>
                       <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
-                        {assetAny?.assignedEmployeeName ?? "—"}
+                        {(() => {
+                          const first = assignment.employee?.firstName ?? "";
+                          const last = assignment.employee?.lastName ?? "";
+                          const name = [last, first].filter(Boolean).join(" ").trim();
+                          return name || assignment.employee?.email || "—";
+                        })()}
                       </TableCell>
                       <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
-                        {assetAny?.purchaseCost != null
+                        {(assetAny?.currentBookValue ?? assetAny?.purchaseCost) != null
                           ? new Intl.NumberFormat("mn-MN").format(
-                              assetAny.purchaseCost,
+                              (assetAny?.currentBookValue ?? assetAny?.purchaseCost) as number,
                             )
                           : "—"}
                       </TableCell>

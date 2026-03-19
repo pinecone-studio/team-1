@@ -92,9 +92,12 @@ export function AssetFilter() {
       }
       if (statusFilter === "BROKEN") {
         const status = a.status as unknown as string;
-        return ["DAMAGED", "DISPOSAL_REQUESTED", "PENDING_DISPOSAL", "DISPOSED"].includes(
-          status,
-        );
+        return [
+          "DAMAGED",
+          "DISPOSAL_REQUESTED",
+          "PENDING_DISPOSAL",
+          "DISPOSED",
+        ].includes(status);
       }
       if (statusFilter && statusFilter !== "all") {
         return a.status === statusFilter;
@@ -489,7 +492,6 @@ export function AssetFilter() {
           setQrAssets([a]);
           setShowQrDialog(true);
         }}
-        onOpenAsset={(assetId) => setDetailAssetId(assetId)}
       />
     </div>
   );

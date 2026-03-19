@@ -76,8 +76,12 @@ async function getActorId(ctx: GraphQLContext): Promise<string | null> {
         .get();
       if (row?.id) return row.id;
     } catch {
-      // fall back below
+      // If we can't resolve the current user, don't misattribute to another employee.
+      return null;
     }
+    // We have a userId, but it's not linked to an employee record.
+    // Return null so the UI can show a generic "Admin" (instead of the first employee).
+    return null;
   }
   try {
     return (await getFirstEmployeeId()) ?? null;
@@ -134,7 +138,7 @@ export const assetMutations = {
     }
     const oldAsset = await getAssetById(args.id);
     const updated = await updateAssetById(args.id, updates as never);
-    const actorId = await getFirstEmployeeId();
+    const actorId = await getActorId(ctx);
     if (actorId && oldAsset && updated) {
       await writeAuditLog(
         "assets",

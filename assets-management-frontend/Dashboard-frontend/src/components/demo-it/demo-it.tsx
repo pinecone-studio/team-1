@@ -70,7 +70,7 @@ export function DemoITContent({
           notificationsOpen={showNotifications}
           onToggleNotifications={() => setShowNotifications((prev) => !prev)}
         />
-        {showNotifications ? (
+        {/* {showNotifications ? (
           <Card className="border border-border/60 bg-white">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold text-foreground">
@@ -101,7 +101,7 @@ export function DemoITContent({
               )}
             </CardContent>
           </Card>
-        ) : null}
+        ) : null} */}
         <DemoITPendingDisposalsCard
           pendingDisposals={s.pendingDisposals}
           onSelectDisposal={s.setSelectedDisposal}

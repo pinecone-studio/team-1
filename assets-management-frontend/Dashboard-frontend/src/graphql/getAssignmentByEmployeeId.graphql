@@ -22,6 +22,11 @@ query GetEmployeeAssignments($employeeId: ID!, $status: String) {
       category
       serialNumber
       imageUrl
+      locationId
+      locationPath
+      purchaseCost
+      currentBookValue
+      assignedTo
     }
     employee {
       id

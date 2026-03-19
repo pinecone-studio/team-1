@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "../../client";
-import { getAssetById } from "../../assets/queries";
+import { writeAuditLog } from "../../auditLogger";
 import { completeAssetReturn } from "./completeAssetReturn";
 import { createDataWipeTask } from "../../dataWipeTasks/mutations/createDataWipeTask";
 import { offboardingReturnRequests } from "@/schema";
@@ -44,6 +44,40 @@ export async function approveReturnRequest(
       updatedAt: now,
     })
     .where(eq(offboardingReturnRequests.id, returnRequestId));
+
+  const hrActorId = fkInspectedBy;
+
+  await writeAuditLog(
+    "assets",
+    req.assetId,
+    "OFFBOARDING_HR_RECEIVED_RETURN",
+    hrActorId,
+    { returnRequestStatus: "PENDING_HR" },
+    {
+      returnRequestId,
+      inspectedBy,
+      messageMn: "HR буцаагдсан хөрөнгийг хүлээн авч шалгасан",
+    },
+  );
+
+  await writeAuditLog(
+    "assets",
+    req.assetId,
+    "OFFBOARDING_HR_UPDATED_RETURN_STATUS",
+    hrActorId,
+    {
+      returnRequestStatus: "PENDING_HR",
+      assetStatus: "RETURNING",
+    },
+    {
+      returnRequestStatus: "APPROVED_AVAILABLE",
+      assetStatus: asset.status,
+      conditionHr,
+      inspectedBy,
+      messageMn:
+        "HR буцаах хүсэлтийн төлөв болон хөрөнгийн статусыг шинэчилсэн (баталгаажуулсан)",
+    },
+  );
 
   return asset;
 }
