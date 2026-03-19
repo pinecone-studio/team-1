@@ -34,7 +34,9 @@ export function QRCensusContent() {
   const [startOpen, setStartOpen] = useState(false);
   const [scope, setScope] = useState<Scope>("ORG");
   const [name, setName] = useState("1-р улирлын тооллого");
-  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<Set<string>>(new Set());
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [activeCensusId, setActiveCensusId] = useState<string | null>(null);
   const [lastProgress, setLastProgress] = useState<CensusProgress | null>(null);
   const [endDialogOpen, setEndDialogOpen] = useState(false);
@@ -42,12 +44,13 @@ export function QRCensusContent() {
   const { data: employeesData } = useQuery(EmployeesDocument);
   const employees = employeesData?.employees ?? [];
 
-  const { data: openData, startPolling, stopPolling } = useQuery(
-    OpenCensusProgressDocument,
-    {
-      fetchPolicy: "network-only",
-    },
-  );
+  const {
+    data: openData,
+    startPolling,
+    stopPolling,
+  } = useQuery(OpenCensusProgressDocument, {
+    fetchPolicy: "network-only",
+  });
 
   useEffect(() => {
     // Зөвхөн нээлттэй census байхад л polling (GET хүсэлтийг багасгах)
@@ -57,15 +60,20 @@ export function QRCensusContent() {
     else stopPolling();
 
     return () => stopPolling();
-  }, [activeCensusId, openData?.openCensusProgress?.event.id, startPolling, stopPolling]);
+  }, [
+    activeCensusId,
+    openData?.openCensusProgress?.event.id,
+    startPolling,
+    stopPolling,
+  ]);
 
   const effectiveCensusId =
     activeCensusId ?? openData?.openCensusProgress?.event.id ?? null;
 
   const progress: CensusProgress | undefined =
     openData?.openCensusProgress?.event.id === effectiveCensusId
-      ? openData.openCensusProgress
-      : lastProgress ?? undefined;
+      ? (openData.openCensusProgress as unknown as CensusProgress)
+      : (lastProgress ?? undefined);
 
   const { data: taskDetailsData } = useQuery(CensusTaskDetailsDocument, {
     variables: { censusId: effectiveCensusId ?? "" },
@@ -73,16 +81,19 @@ export function QRCensusContent() {
     fetchPolicy: "network-only",
   });
 
-  const [startCensus, { loading: starting }] = useMutation(StartCensusDocument, {
-    onCompleted: (res) => {
-      const censusProgress = res.startCensus;
-      setLastProgress(censusProgress);
-      setActiveCensusId(censusProgress.event.id);
-      setStartOpen(false);
-      toast.success("Тооллого эхэллээ. Мэдэгдлүүд илгээгдлээ.");
+  const [startCensus, { loading: starting }] = useMutation(
+    StartCensusDocument,
+    {
+      onCompleted: (res) => {
+        const censusProgress = res.startCensus as unknown as CensusProgress;
+        setLastProgress(censusProgress);
+        setActiveCensusId(censusProgress.event.id);
+        setStartOpen(false);
+        toast.success("Тооллого эхэллээ. Мэдэгдлүүд илгээгдлээ.");
+      },
+      onError: () => toast.error("Тооллого эхлүүлэхэд алдаа гарлаа."),
     },
-    onError: () => toast.error("Тооллого эхлүүлэхэд алдаа гарлаа."),
-  });
+  );
 
   const [closeCensus, { loading: closing }] = useMutation(CloseCensusDocument, {
     onCompleted: () => {
@@ -105,7 +116,9 @@ export function QRCensusContent() {
   const sortedEmployees = useMemo(
     () =>
       [...employees].sort((a, b) =>
-        (a.firstName ?? a.email ?? "").localeCompare(b.firstName ?? b.email ?? ""),
+        (a.firstName ?? a.email ?? "").localeCompare(
+          b.firstName ?? b.email ?? "",
+        ),
       ),
     [employees],
   );
@@ -127,7 +140,11 @@ export function QRCensusContent() {
     }
     const scopeEmployeeIds =
       scope === "EMPLOYEES" ? Array.from(selectedEmployeeIds) : undefined;
-    if (scope === "EMPLOYEES" && scopeEmployeeIds.length === 0) {
+    if (
+      scope === "EMPLOYEES" &&
+      scopeEmployeeIds &&
+      scopeEmployeeIds.length === 0
+    ) {
       toast.error("Ажилтан сонгоно уу.");
       return;
     }
@@ -214,7 +231,9 @@ export function QRCensusContent() {
                       v.employee?.id ||
                       "—";
                     const p =
-                      v.total > 0 ? Math.round((v.responded / v.total) * 100) : 0;
+                      v.total > 0
+                        ? Math.round((v.responded / v.total) * 100)
+                        : 0;
                     return (
                       <li key={v.employee?.id ?? label} className="p-3">
                         <div className="flex items-center justify-between gap-3">
@@ -251,7 +270,8 @@ export function QRCensusContent() {
           <DialogHeader>
             <DialogTitle>Start Census</DialogTitle>
             <DialogDescription>
-              Scope сонгоод эхлүүлнэ. Employee scope дээр тодорхой ажилтнууд сонгоно.
+              Scope сонгоод эхлүүлнэ. Employee scope дээр тодорхой ажилтнууд
+              сонгоно.
             </DialogDescription>
           </DialogHeader>
 
@@ -267,7 +287,9 @@ export function QRCensusContent() {
                 <Button
                   type="button"
                   variant={scope === "ORG" ? "default" : "outline"}
-                  className={scope === "ORG" ? "bg-[#0b6fae] hover:bg-[#095f93]" : ""}
+                  className={
+                    scope === "ORG" ? "bg-[#0b6fae] hover:bg-[#095f93]" : ""
+                  }
                   onClick={() => setScope("ORG")}
                 >
                   By Organization
@@ -275,7 +297,11 @@ export function QRCensusContent() {
                 <Button
                   type="button"
                   variant={scope === "EMPLOYEES" ? "default" : "outline"}
-                  className={scope === "EMPLOYEES" ? "bg-[#0b6fae] hover:bg-[#095f93]" : ""}
+                  className={
+                    scope === "EMPLOYEES"
+                      ? "bg-[#0b6fae] hover:bg-[#095f93]"
+                      : ""
+                  }
                   onClick={() => setScope("EMPLOYEES")}
                 >
                   By Employees
@@ -298,9 +324,13 @@ export function QRCensusContent() {
                         <li key={e.id} className="flex items-center gap-3 p-3">
                           <Checkbox
                             checked={checked}
-                            onCheckedChange={(v) => toggleEmployee(e.id, Boolean(v))}
+                            onCheckedChange={(v) =>
+                              toggleEmployee(e.id, Boolean(v))
+                            }
                           />
-                          <span className="text-sm text-foreground">{label}</span>
+                          <span className="text-sm text-foreground">
+                            {label}
+                          </span>
                         </li>
                       );
                     })}
@@ -318,7 +348,11 @@ export function QRCensusContent() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setStartOpen(false)} disabled={starting}>
+            <Button
+              variant="outline"
+              onClick={() => setStartOpen(false)}
+              disabled={starting}
+            >
               Болих
             </Button>
             <Button
@@ -375,10 +409,13 @@ export function QRCensusContent() {
                         .trim() ||
                       t.verifier?.email ||
                       "Unassigned";
-                    const toEmp =
-                      employees.find((e) => e.id === t.transferredToEmployeeId);
+                    const toEmp = employees.find(
+                      (e) => e.id === t.transferredToEmployeeId,
+                    );
                     const toLabel = toEmp
-                      ? [toEmp.firstName, toEmp.lastName].filter(Boolean).join(" ") ||
+                      ? [toEmp.firstName, toEmp.lastName]
+                          .filter(Boolean)
+                          .join(" ") ||
                         toEmp.email ||
                         toEmp.id
                       : (t.transferredToEmployeeId ?? "—");
@@ -387,19 +424,26 @@ export function QRCensusContent() {
                         <td className="px-3 py-2">{idx + 1}</td>
                         <td className="px-3 py-2">{emp}</td>
                         <td className="px-3 py-2">{t.asset.assetTag}</td>
-                        <td className="px-3 py-2">{t.asset.serialNumber ?? "—"}</td>
+                        <td className="px-3 py-2">
+                          {t.asset.serialNumber ?? "—"}
+                        </td>
                         <td className="px-3 py-2">{t.status}</td>
                         <td className="px-3 py-2">{t.reason ?? "—"}</td>
                         <td className="px-3 py-2">{toLabel}</td>
                         <td className="px-3 py-2">
-                          {t.respondedAt ? new Date(t.respondedAt).toLocaleString() : "—"}
+                          {t.respondedAt
+                            ? new Date(t.respondedAt).toLocaleString()
+                            : "—"}
                         </td>
                       </tr>
                     );
                   })}
                   {taskDetails.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
+                      <td
+                        colSpan={8}
+                        className="px-3 py-8 text-center text-muted-foreground"
+                      >
                         Response хараахан ирээгүй байна.
                       </td>
                     </tr>
@@ -410,7 +454,11 @@ export function QRCensusContent() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEndDialogOpen(false)} disabled={closing}>
+            <Button
+              variant="outline"
+              onClick={() => setEndDialogOpen(false)}
+              disabled={closing}
+            >
               Close
             </Button>
             <Button
@@ -426,4 +474,3 @@ export function QRCensusContent() {
     </div>
   );
 }
-

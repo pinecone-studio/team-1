@@ -125,7 +125,7 @@ export function AppSidebar({
                       <span className="sr-only">{item.title}</span>
                     )}
                     {state === "collapsed" ? (
-                      <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-4 -translate-y-1/2 whitespace-nowrap rounded-[16px] bg-gray-500 px-5 py-2.5 text-sm font-medium text-white opacity-0 shadow-[0_12px_22px_rgba(31,41,55,0.25)] transition duration-150 ease-out invisible group-hover/tooltip:visible group-hover/tooltip:opacity-100">
+                      <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-4 -translate-y-1/2 whitespace-nowrap rounded-2xl bg-gray-500 px-5 py-2.5 text-sm font-medium text-white opacity-0 shadow-[0_12px_22px_rgba(31,41,55,0.25)] transition duration-150 ease-out invisible group-hover/tooltip:visible group-hover/tooltip:opacity-100">
                         <span className="absolute left-1 top-1/2 h-4 w-4 -translate-x-full -translate-y-1/2 rotate-45 bg-gray-500" />
                         {item.title}
                       </span>
