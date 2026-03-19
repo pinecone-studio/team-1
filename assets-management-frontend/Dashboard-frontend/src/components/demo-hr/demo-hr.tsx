@@ -437,7 +437,7 @@ export function DemoHRContent() {
   return (
     <div className="flex min-h-[calc(100vh-5.5rem)] min-w-0 flex-1 flex-col p-6">
       <div className="mb-5 shrink-0">
-        <h1 className="text-4xl font-semibold tracking-tight text-slate-900">
+        <h1 className="text-[25px] font-semibold tracking-tight text-slate-900">
           Нийт идэвхтэй ажилчдын жагсаалт
         </h1>
       </div>
@@ -491,7 +491,7 @@ export function DemoHRContent() {
             <div className="overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-b-0 bg-[#0e5f8c] hover:bg-[#0e5f8c]">
+                  <TableRow className="border-b-0 bg-[#0f4c6e] hover:bg-[#0e5f8c]">
                     <TableHead className="h-10 w-[76px] px-3 font-medium text-white">
                       <div className="flex items-center gap-2">
                         <input

@@ -171,7 +171,9 @@ export function KPICards({
     <div className="space-y-6">
       {/* Dashboard title */}
 
-      <h2 className="text-xl font-semibold text-foreground ">Хянах самбар</h2>
+      <h2 className="text-[25px] font-semibold text-foreground ">
+        Хянах самбар
+      </h2>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {kpiData.map((kpi) => (
