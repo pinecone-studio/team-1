@@ -7,6 +7,9 @@ export async function createEmployee(input: EmployeeCreate): Promise<Employee> {
   const db = await getDb();
   const now = Date.now();
   const id = crypto.randomUUID();
+  const employeeCode =
+    input.employeeCode?.trim() ||
+    `EMP-${now.toString(36).toUpperCase()}`;
 
   await db.insert(employees).values({
     id,
@@ -21,12 +24,12 @@ export async function createEmployee(input: EmployeeCreate): Promise<Employee> {
     imageUrl: input.imageUrl ?? null,
     hireDate: input.hireDate,
     terminationDate: null,
-    status: "INACTIVE",
+    status: "ACTIVE",
     numberOfVacationDays: input.numberOfVacationDays ?? null,
     github: input.github ?? null,
     department: input.department,
     branch: input.branch,
-    employeeCode: input.employeeCode,
+    employeeCode,
     level: input.level,
     isKpi: input.isKpi ?? 0,
     isSalaryCompany: input.isSalaryCompany ?? 1,

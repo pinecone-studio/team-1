@@ -129,7 +129,7 @@ function getDemoNewEmployeeForm(): NewEmployeeFormState {
     numberOfVacationDays: "21",
     github: "batdorj",
     department: "IT",
-    branch: "Улаанбаатар",
+    branch: "Гурван гол",
     employeeCode: "EMP-DEMO",
     level: "Senior",
     isKpi: true,
@@ -354,7 +354,6 @@ export function DemoHRContent() {
       !d.hireDate ||
       !d.department?.trim() ||
       !d.branch?.trim() ||
-      !d.employeeCode?.trim() ||
       !d.level?.trim()
     ) {
       toast.error("Заавал бөглөх талбаруудыг бүгдийг оруулна уу.");
@@ -378,7 +377,7 @@ export function DemoHRContent() {
       github: d.github.trim() || undefined,
       department: d.department.trim(),
       branch: d.branch.trim(),
-      employeeCode: d.employeeCode.trim(),
+      employeeCode: d.employeeCode?.trim() ?? "",
       level: d.level.trim(),
       isKpi: d.isKpi ? 1 : 0,
       isSalaryCompany: d.isSalaryCompany ? 1 : 0,
@@ -768,7 +767,7 @@ export function DemoHRContent() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="employeeCode">Ажилтны код *</Label>
+                <Label htmlFor="employeeCode">Ажилтны код</Label>
                 <Input
                   id="employeeCode"
                   value={newEmployeeForm.employeeCode}

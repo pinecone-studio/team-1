@@ -12,7 +12,6 @@ export type EmployeeCreate = Pick<
   | "hireDate"
   | "department"
   | "branch"
-  | "employeeCode"
   | "level"
 > &
   Partial<
@@ -27,7 +26,6 @@ export type EmployeeCreate = Pick<
       | "hireDate"
       | "department"
       | "branch"
-      | "employeeCode"
       | "level"
       | "createdAt"
       | "updatedAt"
