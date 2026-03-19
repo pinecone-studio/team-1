@@ -8,6 +8,7 @@ import { maintenanceMutations } from "./maintenanceMutations";
 import { catalogMutations } from "./catalogMutations";
 import { notificationMutations } from "./notificationMutations";
 import { adminMutations } from "./adminMutations";
+import { censusMutations } from "./censusMutations";
 
 export const Mutation = {
   ...employeeMutations,
@@ -20,4 +21,5 @@ export const Mutation = {
   ...catalogMutations,
   ...notificationMutations,
   ...adminMutations,
+  ...censusMutations,
 };

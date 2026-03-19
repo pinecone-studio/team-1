@@ -33,6 +33,14 @@ export type DemoEmployeeHeaderProps = {
   offboardingStarting: boolean;
   onShowOffboardingModal: () => void;
   onOpenOffboarding?: () => void;
+  censusNotifications?: Array<{
+    id: string;
+    title: string;
+    message?: string;
+    link?: string | null;
+    createdAt?: number;
+  }>;
+  onOpenCensus?: (censusId: string, notificationId: string) => void;
   pendingList: AssignmentItem[];
   currentPending: AssignmentItem | null;
   isChecked: boolean;
@@ -54,6 +62,8 @@ export function DemoEmployeeHeader({
   offboardingStarting,
   onShowOffboardingModal,
   onOpenOffboarding,
+  censusNotifications = [],
+  onOpenCensus,
   pendingList,
   currentPending,
   isChecked,
@@ -67,7 +77,9 @@ export function DemoEmployeeHeader({
 
   const [open, setOpen] = useState(false);
   const pendingCount = pendingList.length;
-  const totalNotificationCount = pendingCount + (hasActiveOffboarding ? 1 : 0);
+  const censusCount = censusNotifications.length;
+  const totalNotificationCount =
+    pendingCount + (hasActiveOffboarding ? 1 : 0) + censusCount;
 
   const formatAgo = (ts?: number | null) => {
     if (!ts) return "";
@@ -203,11 +215,57 @@ export function DemoEmployeeHeader({
                           ) : null}
                         </div>
                       </div>
-                      {pendingItems.length > 0 && (
+                      {(censusNotifications.length > 0 || pendingItems.length > 0) && (
                         <div className="mt-4 h-px w-full bg-slate-200" />
                       )}
                     </div>
                   )}
+                  {censusNotifications.map((n) => {
+                    const censusId =
+                      typeof n.link === "string" && n.link.startsWith("census:")
+                        ? n.link.slice("census:".length)
+                        : "";
+                    const dateLabel =
+                      n.createdAt != null
+                        ? new Date(n.createdAt).toLocaleDateString("mn-MN")
+                        : "";
+                    return (
+                      <div key={n.id}>
+                        <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+                          <p className="text-[15px] font-semibold text-slate-900">
+                            {n.title}
+                          </p>
+                          {dateLabel ? (
+                            <p className="text-xs text-slate-500">
+                              Ирсэн огноо: {dateLabel}
+                            </p>
+                          ) : null}
+                          {n.message ? (
+                            <p className="text-sm text-slate-600 wrap-break-word">
+                              {n.message}
+                            </p>
+                          ) : null}
+                          <div className="flex justify-end">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 gap-2 rounded-md border-[#0b6fae] bg-white text-[#0b6fae] hover:bg-slate-50"
+                              onClick={() => {
+                                if (censusId && onOpenCensus) {
+                                  setOpen(false);
+                                  onOpenCensus(censusId, n.id);
+                                }
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                              Нээх
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="mt-4 h-px w-full bg-slate-200" />
+                      </div>
+                    );
+                  })}
                   {pendingItems.map((a, idx) => {
                     const isCurrent = currentPending?.id === a.id;
                     const assetTag = normalizeAssetTag(a.asset?.assetTag) || a.assetId;

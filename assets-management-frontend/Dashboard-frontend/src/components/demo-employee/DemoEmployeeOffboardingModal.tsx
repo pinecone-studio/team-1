@@ -40,7 +40,7 @@ export function DemoEmployeeOffboardingModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-7xl">
         <DialogHeader>
           <DialogTitle>Ажилаас гарах (Offboarding)</DialogTitle>
           <DialogDescription>

@@ -200,18 +200,59 @@ export function useDemoEmployee() {
       type?: string;
       isRead?: boolean;
       createdAt?: number;
+      link?: string | null;
     };
     const list = dashboardData?.dashboard?.employeeView?.notifications ?? [];
-    const fromApi = ([...list] as N[])
-      .filter((n) => isOffboardingNotification(n))
-      .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
-    if (fromApi.length > 0) return fromApi;
+    const fromApi = ([...list] as N[]).filter(
+      (n) =>
+        isOffboardingNotification(n) ||
+        (typeof n.link === "string" && n.link.startsWith("census:")),
+    );
+    const offboarding = fromApi.filter((n) => isOffboardingNotification(n));
+    const census = fromApi.filter(
+      (n) => typeof n.link === "string" && n.link.startsWith("census:"),
+    );
+    // Census: event бүрээс хамгийн сүүлийн ирсэн 1 мэдэгдлийг л харуулна (давхардлыг арилгана)
+    const censusByEventId = new Map<string, N>();
+    for (const n of census) {
+      const eventId = (n.link ?? "").replace(/^census:/, "") || n.id;
+      const existing = censusByEventId.get(eventId);
+      if (
+        !existing ||
+        (n.createdAt ?? 0) > (existing.createdAt ?? 0)
+      ) {
+        censusByEventId.set(eventId, n);
+      }
+    }
+    const dedupedCensus = Array.from(censusByEventId.values());
+    const combined = [...offboarding, ...dedupedCensus].sort(
+      (a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0),
+    );
+    if (combined.length > 0) return combined;
     if (currentEmployeeId) return [MOCK_OFFBOARDING as N];
     return [];
   }, [
     dashboardData?.dashboard?.employeeView?.notifications,
     currentEmployeeId,
   ]);
+
+  const offboardingNotifications = useMemo(() => {
+    return notifications.filter((n) => isOffboardingNotification(n));
+  }, [notifications]);
+
+  const censusNotifications = useMemo(() => {
+    const census = notifications.filter(
+      (n) =>
+        typeof (n as { link?: string | null }).link === "string" &&
+        (n as { link: string }).link.startsWith("census:"),
+    );
+    const unread = census.filter((n) => (n as { isRead?: boolean }).isRead !== true);
+    if (unread.length === 0) return [];
+    const sorted = [...unread].sort(
+      (a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0),
+    );
+    return [sorted[0]!];
+  }, [notifications]);
 
   const queryVars = { employeeId: currentEmployeeId ?? "" };
   const {
@@ -958,6 +999,8 @@ export function useDemoEmployee() {
     activeAssignments,
     myAssetsList,
     notifications,
+    offboardingNotifications,
+    censusNotifications,
     expandedNotificationId,
     setExpandedNotificationId,
     bulkReturnInstructionsRead,

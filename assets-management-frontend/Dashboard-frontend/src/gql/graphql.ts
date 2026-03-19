@@ -194,7 +194,7 @@ export enum AssignmentStatus {
 export type AuditLog = {
   __typename?: 'AuditLog';
   action: Scalars['String']['output'];
-  actorId: Scalars['ID']['output'];
+  actorId?: Maybe<Scalars['ID']['output']>;
   createdAt: Scalars['Float']['output'];
   id: Scalars['ID']['output'];
   newValueJson?: Maybe<Scalars['String']['output']>;
@@ -209,6 +209,78 @@ export type Category = {
   name: Scalars['String']['output'];
   parentId?: Maybe<Scalars['ID']['output']>;
   subcategories: Array<Category>;
+};
+
+export type CensusEvent = {
+  __typename?: 'CensusEvent';
+  closedAt?: Maybe<Scalars['Float']['output']>;
+  createdAt: Scalars['Float']['output'];
+  createdBy: Scalars['ID']['output'];
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  scope: Scalars['String']['output'];
+  scopeFilter?: Maybe<Scalars['String']['output']>;
+  startedAt: Scalars['Float']['output'];
+  updatedAt: Scalars['Float']['output'];
+};
+
+export type CensusProgress = {
+  __typename?: 'CensusProgress';
+  event: CensusEvent;
+  respondedTasks: Scalars['Int']['output'];
+  totalTasks: Scalars['Int']['output'];
+  unassignedTasks: Scalars['Int']['output'];
+  verifierProgress: Array<CensusVerifierProgress>;
+};
+
+export type CensusResponseInput = {
+  assetId: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+  status: Scalars['String']['input'];
+  transferredToEmployeeId?: InputMaybe<Scalars['ID']['input']>;
+};
+
+export type CensusTask = {
+  __typename?: 'CensusTask';
+  asset: CensusTaskAsset;
+  assetId: Scalars['ID']['output'];
+  censusId: Scalars['ID']['output'];
+  id: Scalars['ID']['output'];
+  reason?: Maybe<Scalars['String']['output']>;
+  respondedAt?: Maybe<Scalars['Float']['output']>;
+  status: Scalars['String']['output'];
+  transferredToEmployeeId?: Maybe<Scalars['ID']['output']>;
+};
+
+export type CensusTaskAsset = {
+  __typename?: 'CensusTaskAsset';
+  assetTag: Scalars['String']['output'];
+  category?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  imageUrl?: Maybe<Scalars['String']['output']>;
+  serialNumber?: Maybe<Scalars['String']['output']>;
+  status?: Maybe<Scalars['String']['output']>;
+};
+
+export type CensusTaskDetail = {
+  __typename?: 'CensusTaskDetail';
+  asset: CensusTaskAsset;
+  assetId: Scalars['ID']['output'];
+  id: Scalars['ID']['output'];
+  reason?: Maybe<Scalars['String']['output']>;
+  respondedAt?: Maybe<Scalars['Float']['output']>;
+  status: Scalars['String']['output'];
+  transferredToEmployeeId?: Maybe<Scalars['ID']['output']>;
+  verifier?: Maybe<Employee>;
+  verifierId?: Maybe<Scalars['ID']['output']>;
+};
+
+export type CensusVerifierProgress = {
+  __typename?: 'CensusVerifierProgress';
+  done: Scalars['Boolean']['output'];
+  employee?: Maybe<Employee>;
+  responded: Scalars['Int']['output'];
+  total: Scalars['Int']['output'];
 };
 
 export type DashboardSearchResult = {
@@ -395,6 +467,7 @@ export type Mutation = {
   /** HR: нөхцөл зөв бол AVAILABLE болгоод IT data wipe task үүсгэнэ */
   approveReturnRequest: Asset;
   assignAsset?: Maybe<Asset>;
+  closeCensus: Scalars['Boolean']['output'];
   completeAssetReturn: Asset;
   completeDisposal: DisposalRequest;
   createAsset: Asset;
@@ -419,7 +492,9 @@ export type Mutation = {
   requestRepair: Asset;
   returnAsset?: Maybe<Asset>;
   sendNotification: Notification;
+  startCensus: CensusProgress;
   startOffboarding: OffboardingEvent;
+  submitCensusResponses: Scalars['Boolean']['output'];
   /** Ажилтан буцаах хүсэлт илгээх (HR шалгах хүртэл PENDING_HR). Нөхцөлийн дэлгэрэнгүй, эвдрэлтэй үед зураг (R2 key) заавал биш. */
   submitReturnRequest: OffboardingReturnRequest;
   transferAsset: Transfer;
@@ -484,6 +559,12 @@ export type MutationAssignAssetArgs = {
   interestRate?: InputMaybe<Scalars['Float']['input']>;
   paymentPlanMonths?: InputMaybe<Scalars['Int']['input']>;
   requestedByEmployeeId?: InputMaybe<Scalars['ID']['input']>;
+};
+
+
+export type MutationCloseCensusArgs = {
+  censusId: Scalars['ID']['input'];
+  closedBy: Scalars['ID']['input'];
 };
 
 
@@ -632,10 +713,22 @@ export type MutationSendNotificationArgs = {
 };
 
 
+export type MutationStartCensusArgs = {
+  input: StartCensusInput;
+};
+
+
 export type MutationStartOffboardingArgs = {
   employeeId: Scalars['ID']['input'];
   initiatedBy: Scalars['ID']['input'];
   terminationDate?: InputMaybe<Scalars['Float']['input']>;
+};
+
+
+export type MutationSubmitCensusResponsesArgs = {
+  censusId: Scalars['ID']['input'];
+  employeeId: Scalars['ID']['input'];
+  responses: Array<CensusResponseInput>;
 };
 
 
@@ -838,16 +931,20 @@ export type Query = {
   assignments: Array<Assignment>;
   auditLogs: Array<AuditLog>;
   categories: Array<Category>;
+  censusProgress: CensusProgress;
+  censusTaskDetails: Array<CensusTaskDetail>;
   dashboard: DashboardSearchResult;
   dataWipeTasks: Array<DataWipeTask>;
   disposalRequest?: Maybe<DisposalRequest>;
   disposalRequests: Array<DisposalRequest>;
   employee?: Maybe<Employee>;
   employeeAssignments: Array<Assignment>;
+  employeeCensusTasks: Array<CensusTask>;
   employees: Array<Employee>;
   locations: Array<Location>;
   maintenanceTickets: Array<MaintenanceTicket>;
   offboardingEvent?: Maybe<OffboardingEvent>;
+  openCensusProgress?: Maybe<CensusProgress>;
   /** Нэг offboarding event-ийн PENDING_HR буцаах хүсэлтүүд (HR bell-д) */
   pendingReturnRequests: Array<OffboardingReturnRequest>;
   purchaseRequest?: Maybe<PurchaseRequest>;
@@ -888,6 +985,16 @@ export type QueryAuditLogsArgs = {
 };
 
 
+export type QueryCensusProgressArgs = {
+  censusId: Scalars['ID']['input'];
+};
+
+
+export type QueryCensusTaskDetailsArgs = {
+  censusId: Scalars['ID']['input'];
+};
+
+
 export type QueryDashboardArgs = {
   employeeId?: InputMaybe<Scalars['ID']['input']>;
   role: UserRole;
@@ -917,6 +1024,12 @@ export type QueryEmployeeArgs = {
 export type QueryEmployeeAssignmentsArgs = {
   employeeId: Scalars['ID']['input'];
   status?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryEmployeeCensusTasksArgs = {
+  censusId: Scalars['ID']['input'];
+  employeeId: Scalars['ID']['input'];
 };
 
 
@@ -955,6 +1068,13 @@ export enum SortDirection {
   Asc = 'ASC',
   Desc = 'DESC'
 }
+
+export type StartCensusInput = {
+  createdBy: Scalars['ID']['input'];
+  name: Scalars['String']['input'];
+  scope: Scalars['String']['input'];
+  scopeEmployeeIds?: InputMaybe<Array<Scalars['ID']['input']>>;
+};
 
 export type Transfer = {
   __typename?: 'Transfer';
@@ -1001,7 +1121,7 @@ export type GetAuditLogsQueryVariables = Exact<{
 }>;
 
 
-export type GetAuditLogsQuery = { __typename?: 'Query', auditLogs: Array<{ __typename?: 'AuditLog', id: string, tableName: string, recordId: string, action: string, oldValueJson?: string | null, newValueJson?: string | null, actorId: string, createdAt: number }> };
+export type GetAuditLogsQuery = { __typename?: 'Query', auditLogs: Array<{ __typename?: 'AuditLog', id: string, tableName: string, recordId: string, action: string, oldValueJson?: string | null, newValueJson?: string | null, actorId?: string | null, createdAt: number }> };
 
 export type GetMaintenanceTicketsQueryVariables = Exact<{
   status?: InputMaybe<Scalars['String']['input']>;
@@ -1354,6 +1474,57 @@ export type CategoriesQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type CategoriesQuery = { __typename?: 'Query', categories: Array<{ __typename?: 'Category', id: string, name: string, parentId?: string | null, subcategories: Array<{ __typename?: 'Category', id: string, name: string, parentId?: string | null }> }> };
 
+export type CensusProgressQueryVariables = Exact<{
+  censusId: Scalars['ID']['input'];
+}>;
+
+
+export type CensusProgressQuery = { __typename?: 'Query', censusProgress: { __typename?: 'CensusProgress', totalTasks: number, respondedTasks: number, unassignedTasks: number, event: { __typename?: 'CensusEvent', id: string, name: string, scope: string, startedAt: number, closedAt?: number | null }, verifierProgress: Array<{ __typename?: 'CensusVerifierProgress', total: number, responded: number, done: boolean, employee?: { __typename?: 'Employee', id: string, firstName: string, lastName: string, email: string } | null }> } };
+
+export type OpenCensusProgressQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type OpenCensusProgressQuery = { __typename?: 'Query', openCensusProgress?: { __typename?: 'CensusProgress', totalTasks: number, respondedTasks: number, unassignedTasks: number, event: { __typename?: 'CensusEvent', id: string, name: string, scope: string, startedAt: number, closedAt?: number | null }, verifierProgress: Array<{ __typename?: 'CensusVerifierProgress', total: number, responded: number, done: boolean, employee?: { __typename?: 'Employee', id: string, firstName: string, lastName: string, email: string } | null }> } | null };
+
+export type CensusTaskDetailsQueryVariables = Exact<{
+  censusId: Scalars['ID']['input'];
+}>;
+
+
+export type CensusTaskDetailsQuery = { __typename?: 'Query', censusTaskDetails: Array<{ __typename?: 'CensusTaskDetail', id: string, assetId: string, verifierId?: string | null, status: string, reason?: string | null, transferredToEmployeeId?: string | null, respondedAt?: number | null, asset: { __typename?: 'CensusTaskAsset', id: string, assetTag: string, serialNumber?: string | null, category?: string | null }, verifier?: { __typename?: 'Employee', id: string, firstName: string, lastName: string, email: string } | null }> };
+
+export type EmployeeCensusTasksQueryVariables = Exact<{
+  censusId: Scalars['ID']['input'];
+  employeeId: Scalars['ID']['input'];
+}>;
+
+
+export type EmployeeCensusTasksQuery = { __typename?: 'Query', employeeCensusTasks: Array<{ __typename?: 'CensusTask', id: string, censusId: string, assetId: string, status: string, reason?: string | null, transferredToEmployeeId?: string | null, respondedAt?: number | null, asset: { __typename?: 'CensusTaskAsset', id: string, assetTag: string, serialNumber?: string | null, category?: string | null, status?: string | null, imageUrl?: string | null } }> };
+
+export type StartCensusMutationVariables = Exact<{
+  input: StartCensusInput;
+}>;
+
+
+export type StartCensusMutation = { __typename?: 'Mutation', startCensus: { __typename?: 'CensusProgress', totalTasks: number, respondedTasks: number, unassignedTasks: number, event: { __typename?: 'CensusEvent', id: string, name: string, scope: string, startedAt: number, closedAt?: number | null }, verifierProgress: Array<{ __typename?: 'CensusVerifierProgress', total: number, responded: number, done: boolean, employee?: { __typename?: 'Employee', id: string, firstName: string, lastName: string, email: string } | null }> } };
+
+export type SubmitCensusResponsesMutationVariables = Exact<{
+  censusId: Scalars['ID']['input'];
+  employeeId: Scalars['ID']['input'];
+  responses: Array<CensusResponseInput> | CensusResponseInput;
+}>;
+
+
+export type SubmitCensusResponsesMutation = { __typename?: 'Mutation', submitCensusResponses: boolean };
+
+export type CloseCensusMutationVariables = Exact<{
+  censusId: Scalars['ID']['input'];
+  closedBy: Scalars['ID']['input'];
+}>;
+
+
+export type CloseCensusMutation = { __typename?: 'Mutation', closeCensus: boolean };
+
 export type GetDashboardQueryVariables = Exact<{
   role: UserRole;
   employeeId?: InputMaybe<Scalars['ID']['input']>;
@@ -1647,6 +1818,13 @@ export const RejectDisposalDocument = {"kind":"Document","definitions":[{"kind":
 export const UpdateAssignmentStatusDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateAssignmentStatus"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assignmentId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"status"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateAssignmentStatus"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assignmentId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assignmentId"}}},{"kind":"Argument","name":{"kind":"Name","value":"status"},"value":{"kind":"Variable","name":{"kind":"Name","value":"status"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}}]} as unknown as DocumentNode<UpdateAssignmentStatusMutation, UpdateAssignmentStatusMutationVariables>;
 export const AssignmentsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Assignments"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assignments"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"AssignmentFields"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AssetFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Asset"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"assetTag"}},{"kind":"Field","name":{"kind":"Name","value":"serialNumber"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"category"}},{"kind":"Field","name":{"kind":"Name","value":"purchaseDate"}},{"kind":"Field","name":{"kind":"Name","value":"purchaseCost"}},{"kind":"Field","name":{"kind":"Name","value":"currentBookValue"}},{"kind":"Field","name":{"kind":"Name","value":"locationId"}},{"kind":"Field","name":{"kind":"Name","value":"locationPath"}},{"kind":"Field","name":{"kind":"Name","value":"assignedTo"}},{"kind":"Field","name":{"kind":"Name","value":"imageUrl"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AssignmentFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Assignment"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"employeeId"}},{"kind":"Field","name":{"kind":"Name","value":"assignedAt"}},{"kind":"Field","name":{"kind":"Name","value":"returnedAt"}},{"kind":"Field","name":{"kind":"Name","value":"conditionAtAssign"}},{"kind":"Field","name":{"kind":"Name","value":"conditionAtReturn"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"financing"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assignedValue"}},{"kind":"Field","name":{"kind":"Name","value":"paymentPlanMonths"}},{"kind":"Field","name":{"kind":"Name","value":"interestRate"}},{"kind":"Field","name":{"kind":"Name","value":"monthlyPayment"}},{"kind":"Field","name":{"kind":"Name","value":"totalPayment"}}]}},{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"AssetFields"}}]}},{"kind":"Field","name":{"kind":"Name","value":"employee"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}}]}},{"kind":"Field","name":{"kind":"Name","value":"requestedBy"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}}]}}]}}]} as unknown as DocumentNode<AssignmentsQuery, AssignmentsQueryVariables>;
 export const CategoriesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Categories"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"categories"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"parentId"}},{"kind":"Field","name":{"kind":"Name","value":"subcategories"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"parentId"}}]}}]}}]}}]} as unknown as DocumentNode<CategoriesQuery, CategoriesQueryVariables>;
+export const CensusProgressDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"CensusProgress"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"censusId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"censusProgress"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"censusId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"censusId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"event"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"scope"}},{"kind":"Field","name":{"kind":"Name","value":"startedAt"}},{"kind":"Field","name":{"kind":"Name","value":"closedAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"totalTasks"}},{"kind":"Field","name":{"kind":"Name","value":"respondedTasks"}},{"kind":"Field","name":{"kind":"Name","value":"unassignedTasks"}},{"kind":"Field","name":{"kind":"Name","value":"verifierProgress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"employee"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"responded"}},{"kind":"Field","name":{"kind":"Name","value":"done"}}]}}]}}]}}]} as unknown as DocumentNode<CensusProgressQuery, CensusProgressQueryVariables>;
+export const OpenCensusProgressDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"OpenCensusProgress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"openCensusProgress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"event"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"scope"}},{"kind":"Field","name":{"kind":"Name","value":"startedAt"}},{"kind":"Field","name":{"kind":"Name","value":"closedAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"totalTasks"}},{"kind":"Field","name":{"kind":"Name","value":"respondedTasks"}},{"kind":"Field","name":{"kind":"Name","value":"unassignedTasks"}},{"kind":"Field","name":{"kind":"Name","value":"verifierProgress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"employee"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"responded"}},{"kind":"Field","name":{"kind":"Name","value":"done"}}]}}]}}]}}]} as unknown as DocumentNode<OpenCensusProgressQuery, OpenCensusProgressQueryVariables>;
+export const CensusTaskDetailsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"CensusTaskDetails"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"censusId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"censusTaskDetails"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"censusId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"censusId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"verifierId"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"transferredToEmployeeId"}},{"kind":"Field","name":{"kind":"Name","value":"respondedAt"}},{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"assetTag"}},{"kind":"Field","name":{"kind":"Name","value":"serialNumber"}},{"kind":"Field","name":{"kind":"Name","value":"category"}}]}},{"kind":"Field","name":{"kind":"Name","value":"verifier"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}}]}}]} as unknown as DocumentNode<CensusTaskDetailsQuery, CensusTaskDetailsQueryVariables>;
+export const EmployeeCensusTasksDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"EmployeeCensusTasks"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"censusId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"employeeId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"employeeCensusTasks"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"censusId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"censusId"}}},{"kind":"Argument","name":{"kind":"Name","value":"employeeId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"employeeId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"censusId"}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"transferredToEmployeeId"}},{"kind":"Field","name":{"kind":"Name","value":"respondedAt"}},{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"assetTag"}},{"kind":"Field","name":{"kind":"Name","value":"serialNumber"}},{"kind":"Field","name":{"kind":"Name","value":"category"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"imageUrl"}}]}}]}}]}}]} as unknown as DocumentNode<EmployeeCensusTasksQuery, EmployeeCensusTasksQueryVariables>;
+export const StartCensusDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"StartCensus"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"StartCensusInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"startCensus"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"event"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"scope"}},{"kind":"Field","name":{"kind":"Name","value":"startedAt"}},{"kind":"Field","name":{"kind":"Name","value":"closedAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"totalTasks"}},{"kind":"Field","name":{"kind":"Name","value":"respondedTasks"}},{"kind":"Field","name":{"kind":"Name","value":"unassignedTasks"}},{"kind":"Field","name":{"kind":"Name","value":"verifierProgress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"employee"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"responded"}},{"kind":"Field","name":{"kind":"Name","value":"done"}}]}}]}}]}}]} as unknown as DocumentNode<StartCensusMutation, StartCensusMutationVariables>;
+export const SubmitCensusResponsesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SubmitCensusResponses"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"censusId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"employeeId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"responses"}},"type":{"kind":"NonNullType","type":{"kind":"ListType","type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CensusResponseInput"}}}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"submitCensusResponses"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"censusId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"censusId"}}},{"kind":"Argument","name":{"kind":"Name","value":"employeeId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"employeeId"}}},{"kind":"Argument","name":{"kind":"Name","value":"responses"},"value":{"kind":"Variable","name":{"kind":"Name","value":"responses"}}}]}]}}]} as unknown as DocumentNode<SubmitCensusResponsesMutation, SubmitCensusResponsesMutationVariables>;
+export const CloseCensusDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CloseCensus"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"censusId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"closedBy"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"closeCensus"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"censusId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"censusId"}}},{"kind":"Argument","name":{"kind":"Name","value":"closedBy"},"value":{"kind":"Variable","name":{"kind":"Name","value":"closedBy"}}}]}]}}]} as unknown as DocumentNode<CloseCensusMutation, CloseCensusMutationVariables>;
 export const GetDashboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetDashboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"role"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UserRole"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"employeeId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"dashboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"role"},"value":{"kind":"Variable","name":{"kind":"Name","value":"role"}}},{"kind":"Argument","name":{"kind":"Name","value":"employeeId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"employeeId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"itView"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"recentAssets"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"assetTag"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"serialNumber"}}]}},{"kind":"Field","name":{"kind":"Name","value":"openTickets"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"severity"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}},{"kind":"Field","name":{"kind":"Name","value":"pendingTransfers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"fromEmployeeId"}},{"kind":"Field","name":{"kind":"Name","value":"toEmployeeId"}},{"kind":"Field","name":{"kind":"Name","value":"transferredAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"notifications"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"NotificationFields"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"employeeView"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"myAssets"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"assetTag"}},{"kind":"Field","name":{"kind":"Name","value":"serialNumber"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}},{"kind":"Field","name":{"kind":"Name","value":"myAssignments"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"assignedAt"}},{"kind":"Field","name":{"kind":"Name","value":"returnedAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"notifications"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"NotificationFields"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"financeView"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pendingPurchaseRequests"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"assetTag"}},{"kind":"Field","name":{"kind":"Name","value":"requesterEmail"}},{"kind":"Field","name":{"kind":"Name","value":"purchaseCost"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}},{"kind":"Field","name":{"kind":"Name","value":"recentOrders"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"totalCost"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"pendingDisposals"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"method"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}},{"kind":"Field","name":{"kind":"Name","value":"notifications"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"NotificationFields"}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"NotificationFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Notification"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"message"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"link"}},{"kind":"Field","name":{"kind":"Name","value":"isRead"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]} as unknown as DocumentNode<GetDashboardQuery, GetDashboardQueryVariables>;
 export const CreateDataWipeTaskDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateDataWipeTask"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createDataWipeTask"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<CreateDataWipeTaskMutation, CreateDataWipeTaskMutationVariables>;
 export const GetDataWipeTasksDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetDataWipeTasks"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"status"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"dataWipeTasks"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"status"},"value":{"kind":"Variable","name":{"kind":"Name","value":"status"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"assetTag"}},{"kind":"Field","name":{"kind":"Name","value":"category"}}]}},{"kind":"Field","name":{"kind":"Name","value":"latestAssignment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"employee"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"department"}},{"kind":"Field","name":{"kind":"Name","value":"branch"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"latestReturnRequest"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"employee"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"department"}},{"kind":"Field","name":{"kind":"Name","value":"branch"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<GetDataWipeTasksQuery, GetDataWipeTasksQueryVariables>;

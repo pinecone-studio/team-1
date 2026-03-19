@@ -24,6 +24,13 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AssetDetailContent } from "@/components/assets/asset-detail-content";
+import { CensusResponseDialog } from "@/components/census/CensusResponseDialog";
+import { useMutation } from "@apollo/client";
+import {
+  GetDashboardDocument,
+  MarkNotificationAsReadDocument,
+  UserRole,
+} from "@/gql/graphql";
 
 export function DemoEmployeeContent({
   title = "Миний хөрөнгө",
@@ -33,6 +40,19 @@ export function DemoEmployeeContent({
   const s = useDemoEmployee();
   const [detailAssetId, setDetailAssetId] = useState<string | null>(null);
   const [showDisposalDialog, setShowDisposalDialog] = useState(false);
+  const [openCensusId, setOpenCensusId] = useState<string | null>(null);
+  const [openNotificationId, setOpenNotificationId] = useState<string | null>(null);
+  const [markRead] = useMutation(MarkNotificationAsReadDocument, {
+    refetchQueries: [
+      {
+        query: GetDashboardDocument,
+        variables: {
+          role: UserRole.Employee,
+          employeeId: s.currentEmployeeId ?? "",
+        },
+      },
+    ],
+  });
 
   const openSignModal = (a: any) => {
     s.setSignAssignment(a);
@@ -42,13 +62,7 @@ export function DemoEmployeeContent({
   };
 
   const offboardingNotificationId =
-    s.notifications?.find(
-      (n: any) =>
-        n?.title === "Ажлаас гарах — хөрөнгө буцаах" ||
-        (typeof n?.message === "string" &&
-          (n.message.includes("Буцаах эцсийн хугацаа") ||
-            n.message.includes("ажлаас гарах"))),
-    )?.id ?? null;
+    s.offboardingNotifications?.[0]?.id ?? null;
 
   return (
     <div className="flex flex-col p-6 overflow-visible">
@@ -95,6 +109,11 @@ export function DemoEmployeeContent({
           document
             .getElementById("demo-employee-notifications-card-section")
             ?.scrollIntoView({ behavior: "smooth" });
+        }}
+        censusNotifications={s.censusNotifications}
+        onOpenCensus={(censusId, notificationId) => {
+          setOpenCensusId(censusId);
+          setOpenNotificationId(notificationId);
         }}
         pendingList={s.pendingList as any}
         currentPending={s.currentPending as any}
@@ -155,7 +174,7 @@ export function DemoEmployeeContent({
       {/* Offboarding байхгүй үед “шар” мэдэгдлийн card-ууд (өмнөх шиг). */}
       {!s.activeOffboarding && (
         <DemoEmployeeNotificationsCard
-          notifications={s.notifications}
+          notifications={s.offboardingNotifications}
           expandedNotificationId={s.expandedNotificationId}
           setExpandedNotificationId={s.setExpandedNotificationId}
           bulkReturnInstructionsRead={s.bulkReturnInstructionsRead}
@@ -174,6 +193,7 @@ export function DemoEmployeeContent({
           completeReturnLoading={s.completeReturnLoading}
           activeOffboarding={s.activeOffboarding}
           normalizeAssetTag={s.normalizeAssetTag}
+          currentEmployeeId={s.currentEmployeeId}
         />
       )}
 
@@ -336,6 +356,22 @@ export function DemoEmployeeContent({
         returnRequestSending={s.returnRequestSending}
         normalizeAssetTag={s.normalizeAssetTag}
       />
+
+      {openCensusId && s.currentEmployeeId ? (
+        <CensusResponseDialog
+          open={!!openCensusId}
+          onOpenChange={(open) => {
+            if (!open) {
+              setOpenCensusId(null);
+              setOpenNotificationId(null);
+            }
+          }}
+          censusId={openCensusId}
+          employeeId={s.currentEmployeeId}
+          notificationId={openNotificationId}
+          onMarkRead={(id) => void markRead({ variables: { id } }).catch(() => {})}
+        />
+      ) : null}
     </div>
   );
 }

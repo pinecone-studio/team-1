@@ -10,6 +10,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { DemoEmployeeContent } from "@/components/demo-employee/demo-employee";
 import { DemoITContent } from "@/components/demo-it/demo-it";
 import { DemoHRContent } from "@/components/demo-hr/demo-hr";
+import { DemoFinanceContent } from "@/components/demo-finance/demo-finance";
 import { AssetFilter } from "@/components/assets/asset-filter";
 import { QRCensusContent } from "@/components/qr/qr-census-content";
 import OffboardingContent from "@/components/offboarding/offboarding-content";
@@ -51,6 +52,7 @@ export default function DashboardPage() {
             {activeTitle === "Demo Ажилтан" ? <DemoEmployeeContent /> : null}
             {activeTitle === "Demo IT" ? <DemoITContent /> : null}
             {activeTitle === "Demo HR" ? <DemoHRContent /> : null}
+            {activeTitle === "Demo Finance" ? <DemoFinanceContent /> : null}
             {activeTitle === "Ажлаас гарах явц" ? <OffboardingContent /> : null}
             {activeTitle === "QR тооллого" ? <QRCensusContent /> : null}
 
@@ -61,7 +63,8 @@ export default function DashboardPage() {
             activeTitle !== "QR тооллого" &&
             activeTitle !== "Ажилтан демо" &&
             activeTitle !== "IT демо" &&
-            activeTitle !== "HR демо" ? (
+            activeTitle !== "HR демо" &&
+            activeTitle !== "Demo Finance" ? (
               <div />
             ) : null}
           </div>

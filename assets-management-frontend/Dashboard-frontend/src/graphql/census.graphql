@@ -1,0 +1,130 @@
+query CensusProgress($censusId: ID!) {
+  censusProgress(censusId: $censusId) {
+    event {
+      id
+      name
+      scope
+      startedAt
+      closedAt
+    }
+    totalTasks
+    respondedTasks
+    unassignedTasks
+    verifierProgress {
+      employee {
+        id
+        firstName
+        lastName
+        email
+      }
+      total
+      responded
+      done
+    }
+  }
+}
+
+query OpenCensusProgress {
+  openCensusProgress {
+    event {
+      id
+      name
+      scope
+      startedAt
+      closedAt
+    }
+    totalTasks
+    respondedTasks
+    unassignedTasks
+    verifierProgress {
+      employee {
+        id
+        firstName
+        lastName
+        email
+      }
+      total
+      responded
+      done
+    }
+  }
+}
+
+query CensusTaskDetails($censusId: ID!) {
+  censusTaskDetails(censusId: $censusId) {
+    id
+    assetId
+    verifierId
+    status
+    reason
+    transferredToEmployeeId
+    respondedAt
+    asset {
+      id
+      assetTag
+      serialNumber
+      category
+    }
+    verifier {
+      id
+      firstName
+      lastName
+      email
+    }
+  }
+}
+
+query EmployeeCensusTasks($censusId: ID!, $employeeId: ID!) {
+  employeeCensusTasks(censusId: $censusId, employeeId: $employeeId) {
+    id
+    censusId
+    assetId
+    status
+    reason
+    transferredToEmployeeId
+    respondedAt
+    asset {
+      id
+      assetTag
+      serialNumber
+      category
+      status
+      imageUrl
+    }
+  }
+}
+
+mutation StartCensus($input: StartCensusInput!) {
+  startCensus(input: $input) {
+    event {
+      id
+      name
+      scope
+      startedAt
+      closedAt
+    }
+    totalTasks
+    respondedTasks
+    unassignedTasks
+    verifierProgress {
+      employee {
+        id
+        firstName
+        lastName
+        email
+      }
+      total
+      responded
+      done
+    }
+  }
+}
+
+mutation SubmitCensusResponses($censusId: ID!, $employeeId: ID!, $responses: [CensusResponseInput!]!) {
+  submitCensusResponses(censusId: $censusId, employeeId: $employeeId, responses: $responses)
+}
+
+mutation CloseCensus($censusId: ID!, $closedBy: ID!) {
+  closeCensus(censusId: $censusId, closedBy: $closedBy)
+}
+

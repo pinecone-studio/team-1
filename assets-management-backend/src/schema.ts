@@ -538,7 +538,9 @@ export const censusEvents = sqliteTable(
   {
     id: text().primaryKey().notNull(),
     name: text().notNull(),
-    scope: text(),
+    /** ORG | EMPLOYEES */
+    scope: text().notNull(),
+    /** JSON string (e.g. selected employeeIds) */
     scopeFilter: text(),
     createdBy: text()
       .notNull()
@@ -548,7 +550,7 @@ export const censusEvents = sqliteTable(
     ...timestamps,
   },
   (t) => ({
-    statusIdx: index("census_events_closed_idx").on(t.closedAt),
+    statusIdx: index("census_events_closed_at_idx").on(t.closedAt),
   }),
 );
 
@@ -562,18 +564,28 @@ export const censusTasks = sqliteTable(
     assetId: text()
       .notNull()
       .references(() => assets.id),
-    verifierId: text()
-      .notNull()
-      .references(() => employees.id),
-    verifiedAt: integer(),
+    /**
+     * Employee who should verify (asset owner at census start).
+     * Null for unassigned assets (still included in ORG scope).
+     */
+    verifierId: text().references(() => employees.id),
+    /** PENDING | CONFIRMED | NOT_AVAILABLE */
+    status: text().default("PENDING").notNull(),
+    /** BROKEN | LOST | TRANSFERRED */
+    reason: text(),
+    transferredToEmployeeId: text().references(() => employees.id),
+    respondedAt: integer(),
+    /** Kept for compatibility with earlier drafts */
     conditionReported: text(),
     locationConfirmed: text(),
     discrepancyFlag: integer().default(0).notNull(),
     ...timestamps,
   },
   (t) => ({
-    assetIdx: index("census_tasks_asset_idx").on(t.assetId),
-    censusIdx: index("census_tasks_census_idx").on(t.censusId),
+    assetIdx: index("census_tasks_asset_id_idx").on(t.assetId),
+    censusIdx: index("census_tasks_census_id_idx").on(t.censusId),
+    verifierIdx: index("census_tasks_verifier_id_idx").on(t.verifierId),
+    statusIdx: index("census_tasks_status_value_idx").on(t.status),
   }),
 );
 

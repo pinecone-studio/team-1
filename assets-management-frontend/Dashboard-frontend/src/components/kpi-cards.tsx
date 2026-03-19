@@ -11,7 +11,7 @@ import {
 import { useQuery } from "@apollo/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { GetAssetsDocument } from "@/gql/graphql";
+import { GetAssetsDocument, type AssetFieldsFragment } from "@/gql/graphql";
 
 const formatMoney = (value: number) =>
   `${new Intl.NumberFormat("mn-MN").format(value)}₮`;
@@ -29,7 +29,8 @@ export function KPICards() {
   });
 
   const normalizedAssets =
-    data?.assets?.map((asset) => {
+    data?.assets?.map((rawAsset) => {
+      const asset = rawAsset as unknown as AssetFieldsFragment;
       const currentBookValue =
         asset.currentBookValue ?? asset.purchaseCost ?? 0;
 

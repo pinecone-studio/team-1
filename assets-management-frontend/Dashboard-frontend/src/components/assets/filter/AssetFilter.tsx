@@ -298,6 +298,7 @@ export function AssetFilter() {
           setQrAssets([a]);
           setShowQrDialog(true);
         }}
+        onOpenAsset={(assetId) => setDetailAssetId(assetId)}
       />
     </div>
   );
