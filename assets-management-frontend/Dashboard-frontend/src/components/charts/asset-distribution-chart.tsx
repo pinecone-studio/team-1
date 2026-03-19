@@ -241,28 +241,30 @@ export function AssetDistributionChart() {
           ) : (
             <>
               {/* DONUT */}
-              <div className="w-1/2 h-full pr-10">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={chartData}
-                      innerRadius={70}
-                      outerRadius={105}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {chartData.map((entry, index) => (
-                        <Cell key={index} fill={entry.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="relative h-full w-1/2">
+                <div className="absolute inset-y-0 -left-12 w-[calc(100%+24px)]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={chartData}
+                        innerRadius={70}
+                        outerRadius={105}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {chartData.map((entry, index) => (
+                          <Cell key={index} fill={entry.color} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
 
               {/* LEGEND */}
-              <div className="w-1/2 grid grid-cols-2 gap-x-8 gap-y-3 max-h-64 overflow-y-auto">
+              <div className="w-1/2  gap-3 max-h-64 overflow-y-auto">
                 {chartData.map((item) => (
-                  <div key={item.name} className="flex items-center gap-2">
+                  <div key={item.name} className="flex py-2 items-center gap-2">
                     <div
                       className="w-2.5 h-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: item.color }}

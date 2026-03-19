@@ -21,6 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatAssetId } from "@/components/assets/filter/utils";
 import {
   Dialog,
   DialogContent,
@@ -30,10 +31,8 @@ import {
 } from "@/components/ui/dialog";
 import {
   AssignmentsDocument,
-  EmployeesDocument,
   GetAssetsDocument,
   GetDisposalRequestsDocument,
-  UserRole,
 } from "@/gql/graphql";
 
 type AssetRequestRow = {
@@ -45,6 +44,43 @@ type AssetRequestRow = {
   requestType: string;
   sortTime: number;
   sourceType: "transfer" | "disposal";
+};
+
+type AssetLite = {
+  id: string;
+  assetTag?: string | null;
+  serialNumber?: string | null;
+  category?: string | null;
+};
+
+type AssignmentLite = {
+  id: string;
+  status?: string | null;
+  assetId: string;
+  asset?: AssetLite | null;
+  requestedBy?: {
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+  } | null;
+  employee?: {
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+  } | null;
+  assignedAt?: number | null;
+};
+
+type DisposalLite = {
+  id: string;
+  assetId: string;
+  asset?: AssetLite | null;
+  requestedBy?: {
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+  } | null;
+  createdAt?: number | null;
 };
 
 const formatEmployeeName = (
@@ -66,10 +102,7 @@ function AssetRequestsTableSkeleton() {
   return (
     <>
       {Array.from({ length: 5 }).map((_, index) => (
-        <TableRow
-          key={index}
-          className="border-0 bg-white hover:bg-white"
-        >
+        <TableRow key={index} className="border-0 bg-white hover:bg-white">
           <TableCell className="rounded-l-2xl px-3 py-3.5 md:px-4">
             <Skeleton className="h-4 w-6 bg-[#ececec]" />
           </TableCell>
@@ -102,6 +135,7 @@ function AssetRequestsTableSkeleton() {
 
 export function AssetRequestsTable() {
   const [detailRow, setDetailRow] = useState<AssetRequestRow | null>(null);
+  const [showAllOpen, setShowAllOpen] = useState(false);
 
   const { data: assignmentsData, loading: assignmentsLoading } = useQuery(
     AssignmentsDocument,
@@ -121,12 +155,6 @@ export function AssetRequestsTable() {
       fetchPolicy: "cache-first",
     },
   );
-  const { data: employeesData, loading: employeesLoading } = useQuery(
-    EmployeesDocument,
-    {
-      fetchPolicy: "cache-first",
-    },
-  );
   const { data: disposalsData, loading: disposalsLoading } = useQuery(
     GetDisposalRequestsDocument,
     {
@@ -135,40 +163,29 @@ export function AssetRequestsTable() {
     },
   );
 
-  const rows = useMemo(() => {
-    const employees = (employeesData as any)?.employees ?? [];
-    const assets = (assetsData as any)?.assets ?? [];
-    const assignments = (assignmentsData as any)?.assignments ?? [];
-    const disposals = (disposalsData as any)?.disposalRequests ?? [];
-
-    const employeeNameById = new Map(
-      employees.map((employee: any) => [
-        employee.id,
-        formatEmployeeName({
-          firstName: employee.firstName,
-          lastName: employee.lastName,
-          email: employee.email,
-        }),
-      ]),
-    );
+  const allRows = useMemo(() => {
+    const assets = (assetsData?.assets ?? []) as AssetLite[];
+    const assignments = (assignmentsData?.assignments ?? []) as AssignmentLite[];
+    const disposals = (disposalsData?.disposalRequests ?? []) as DisposalLite[];
 
     const assetById = new Map(
-      assets.map((asset: any) => [
+      assets.map((asset) => [
         asset.id,
         {
           assetTag: asset.assetTag,
+          serialNumber: asset.serialNumber,
           category: asset.category,
         },
       ]),
     );
 
     const transferRows: AssetRequestRow[] = assignments
-      .filter((assignment: any) => assignment.status === "ASSIGN_REQUESTED")
-      .map((assignment: any) => {
+      .filter((assignment) => assignment.status === "ASSIGN_REQUESTED")
+      .map((assignment) => {
         const asset = assignment.asset ?? assetById.get(assignment.assetId);
         return {
           id: assignment.id,
-          assetName: asset?.assetTag ?? assignment.assetId,
+          assetName: formatAssetId(asset?.assetTag ?? assignment.assetId),
           assetCode: asset?.serialNumber ?? assignment.assetId,
           previousUser: formatEmployeeName(assignment.requestedBy),
           nextUser: formatEmployeeName(assignment.employee),
@@ -178,9 +195,9 @@ export function AssetRequestsTable() {
         };
       });
 
-    const disposalRows: AssetRequestRow[] = disposals.map((disposal: any) => ({
+    const disposalRows: AssetRequestRow[] = disposals.map((disposal) => ({
       id: disposal.id,
-      assetName: disposal.asset?.assetTag ?? disposal.assetId,
+      assetName: formatAssetId(disposal.asset?.assetTag ?? disposal.assetId),
       assetCode: disposal.asset?.id ?? disposal.assetId,
       previousUser: formatEmployeeName(disposal.requestedBy),
       nextUser: "Админ хэрэглэгч",
@@ -191,23 +208,12 @@ export function AssetRequestsTable() {
 
     return [...transferRows, ...disposalRows]
       .sort((a, b) => b.sortTime - a.sortTime)
-      .slice(0, 5);
-  }, [assetsData, assignmentsData, disposalsData, employeesData]);
+  }, [assetsData, assignmentsData, disposalsData]);
 
-  const approverId = useMemo(() => {
-    const employees = (employeesData as any)?.employees ?? [];
-    return (
-      employees.find((employee: any) => employee.role === UserRole.ItAdmin)
-        ?.id ??
-      employees.find((employee: any) => employee.role === UserRole.SuperAdmin)
-        ?.id ??
-      employees[0]?.id ??
-      ""
-    );
-  }, [employeesData]);
+  const rows = useMemo(() => allRows.slice(0, 5), [allRows]);
 
   const isLoading =
-    assignmentsLoading || assetsLoading || employeesLoading || disposalsLoading;
+    assignmentsLoading || assetsLoading || disposalsLoading;
 
   const detailTitle = useMemo(() => {
     if (!detailRow) return "";
@@ -227,15 +233,16 @@ export function AssetRequestsTable() {
   }, [detailRow]);
 
   return (
-    <Card className="border-0 bg-transparent p-0 shadow-none">
-      <CardHeader className="flex-row items-center justify-between gap-3 px-0 pb-3 pt-0">
-        <CardTitle className="text-[18px] font-semibold tracking-[-0.02em] text-[#111111]">
+    <Card className="border bg-white p-0 shadow-none">
+      <CardHeader className="flex-row items-center justify-between  px-3  pt-2">
+        <CardTitle className="text-[18px] font-semibold tracking-[-0.02em] pl-3 pt-2 text-[#111111]">
           Хөрөнгийн хүсэлтүүд
         </CardTitle>
-        <CardAction>
+        <CardAction className="pl-2">
           <Button
             variant="ghost"
-            className="h-auto gap-2 rounded-full px-0 py-1 text-[13px] font-medium text-[#6b6b6b] hover:bg-transparent hover:text-[#111111]"
+            className="h-auto gap-2.5 rounded-full px-3 pt-1.5 text-[13px] font-medium text-[#6b6b6b] hover:bg-transparent hover:text-[#111111]"
+            onClick={() => setShowAllOpen(true)}
           >
             Бүгдийг үзэх
             <ArrowRight className="h-4 w-4" />
@@ -243,7 +250,7 @@ export function AssetRequestsTable() {
         </CardAction>
       </CardHeader>
 
-      <CardContent className="px-0 pt-0">
+      <CardContent className="px-4 pb-3">
         <div className="overflow-hidden rounded-2xl border border-[#efefef] bg-white">
           <Table>
             <colgroup>
@@ -339,7 +346,115 @@ export function AssetRequestsTable() {
         </div>
       </CardContent>
 
-      <Dialog open={detailRow != null} onOpenChange={(open) => !open && setDetailRow(null)}>
+      <Dialog open={showAllOpen} onOpenChange={setShowAllOpen}>
+        <DialogContent className="w-[calc(100vw-24px)] max-w-none sm:w-[min(98vw,1320px)]">
+          <DialogHeader>
+            <DialogTitle>Бүх хөрөнгийн хүсэлтүүд</DialogTitle>
+            <DialogDescription className="text-[13px] leading-5">
+              Нийт {allRows.length} хүсэлт байна.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[70vh] overflow-auto rounded-2xl border border-[#efefef] bg-white">
+            <Table>
+              <colgroup>
+                <col className="w-13" />
+                <col className="w-[19%]" />
+                <col className="w-[17%]" />
+                <col className="w-[18%]" />
+                <col className="w-[18%]" />
+                <col className="w-[20%]" />
+                <col className="w-30" />
+              </colgroup>
+              <TableHeader>
+                <TableRow className="border-0 bg-[#f3f3f3] hover:bg-[#f3f3f3]">
+                  <TableHead className="h-auto px-3 py-3 text-[13px] font-semibold text-[#111111] md:px-4">
+                    №
+                  </TableHead>
+                  <TableHead className="h-auto px-3 py-3 text-[13px] font-semibold text-[#111111] md:px-4">
+                    Хөрөнгийн нэр
+                  </TableHead>
+                  <TableHead className="h-auto px-3 py-3 text-[13px] font-semibold text-[#111111] md:px-4">
+                    Хөрөнгийн ID
+                  </TableHead>
+                  <TableHead className="h-auto px-3 py-3 text-[13px] font-semibold text-[#111111] md:px-4">
+                    Өмнөх хэрэглэгч
+                  </TableHead>
+                  <TableHead className="h-auto px-3 py-3 text-[13px] font-semibold text-[#111111] md:px-4">
+                    Шинэ хэрэглэгч
+                  </TableHead>
+                  <TableHead className="h-auto px-3 py-3 text-[13px] font-semibold text-[#111111] md:px-4">
+                    Шилжүүлгийн төрөл
+                  </TableHead>
+                  <TableHead className="h-auto px-3 py-3 text-[13px] font-semibold text-[#111111] md:px-4">
+                    Төлөв
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody className="[&_tr:last-child]:border-0">
+                {isLoading ? (
+                  <AssetRequestsTableSkeleton />
+                ) : allRows.length === 0 ? (
+                  <TableRow className="border-0 bg-white hover:bg-white">
+                    <TableCell
+                      colSpan={7}
+                      className="px-4 py-8 text-center text-[14px] text-[#6b6b6b]"
+                    >
+                      Одоогоор харагдах хүсэлт алга байна.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  allRows.map((request, index) => (
+                    <TableRow
+                      key={`all-${request.id}`}
+                      className={[
+                        "border-b border-[#efefef] hover:bg-inherit",
+                        index % 2 === 0 ? "bg-white" : "bg-[#fafafa]",
+                      ].join(" ")}
+                    >
+                      <TableCell className="px-3 py-3.5 text-[14px] font-medium text-[#111111] md:px-4">
+                        {index + 1}
+                      </TableCell>
+                      <TableCell className="px-3 py-3.5 text-[14px] font-medium text-[#111111] md:px-4">
+                        {request.assetName}
+                      </TableCell>
+                      <TableCell className="px-3 py-3.5 text-[14px] font-medium text-[#111111] md:px-4">
+                        {request.assetCode}
+                      </TableCell>
+                      <TableCell className="px-3 py-3.5 text-[14px] font-normal text-[#111111] md:px-4">
+                        {request.previousUser}
+                      </TableCell>
+                      <TableCell className="px-3 py-3.5 text-[14px] font-normal text-[#111111] md:px-4">
+                        {request.nextUser}
+                      </TableCell>
+                      <TableCell className="px-3 py-3.5 text-[14px] font-normal text-[#111111] md:px-4">
+                        {request.requestType}
+                      </TableCell>
+                      <TableCell className="px-3 py-3.5 md:px-4">
+                        <div className="flex items-center justify-end gap-3">
+                          <Button
+                            variant="ghost"
+                            className="h-8 rounded-full px-3 text-[12px] font-semibold text-[#0b6fae] hover:bg-[#e9f3fb] hover:text-[#0b6fae]"
+                            onClick={() => setDetailRow(request)}
+                          >
+                            Дэлгэрэнгүй
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={detailRow != null}
+        onOpenChange={(open) => !open && setDetailRow(null)}
+      >
         <DialogContent className="max-w-[min(92vw,560px)]">
           <DialogHeader>
             <DialogTitle>{detailTitle}</DialogTitle>

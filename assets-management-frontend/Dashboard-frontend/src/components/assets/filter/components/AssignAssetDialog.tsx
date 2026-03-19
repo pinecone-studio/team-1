@@ -53,7 +53,6 @@ export function AssignAssetDialog({
   const [popoverOpen, setPopoverOpen] = useState(false);
 
   const selectedAssetsList = assets.filter((a) => selectedIds.has(a.id));
-  const primaryAsset = selectedAssetsList[0];
 
   // Map-аас ажилтны нэрийг авах
   const employeeName = assignEmployeeId
@@ -70,7 +69,7 @@ export function AssignAssetDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md w-[450] p-6">
+      <DialogContent className="w-[min(92vw,640px)] rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">
             Хөрөнгө олгох
@@ -111,11 +110,13 @@ export function AssignAssetDialog({
                   variant="outline"
                   role="combobox"
                   aria-expanded={popoverOpen}
-                  className="w-full justify-between font-normal border-gray-200"
+                  className="h-11 w-full justify-between overflow-hidden rounded-md border-gray-200 font-normal"
                 >
-                  {assignEmployeeId
-                    ? employeeNameById.get(assignEmployeeId)
-                    : "Ажилтан хайх..."}
+                  <span className="truncate">
+                    {assignEmployeeId
+                      ? employeeNameById.get(assignEmployeeId)
+                      : "Ажилтан хайх..."}
+                  </span>
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
@@ -155,31 +156,38 @@ export function AssignAssetDialog({
             </Popover>
           </div>
 
-          {primaryAsset && (
-            <div className="rounded-lg border bg-muted/40 p-4 space-y-2">
+          {selectedAssetsList.length > 0 && (
+            <div className="rounded-lg border bg-muted/40 p-4 space-y-3">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Олголтын урьдчилсан мэдээлэл
               </p>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
-                <span className="text-muted-foreground">Ажилтан</span>
-                <span className="font-medium truncate">
-                  {employeeName || "—"}
-                </span>
-                <span className="text-muted-foreground">Хөрөнгө</span>
-                <span className="font-medium">{primaryAsset.assetId}</span>
-                <span className="text-muted-foreground">Сериал дугаар</span>
-                <span className="font-medium">
-                  {primaryAsset.serialNumber || "—"}
-                </span>
-                <span className="text-muted-foreground">Үнэ</span>
-                <span className="font-medium">
-                  {(
-                    primaryAsset.currentBookValue ||
-                    primaryAsset.purchaseCost ||
-                    0
-                  ).toLocaleString()}
-                  ₮
-                </span>
+              <div className="rounded-md bg-white/70 px-3 py-2 text-sm">
+                <span className="text-muted-foreground">Ажилтан: </span>
+                <span className="font-medium">{employeeName || "—"}</span>
+              </div>
+              <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
+                {selectedAssetsList.map((asset) => (
+                  <div
+                    key={asset.id}
+                    className="grid grid-cols-2 gap-x-6 gap-y-1 rounded-md bg-white px-3 py-3 text-sm"
+                  >
+                    <span className="text-muted-foreground">Хөрөнгө</span>
+                    <span className="font-medium">{asset.assetId}</span>
+                    <span className="text-muted-foreground">Сериал дугаар</span>
+                    <span className="font-medium">
+                      {asset.serialNumber || "—"}
+                    </span>
+                    <span className="text-muted-foreground">Үнэ</span>
+                    <span className="font-medium">
+                      {(
+                        asset.currentBookValue ||
+                        asset.purchaseCost ||
+                        0
+                      ).toLocaleString()}
+                      ₮
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -197,6 +205,7 @@ export function AssignAssetDialog({
             type="button"
             disabled={submitting || !assignEmployeeId || selectedIds.size === 0}
             onClick={onSubmit}
+            className="bg-sky-900 text-white hover:bg-sky-950"
           >
             {submitting ? "Илгээж байна..." : "Хүсэлт илгээх"}
           </Button>

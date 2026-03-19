@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@apollo/client";
 import {
   UpdateAssetDocument,
   EmployeesDocument,
   AssignAssetDocument,
 } from "@/gql/graphql";
-import { User, MapPin, X } from "lucide-react";
+import { User, MapPin, X, Check, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -17,15 +17,31 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { LocationPicker } from "./location-picker";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter as ConfirmFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export type SelectedAsset = { id: string; assetTag: string };
 
@@ -39,21 +55,6 @@ interface AssetTransferDialogProps {
   onSuccess?: () => void;
 }
 
-function buildLocationPath(
-  loc: { id: string; name: string; parentId?: string | null },
-  byId: Map<string, { id: string; name: string; parentId?: string | null }>,
-): string {
-  const parts: string[] = [loc.name];
-  let pid = loc.parentId;
-  while (pid) {
-    const p = byId.get(pid);
-    if (!p) break;
-    parts.unshift(p.name);
-    pid = p.parentId;
-  }
-  return parts.join(" / ");
-}
-
 export function AssetTransferDialog({
   open,
   onOpenChange,
@@ -61,10 +62,12 @@ export function AssetTransferDialog({
   onRemoveAsset,
   onSuccess,
 }: AssetTransferDialogProps) {
-  const [tab, setTab] = useState<TabMode>("location");
+  const [tab, setTab] = useState<TabMode>("owner");
   const [locationFullPath, setLocationFullPath] = useState<string>("");
   const [employeeId, setEmployeeId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+  const [ownerPickerOpen, setOwnerPickerOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const { data: employeesData } = useQuery(EmployeesDocument);
   const [updateAssetMutation] = useMutation(UpdateAssetDocument);
@@ -83,6 +86,16 @@ export function AssetTransferDialog({
     }));
   }, [employeesData?.employees]);
 
+  const selectedEmployeeName = employees.find(
+    (employee) => employee.id === employeeId,
+  )?.name;
+
+  useEffect(() => {
+    if (!open) return;
+    setTab("owner");
+    setOwnerPickerOpen(false);
+  }, [open]);
+
   const handleTransferToLocation = async () => {
     if (!locationFullPath || selectedAssets.length === 0) {
       toast.error("Байршил болон хөрөнгийг сонгоно уу.");
@@ -99,7 +112,7 @@ export function AssetTransferDialog({
           },
         });
       }
-      toast.success(`${selectedAssets.length} хөрөнгө амжилттай шилжүүлэгдлээ.`, {
+      toast.success(`${selectedAssets.length} хөрөнгө амжилттай шилжүүллээ.`, {
         id: toastId,
       });
       setLocationFullPath("");
@@ -128,7 +141,7 @@ export function AssetTransferDialog({
           },
         });
       }
-      toast.success(`${selectedAssets.length} хөрөнгө амжилттай хуваарилагдлаа.`, {
+      toast.success(`${selectedAssets.length} хөрөнгө амжилттай шилжүүллээ.`, {
         id: toastId,
       });
       setEmployeeId("");
@@ -142,8 +155,7 @@ export function AssetTransferDialog({
   };
 
   const handleSubmit = () => {
-    if (tab === "location") handleTransferToLocation();
-    else handleTransferToOwner();
+    setConfirmOpen(true);
   };
 
   const canSubmit =
@@ -155,16 +167,15 @@ export function AssetTransferDialog({
       <DialogContent className="sm:max-w-lg" showCloseButton>
         <DialogHeader>
           <DialogTitle className="sr-only">Хөрөнгө шилжүүлэх</DialogTitle>
-          <div className="flex items-center gap-6 border-b pb-3">
+          <div className="flex items-center gap-6 border-b pb-3 pr-10">
             <button
               type="button"
               onClick={() => setTab("owner")}
-              className={cn(
-                "flex items-center gap-1.5 text-sm font-medium transition-colors",
+              className={
                 tab === "owner"
-                  ? "text-foreground border-b-2 border-primary pb-0.5"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
+                  ? "flex items-center gap-1.5 border-b-2 border-primary pb-0.5 text-sm font-medium text-foreground transition-colors"
+                  : "flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              }
             >
               <User className="h-4 w-4" />
               Эзэмшигчрүү шилжүүлэх
@@ -172,12 +183,11 @@ export function AssetTransferDialog({
             <button
               type="button"
               onClick={() => setTab("location")}
-              className={cn(
-                "flex items-center gap-1.5 text-sm font-medium transition-colors",
+              className={
                 tab === "location"
-                  ? "text-foreground border-b-2 border-primary pb-0.5"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
+                  ? "flex items-center gap-1.5 border-b-2 border-primary pb-0.5 text-sm font-medium text-foreground transition-colors"
+                  : "flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              }
             >
               <MapPin className="h-4 w-4" />
               Байршилруу шилжүүлэх
@@ -227,25 +237,56 @@ export function AssetTransferDialog({
           )}
 
           {tab === "owner" && (
-            <div>
+            <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">
                 Эзэмшигч сонгох
               </label>
-              <Select
-                value={employeeId || undefined}
-                onValueChange={setEmployeeId}
-              >
-                <SelectTrigger className="mt-2 w-full">
-                  <SelectValue placeholder="Сонгоно уу" />
-                </SelectTrigger>
-                <SelectContent>
-                  {employees.map((emp) => (
-                    <SelectItem key={emp.id} value={emp.id}>
-                      {emp.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={ownerPickerOpen} onOpenChange={setOwnerPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={ownerPickerOpen}
+                    className="h-11 w-full justify-between overflow-hidden rounded-md border-gray-200 font-normal"
+                  >
+                    <span className="truncate">
+                      {selectedEmployeeName || "Эзэмшигч хайх..."}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-[--radix-popover-trigger-width] p-0"
+                  align="start"
+                >
+                  <Command>
+                    <CommandInput placeholder="Нэрээр хайх..." className="h-9" />
+                    <CommandList>
+                      <CommandEmpty>Ажилтан олдсонгүй.</CommandEmpty>
+                      <CommandGroup>
+                        {employees.map((emp) => (
+                          <CommandItem
+                            key={emp.id}
+                            value={emp.name}
+                            onSelect={() => {
+                              setEmployeeId(emp.id);
+                              setOwnerPickerOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                employeeId === emp.id ? "opacity-100" : "opacity-0",
+                              )}
+                            />
+                            {emp.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           )}
         </div>
@@ -262,11 +303,42 @@ export function AssetTransferDialog({
             type="button"
             disabled={!canSubmit || submitting}
             onClick={handleSubmit}
+            className="bg-sky-900 text-white hover:bg-sky-950"
           >
             {submitting ? "Түр хүлээнэ үү..." : "Шилжүүлэх"}
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Та шилжүүлэхэд итгэлтэй байна уу?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {tab === "owner"
+                ? "Сонгосон хөрөнгүүд шинэ эзэмшигч рүү шилжинэ."
+                : "Сонгосон хөрөнгүүд шинэ байршил руу шилжинэ."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ConfirmFooter>
+            <AlertDialogCancel>Үгүй</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-sky-900 text-white hover:bg-sky-950"
+              onClick={() => {
+                if (tab === "location") {
+                  void handleTransferToLocation();
+                } else {
+                  void handleTransferToOwner();
+                }
+              }}
+            >
+              Тийм
+            </AlertDialogAction>
+          </ConfirmFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
