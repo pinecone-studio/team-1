@@ -53,9 +53,11 @@ export function DemoEmployeeMyAssetsCard({
 
   const statusLabel = (assetStatus?: string, assignmentStatus?: string) => {
     const s = (assetStatus ?? "").toUpperCase();
-    if (s === "PENDING_DISPOSAL") return { text: "Устгах хүлээгдэж буй", tone: "amber" as const };
+    if (s === "PENDING_DISPOSAL")
+      return { text: "Устгах хүлээгдэж буй", tone: "amber" as const };
     if (s === "DISPOSED") return { text: "Устгасан", tone: "slate" as const };
-    if ((assignmentStatus ?? "").toUpperCase() !== "ACTIVE") return { text: "Хүлээгдэж буй", tone: "amber" as const };
+    if ((assignmentStatus ?? "").toUpperCase() !== "ACTIVE")
+      return { text: "Хүлээгдэж буй", tone: "amber" as const };
     return { text: "Эзэмшигчтэй", tone: "emerald" as const };
   };
 
@@ -81,7 +83,8 @@ export function DemoEmployeeMyAssetsCard({
               className="gap-2 h-[32px] w-fit py-4"
               onClick={() => requireSelected(onSendToFinanceDisposal)}
             >
-              <UserPlus className="h-4 w-4" /> Санхүү руу явуулах (устгах хүсэлт)
+              <UserPlus className="h-4 w-4" /> Санхүү руу явуулах (устгах
+              хүсэлт)
             </Button>
             <Button
               variant="outline"
@@ -98,7 +101,7 @@ export function DemoEmployeeMyAssetsCard({
         <div className="overflow-hidden rounded-2xl border border-border/60">
           <Table>
             <TableHeader>
-              <TableRow className="border-0 bg-[#0b6fae] hover:bg-[#0b6fae]">
+              <TableRow className="border-0 bg-[#0f4c6e] hover:bg-[#0b6fae]">
                 <TableHead className="h-11 w-[44px] px-3 text-xs font-semibold text-white md:px-4">
                   <input
                     type="checkbox"
@@ -157,7 +160,10 @@ export function DemoEmployeeMyAssetsCard({
                           onChange={(e) => {
                             const next = e.target.checked;
                             if (!next) setSelectedAssignment(null);
-                            else setSelectedAssignment(assignment as AssignmentItem);
+                            else
+                              setSelectedAssignment(
+                                assignment as AssignmentItem,
+                              );
                           }}
                         />
                       </TableCell>
