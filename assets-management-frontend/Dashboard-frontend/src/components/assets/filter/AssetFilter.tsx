@@ -2,8 +2,14 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useMutation } from "@apollo/client";
-import Link from "next/link";
-import { Plus, ArrowRightLeft, Undo2, QrCode } from "lucide-react";
+import {
+  Plus,
+  ArrowRightLeft,
+  Undo2,
+  QrCode,
+  UserRoundPlus,
+  PackagePlus,
+} from "lucide-react";
 import { AssignAssetDocument } from "@/gql/graphql";
 import type { Asset } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -29,48 +35,36 @@ export function AssetFilter() {
   const [assigning, setAssigning] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const selectAllRef = useRef<HTMLInputElement>(null);
+
+  // Идэвхтэй үйлдлийг хянах state
   const [activeAction, setActiveAction] = useState<
-    "add" | "transfer" | "assign" | "return" | null
+    "assign" | "transfer" | "return" | null
   >(null);
+
   const { assets, visibleAssets, loading, refetch, employeeNameById } =
     useAssetsData("");
   const [assignAssetMutation] = useMutation(AssignAssetDocument);
-  const [actionMode, setActionMode] = useState<
-    "assign" | "transfer" | "return" | null
-  >(null);
-  const openQrForSelected = () => {
-    if (selectedIds.size === 0) {
-      toast.error("Та эхлээд QR гаргах хөрөнгөө сонгоно уу.");
-      return;
-    }
-    const list = assets.filter((a) => selectedIds.has(a.id));
-    if (list.length === 0) {
-      toast.error("Сонгосон хөрөнгө олдсонгүй. Дахин оролдоно уу.");
-      return;
-    }
-    setQrAssets(list);
-    setShowQrDialog(true);
-  };
 
+  // Табын сонголтоос хамаарч датаг шүүх (Дизайн өөрчлөхгүй)
   const filteredAssets = useMemo(() => {
     return assets.filter((a) => {
-      if (statusFilter === "ASSIGNED") {
-        return a.status === "ASSIGNED";
-      }
-
+      if (statusFilter === "ASSIGNED") return a.status === "ASSIGNED";
       if (statusFilter === "ASSIGNABLE") {
         const status = a.status as unknown as string;
         return status === "AVAILABLE" || status === "FOR_SALE";
       }
-
       return true;
     });
   }, [assets, statusFilter]);
 
-  const openQrForSingle = (asset: Asset) => {
-    setQrAssets([asset]);
-    setShowQrDialog(true);
-  };
+  // Сонгосон хөрөнгө болон идэвхтэй табаас хамаарч товчны нэрийг тодорхойлох
+  const actionLabel = useMemo(() => {
+    const count = selectedIds.size;
+    if (activeAction === "assign") return `Хөрөнгө олгох (${count})`;
+    if (activeAction === "transfer") return `Хөрөнгө шилжүүлэх (${count})`;
+    if (activeAction === "return") return `Хөрөнгө буцаах (${count})`;
+    return "Үйлдэл сонгоно уу";
+  }, [activeAction, selectedIds.size]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -82,14 +76,15 @@ export function AssetFilter() {
   };
 
   const selectAll = () => {
-    if (selectedIds.size === assets.length) {
+    if (selectedIds.size === filteredAssets.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(assets.map((a) => a.id)));
+      setSelectedIds(new Set(filteredAssets.map((a) => a.id)));
     }
   };
 
-  const allSelected = assets.length > 0 && selectedIds.size === assets.length;
+  const allSelected =
+    filteredAssets.length > 0 && selectedIds.size === filteredAssets.length;
   const someSelected = selectedIds.size > 0;
 
   useEffect(() => {
@@ -112,171 +107,122 @@ export function AssetFilter() {
           },
         });
       }
-      toast.success(
-        `${targets.length} хөрөнгө амжилттай хуваарилах хүсэлт илгээгдлээ.`,
-        { id: toastId },
-      );
+      toast.success(`${targets.length} хөрөнгө амжилттай илгээгдлээ.`, {
+        id: toastId,
+      });
       setShowAssignDialog(false);
       setAssignEmployeeId("");
       setSelectedIds(new Set());
       refetch();
     } catch {
-      toast.error("Хуваарилах хүсэлт илгээхэд алдаа гарлаа.", {
-        id: toastId,
-      });
+      toast.error("Алдаа гарлаа.", { id: toastId });
     } finally {
       setAssigning(false);
     }
   };
 
-  const activeBtn =
-    "bg-black text-white border border-black " +
-    "transition-all duration-200 " +
-    "hover:!bg-white hover:!text-black hover:!border-black";
-
-  const actionLabel =
-    actionMode === "assign"
-      ? "Хөрөнгө олгох"
-      : actionMode === "transfer"
-        ? "Хөрөнгө шилжүүлэх"
-        : actionMode === "return"
-          ? "Хөрөнгө буцаах"
-          : "Үйлдэл сонгоно уу";
+  const tabActive =
+    "text-black relative after:content-[''] after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-full after:bg-black";
+  const tabBase =
+    "gap-2 bg-transparent border-none shadow-none rounded-none px-3 py-2 text-gray-500 hover:text-black hover:bg-transparent";
 
   return (
     <div className="flex-1 overflow-auto p-6 space-y-6">
       <div className="space-y-6">
-        <div>
+        <div className="flex justify-between">
           <h1 className="text-2xl font-bold text-foreground">
             Эд хөрөнгө / Нийт хөрөнгө
           </h1>
+          <div className="flex ">
+            <div>
+              <Button
+                className="gap-2 bg-white text-black border-black hover:bg-gray-100"
+                onClick={() => {
+                  setActiveAction(null);
+                  setStatusFilter("all");
+                  setShowAddDialog(true);
+                  setSelectedIds(new Set());
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                Хөрөнгө нэмэх
+              </Button>
+            </div>
+            <div>
+              <Button
+                className="gap-2 border hover:bg-gray-200  hover:border-black bg-white text-black border-gray-800"
+                onClick={() => {
+                  if (selectedIds.size === 0)
+                    return toast.error("Хөрөнгө сонгоно уу.");
+                  setQrAssets(assets.filter((a) => selectedIds.has(a.id)));
+                  setShowQrDialog(true);
+                }}
+              >
+                <QrCode className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {/* Nemeh */}
-          <Button
-            variant={activeAction === "add" ? "default" : "outline"}
-            className="gap-2"
-            onClick={() => {
-              setActiveAction("add");
-              setStatusFilter("all");
-              setShowAddDialog(true);
-            }}
-          >
-            <Plus className="h-4 w-4" />
-            Хөрөнгө нэмэх
-          </Button>
 
-          {/* Shiljuuleh */}
-          <Button
-            variant={activeAction === "transfer" ? "default" : "outline"}
-            className={cn(
-              "gap-2 transition-all duration-200",
-              activeAction === "transfer" && activeBtn,
+        <div className="flex justify-between">
+          <div className="flex flex-wrap gap-4">
+            <Button
+              variant="ghost"
+              className={cn(tabBase, activeAction === "assign" && tabActive)}
+              onClick={() => {
+                setActiveAction(activeAction === "assign" ? null : "assign");
+                setStatusFilter(
+                  activeAction === "assign" ? "all" : "ASSIGNABLE",
+                );
+                setSelectedIds(new Set());
+              }}
+            >
+              <UserRoundPlus className="h-4 w-4" />
+              Хөрөнгө олгох
+            </Button>
+
+            <Button
+              variant="ghost"
+              className={cn(tabBase, activeAction === "transfer" && tabActive)}
+              onClick={() => {
+                setActiveAction(
+                  activeAction === "transfer" ? null : "transfer",
+                );
+                setStatusFilter(
+                  activeAction === "transfer" ? "all" : "ASSIGNED",
+                );
+                setSelectedIds(new Set());
+              }}
+            >
+              <ArrowRightLeft className="h-4 w-4" />
+              Хөрөнгө шилжүүлэх
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Зөвхөн хөрөнгө сонгосон үед харагдах Үйлдлийн товч */}
+            {activeAction && someSelected && (
+              <Button
+                className="bg-sky-800 text-white hover:bg-sky-900"
+                onClick={() => {
+                  if (activeAction === "assign") setShowAssignDialog(true);
+                  if (activeAction === "transfer") setShowTransferDialog(true);
+                  if (activeAction === "return")
+                    toast.info("Буцаах функц удахгүй");
+                }}
+              >
+                <PackagePlus />
+                {actionLabel}
+              </Button>
             )}
-            onClick={() => {
-              if (activeAction === "transfer") {
-                setActiveAction(null);
-                setStatusFilter("all");
-                return;
-              }
-
-              setActiveAction("transfer");
-              setStatusFilter("ASSIGNED");
-            }}
-          >
-            <ArrowRightLeft className="h-4 w-4" />
-            Хөрөнгө шилжүүлэх
-          </Button>
-
-          {/* huviarlah */}
-          <Button
-            className={cn(
-              "gap-2 transition-all duration-200",
-              activeAction === "assign" && activeBtn,
-            )}
-            variant={activeAction === "assign" ? "default" : "outline"}
-            onClick={() => {
-              if (activeAction === "assign") {
-                setActiveAction(null);
-                setStatusFilter("all");
-                return;
-              }
-
-              setActiveAction("assign");
-              setStatusFilter("ASSIGNABLE");
-            }}
-          >
-            <ArrowRightLeft className="h-4 w-4" />
-            Хөрөнгө олгох
-          </Button>
-
-          {/* butsaah */}
-          <Button
-            variant={activeAction === "return" ? "default" : "outline"}
-            onClick={() => {
-              if (activeAction === "return") {
-                setActiveAction(null);
-                setStatusFilter("all");
-                return;
-              }
-
-              setActiveAction("return");
-              setStatusFilter("ASSIGNED");
-            }}
-            className={cn(
-              "gap-2 transition-all duration-200",
-              activeAction === "return" && activeBtn,
-            )}
-          >
-            <Undo2 className="h-4 w-4" />
-            Хөрөнгө буцаах
-          </Button>
-
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={openQrForSelected}
-          >
-            <QrCode className="h-4 w-4" />
-            Сонгосон хөрөнгийн QR (A4)
-          </Button>
+          </div>
         </div>
-        <Button
-          className="bg-blue-600 text-white hover:bg-blue-700"
-          onClick={() => {
-            if (!actionMode) {
-              toast.error("Үйлдэл сонгоно уу.");
-              return;
-            }
-
-            if (selectedIds.size === 0) {
-              toast.error("Эхлээд хөрөнгө сонгоно уу.");
-              return;
-            }
-
-            if (actionMode === "assign") {
-              setShowAssignDialog(true);
-            }
-
-            if (actionMode === "transfer") {
-              setShowTransferDialog(true);
-            }
-
-            if (actionMode === "return") {
-              toast.info("Буцаах функц удахгүй");
-            }
-          }}
-        >
-          {actionLabel}
-        </Button>
       </div>
 
+      {/* Dialog-ууд хэвээрээ */}
       <AssetFormDialog
         open={showAddDialog}
         onOpenChange={setShowAddDialog}
-        onAddAssets={() => {
-          refetch();
-        }}
+        onAddAssets={refetch}
       />
 
       <AssetTransferDialog
@@ -285,13 +231,7 @@ export function AssetFilter() {
         selectedAssets={assets
           .filter((a) => selectedIds.has(a.id))
           .map((a) => ({ id: a.id, assetTag: a.assetId }))}
-        onRemoveAsset={(id) =>
-          setSelectedIds((prev) => {
-            const next = new Set(prev);
-            next.delete(id);
-            return next;
-          })
-        }
+        onRemoveAsset={(id) => toggleSelect(id)}
         onSuccess={() => {
           refetch();
           setSelectedIds(new Set());
@@ -327,7 +267,10 @@ export function AssetFilter() {
         allSelected={allSelected}
         onSelectAll={selectAll}
         onToggleSelect={toggleSelect}
-        onOpenQrForSingle={openQrForSingle}
+        onOpenQrForSingle={(a) => {
+          setQrAssets([a]);
+          setShowQrDialog(true);
+        }}
       />
     </div>
   );

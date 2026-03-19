@@ -92,6 +92,10 @@ export function useAssetsData(statusFilter: string) {
     ).map((a) => {
       const categoryName = typeof a.category === "string" ? a.category : "";
       const rawLocationPath = (a.locationPath ?? "").trim();
+      const normalizedStatus =
+        a.status === "AVAILABLE" && (a.currentBookValue ?? 0) > 0
+          ? "FOR_SALE"
+          : a.status;
       const friendlyLocation =
         rawLocationPath && !/^[0-9a-f-]{20,}$/i.test(rawLocationPath)
           ? rawLocationPath
@@ -113,7 +117,7 @@ export function useAssetsData(statusFilter: string) {
           ? new Date(a.purchaseDate).toISOString()
           : new Date().toISOString(),
         currentBookValue: a.currentBookValue ?? a.purchaseCost ?? 0,
-        status: a.status as Asset["status"],
+        status: normalizedStatus as Asset["status"],
         assignedEmployeeId: a.assignedTo ?? undefined,
         assignedEmployeeName: a.assignedTo
           ? employeeNameById.get(a.assignedTo)
