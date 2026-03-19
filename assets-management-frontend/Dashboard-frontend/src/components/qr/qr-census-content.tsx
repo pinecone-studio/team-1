@@ -87,75 +87,144 @@ const KPI_CONFIG = [
 ];
 
 export function QRCensusContent() {
-  const [censusStarted, setCensusStarted] = useState(false);
-  const [isStartOpen, setIsStartOpen] = useState(false);
-  const [censusName, setCensusName] = useState("");
-  const [scope, setScope] = useState("");
-  const [department, setDepartment] = useState("");
-  const [category, setCategory] = useState("");
-
-  const { data: kpiData, loading: kpiLoading } = useQuery(
-    GetAssetKpisDocument,
-    { fetchPolicy: "cache-and-network" },
+  const [startOpen, setStartOpen] = useState(false);
+  const [scope, setScope] = useState<Scope>("ORG");
+  const [name, setName] = useState("1-р улирлын тооллого");
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<Set<string>>(
+    new Set(),
   );
-  const { data: assetsData, loading: assetsLoading } = useQuery(
-    GetAssetsDocument,
-    { fetchPolicy: "cache-and-network" },
-  );
+  const [activeCensusId, setActiveCensusId] = useState<string | null>(null);
+  const [lastProgress, setLastProgress] = useState<CensusProgress | null>(null);
+  const [endDialogOpen, setEndDialogOpen] = useState(false);
 
   const kpis = kpiData?.assetKpis;
   const totalCount = kpis?.totalCount ?? 0;
   const totalValue = kpis?.totalValue ?? 0;
 
-  const kpiCards = [
-    {
-      ...KPI_CONFIG[0],
-      value: totalValue,
-      count: totalCount,
-    },
-    {
-      ...KPI_CONFIG[1],
-      value: kpis?.assignedValue ?? 0,
-      count: kpis?.assignedCount ?? 0,
-    },
-    {
-      ...KPI_CONFIG[2],
-      value: kpis?.unassignedValue ?? 0,
-      count: kpis?.unassignedCount ?? 0,
-    },
-    {
-      ...KPI_CONFIG[3],
-      value: kpis?.forSaleValue ?? 0,
-      count: kpis?.forSaleCount ?? 0,
-    },
-    {
-      ...KPI_CONFIG[4],
-      value: kpis?.brokenValue ?? 0,
-      count: kpis?.brokenCount ?? 0,
-    },
-  ];
+  const {
+    data: openData,
+    startPolling,
+    stopPolling,
+  } = useQuery(OpenCensusProgressDocument, {
+    fetchPolicy: "network-only",
+  });
 
-  const verifiedCount =
-    (kpis?.assignedCount ?? 0) +
-    (kpis?.unassignedCount ?? 0) +
-    (kpis?.forSaleCount ?? 0) +
-    (kpis?.brokenCount ?? 0);
-  const confirmedCount = kpis?.assignedCount ?? 0;
-  const pendingCount = (kpis?.unassignedCount ?? 0) + (kpis?.forSaleCount ?? 0);
-  const unverifiedCount = kpis?.brokenCount ?? 0;
-  const progressPercent =
-    totalCount > 0 ? Math.round((verifiedCount / totalCount) * 100) : 0;
+  useEffect(() => {
+    // Зөвхөн нээлттэй census байхад л polling (GET хүсэлтийг багасгах)
+    const hasOpenCensus =
+      activeCensusId != null || openData?.openCensusProgress?.event.id != null;
+    if (hasOpenCensus) startPolling(CENSUS_POLL_INTERVAL_MS);
+    else stopPolling();
 
-  const assets = (assetsData?.assets ?? []) as Array<{
-    id: string;
-    assetTag: string;
-    category?: string | null;
-    status?: string | null;
-    updatedAt?: number | null;
-  }>;
-  const recentAssets = assets.slice(0, 10);
+    return () => stopPolling();
+  }, [
+    activeCensusId,
+    openData?.openCensusProgress?.event.id,
+    startPolling,
+    stopPolling,
+  ]);
 
-  const loading = kpiLoading || assetsLoading;
+  const effectiveCensusId =
+    activeCensusId ?? openData?.openCensusProgress?.event.id ?? null;
+
+  const progress: CensusProgress | undefined =
+    openData?.openCensusProgress?.event.id === effectiveCensusId
+      ? (openData.openCensusProgress as unknown as CensusProgress)
+      : (lastProgress ?? undefined);
+
+  const { data: taskDetailsData } = useQuery(CensusTaskDetailsDocument, {
+    variables: { censusId: effectiveCensusId ?? "" },
+    skip: !effectiveCensusId || !endDialogOpen,
+    fetchPolicy: "network-only",
+  });
+
+  const [startCensus, { loading: starting }] = useMutation(
+    StartCensusDocument,
+    {
+      onCompleted: (res) => {
+        const censusProgress = res.startCensus as unknown as CensusProgress;
+        setLastProgress(censusProgress);
+        setActiveCensusId(censusProgress.event.id);
+        setStartOpen(false);
+        toast.success("Тооллого эхэллээ. Мэдэгдлүүд илгээгдлээ.");
+      },
+      onError: () => toast.error("Тооллого эхлүүлэхэд алдаа гарлаа."),
+    },
+  );
+
+  const [closeCensus, { loading: closing }] = useMutation(CloseCensusDocument, {
+    onCompleted: () => {
+      toast.success("Census хаагдлаа.");
+      setActiveCensusId(null);
+      setLastProgress(null);
+      setEndDialogOpen(false);
+    },
+    onError: () => toast.error("Census хаахад алдаа гарлаа."),
+  });
+
+  const total = progress?.totalTasks ?? 0;
+  const responded = progress?.respondedTasks ?? 0;
+  const percent = total > 0 ? Math.round((responded / total) * 100) : 0;
+
+  const verifierRows = progress?.verifierProgress ?? [];
+  const doneCount = verifierRows.filter((v) => v.done).length;
+  const taskDetails = taskDetailsData?.censusTaskDetails ?? [];
+
+  const sortedEmployees = useMemo(
+    () =>
+      [...employees].sort((a, b) =>
+        (a.firstName ?? a.email ?? "").localeCompare(
+          b.firstName ?? b.email ?? "",
+        ),
+      ),
+    [employees],
+  );
+
+  const toggleEmployee = (id: string, next: boolean) => {
+    setSelectedEmployeeIds((prev) => {
+      const n = new Set(prev);
+      if (next) n.add(id);
+      else n.delete(id);
+      return n;
+    });
+  };
+
+  const handleStart = async () => {
+    const createdBy = employees[0]?.id;
+    if (!createdBy) {
+      toast.error("Employees data олдсонгүй (createdBy хэрэгтэй).");
+      return;
+    }
+    const scopeEmployeeIds =
+      scope === "EMPLOYEES" ? Array.from(selectedEmployeeIds) : undefined;
+    if (
+      scope === "EMPLOYEES" &&
+      scopeEmployeeIds &&
+      scopeEmployeeIds.length === 0
+    ) {
+      toast.error("Ажилтан сонгоно уу.");
+      return;
+    }
+    await startCensus({
+      variables: {
+        input: {
+          name,
+          scope,
+          scopeEmployeeIds,
+          createdBy,
+        },
+      },
+    });
+  };
+
+  const handleCloseCensus = async () => {
+    const closedBy = employees[0]?.id;
+    if (!effectiveCensusId || !closedBy) {
+      toast.error("Census хаахад шаардлагатай өгөгдөл алга.");
+      return;
+    }
+    await closeCensus({ variables: { censusId: effectiveCensusId, closedBy } });
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col rounded-2xl border border-slate-200 bg-[#f5f7fb] p-5 md:p-6">
@@ -270,18 +339,46 @@ export function QRCensusContent() {
                 }}
               />
             </div>
-            <div className="flex flex-wrap gap-5 pt-1 text-sm text-slate-600">
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                Баталгаажсан: {loading ? "—" : confirmedCount}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
-                Хүлээгдэж буй: {loading ? "—" : pendingCount}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
-                Баталгаажаагүй: {loading ? "—" : unverifiedCount}
+            <Progress value={percent} />
+
+            <div className="grid gap-2">
+              <p className="text-sm font-medium text-foreground">
+                Employees responded: {doneCount}/{verifierRows.length}
+              </p>
+              <div className="max-h-[260px] overflow-y-auto rounded-xl border border-slate-200">
+                <ul className="divide-y">
+                  {verifierRows.map((v) => {
+                    const label =
+                      [v.employee?.firstName, v.employee?.lastName]
+                        .filter(Boolean)
+                        .join(" ")
+                        .trim() ||
+                      v.employee?.email ||
+                      v.employee?.id ||
+                      "—";
+                    const p =
+                      v.total > 0
+                        ? Math.round((v.responded / v.total) * 100)
+                        : 0;
+                    return (
+                      <li key={v.employee?.id ?? label} className="p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">
+                              {label}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {v.responded}/{v.total}
+                            </p>
+                          </div>
+                          <div className="w-[180px]">
+                            <Progress value={p} />
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
             </div>
           </div>
@@ -364,9 +461,11 @@ export function QRCensusContent() {
       <Dialog open={isStartOpen} onOpenChange={setIsStartOpen}>
         <DialogContent className="max-w-xl rounded-2xl p-6">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-semibold text-foreground">
-              Тооллого эхлүүлэх
-            </DialogTitle>
+            <DialogTitle>Start Census</DialogTitle>
+            <DialogDescription>
+              Scope сонгоод эхлүүлнэ. Employee scope дээр тодорхой ажилтнууд
+              сонгоно.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6">
@@ -382,27 +481,65 @@ export function QRCensusContent() {
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                Цар хүрээ сонгох
-              </label>
-              <select
-                value={scope}
-                onChange={(e) => {
-                  setScope(e.target.value);
-                  setDepartment("");
-                  setCategory("");
-                }}
-                className="h-12 w-full appearance-none rounded-xl border border-border bg-slate-50 px-4 text-base outline-none focus:border-slate-400"
-              >
-                <option value="">Сонгоно уу</option>
-                <option value="org">Байгууллага бүхэлдээ</option>
-                <option value="department">Алба хэлтэсээр</option>
-                <option value="category">Ангиллаар</option>
-              </select>
+            <div className="grid gap-2">
+              <Label>Scope</Label>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant={scope === "ORG" ? "default" : "outline"}
+                  className={
+                    scope === "ORG" ? "bg-[#0b6fae] hover:bg-[#095f93]" : ""
+                  }
+                  onClick={() => setScope("ORG")}
+                >
+                  By Organization
+                </Button>
+                <Button
+                  type="button"
+                  variant={scope === "EMPLOYEES" ? "default" : "outline"}
+                  className={
+                    scope === "EMPLOYEES"
+                      ? "bg-[#0b6fae] hover:bg-[#095f93]"
+                      : ""
+                  }
+                  onClick={() => setScope("EMPLOYEES")}
+                >
+                  By Employees
+                </Button>
+              </div>
             </div>
 
-            {scope === "department" && (
+            {scope === "EMPLOYEES" ? (
+              <div className="grid gap-2">
+                <Label>Employees</Label>
+                <div className="max-h-[260px] overflow-y-auto rounded-xl border border-slate-200 bg-white">
+                  <ul className="divide-y">
+                    {sortedEmployees.map((e) => {
+                      const checked = selectedEmployeeIds.has(e.id);
+                      const label =
+                        [e.firstName, e.lastName].filter(Boolean).join(" ") ||
+                        e.email ||
+                        e.id;
+                      return (
+                        <li key={e.id} className="flex items-center gap-3 p-3">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) =>
+                              toggleEmployee(e.id, Boolean(v))
+                            }
+                          />
+                          <span className="text-sm text-foreground">
+                            {label}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              </div>
+            ) : null}
+
+            {starting ? (
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">
                   Алба хэлтэс сонгох
@@ -418,7 +555,27 @@ export function QRCensusContent() {
                   <option value="training">Сургалтын алба</option>
                 </select>
               </div>
-            )}
+            ) : null}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setStartOpen(false)}
+              disabled={starting}
+            >
+              Болих
+            </Button>
+            <Button
+              className="bg-[#0b6fae] text-white hover:bg-[#095f93]"
+              onClick={() => void handleStart()}
+              disabled={starting}
+            >
+              {starting ? "Эхлүүлж байна..." : "Эхлүүлэх"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
             {scope === "category" && (
               <div className="space-y-2">
@@ -438,25 +595,89 @@ export function QRCensusContent() {
               </div>
             )}
 
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <Button
-                variant="outline"
-                className="h-11 px-6"
-                onClick={() => setIsStartOpen(false)}
-              >
-                Цуцлах
-              </Button>
-              <Button
-                className="h-11 rounded-lg bg-blue-600 px-6 font-medium text-white hover:bg-blue-700"
-                onClick={() => {
-                  setCensusStarted(true);
-                  setIsStartOpen(false);
-                }}
-              >
-                Тооллого эхлүүлэх
-              </Button>
+            <div className="overflow-x-auto rounded-lg border">
+              <table className="w-full min-w-[860px] text-sm">
+                <thead className="bg-slate-50 text-left">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">#</th>
+                    <th className="px-3 py-2 font-medium">Employee</th>
+                    <th className="px-3 py-2 font-medium">Asset</th>
+                    <th className="px-3 py-2 font-medium">Serial</th>
+                    <th className="px-3 py-2 font-medium">Status</th>
+                    <th className="px-3 py-2 font-medium">Reason</th>
+                    <th className="px-3 py-2 font-medium">Transferred To</th>
+                    <th className="px-3 py-2 font-medium">Responded At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {taskDetails.map((t, idx) => {
+                    const emp =
+                      [t.verifier?.firstName, t.verifier?.lastName]
+                        .filter(Boolean)
+                        .join(" ")
+                        .trim() ||
+                      t.verifier?.email ||
+                      "Unassigned";
+                    const toEmp = employees.find(
+                      (e) => e.id === t.transferredToEmployeeId,
+                    );
+                    const toLabel = toEmp
+                      ? [toEmp.firstName, toEmp.lastName]
+                          .filter(Boolean)
+                          .join(" ") ||
+                        toEmp.email ||
+                        toEmp.id
+                      : (t.transferredToEmployeeId ?? "—");
+                    return (
+                      <tr key={t.id} className="border-t">
+                        <td className="px-3 py-2">{idx + 1}</td>
+                        <td className="px-3 py-2">{emp}</td>
+                        <td className="px-3 py-2">{t.asset.assetTag}</td>
+                        <td className="px-3 py-2">
+                          {t.asset.serialNumber ?? "—"}
+                        </td>
+                        <td className="px-3 py-2">{t.status}</td>
+                        <td className="px-3 py-2">{t.reason ?? "—"}</td>
+                        <td className="px-3 py-2">{toLabel}</td>
+                        <td className="px-3 py-2">
+                          {t.respondedAt
+                            ? new Date(t.respondedAt).toLocaleString()
+                            : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {taskDetails.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={8}
+                        className="px-3 py-8 text-center text-muted-foreground"
+                      >
+                        Response хараахан ирээгүй байна.
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
             </div>
           </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEndDialogOpen(false)}
+              disabled={closing}
+            >
+              Close
+            </Button>
+            <Button
+              className="bg-[#0b6fae] text-white hover:bg-[#095f93]"
+              onClick={() => void handleCloseCensus()}
+              disabled={closing || !effectiveCensusId}
+            >
+              {closing ? "Ending..." : "Confirm End Census"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

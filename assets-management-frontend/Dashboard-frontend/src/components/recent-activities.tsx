@@ -124,8 +124,10 @@ export function RecentActivities() {
         ? `${assignment.employee.firstName} ${assignment.employee.lastName}`.trim()
         : "Admin";
 
-      const asset =
-        assignment.asset as { category?: string } | null | undefined;
+      const asset = assignment.asset as
+        | { category?: string }
+        | null
+        | undefined;
       const assetName = asset?.category ?? "Хөрөнгө";
 
       const timeStamp = assignment.returnedAt ?? assignment.assignedAt;
@@ -231,7 +233,11 @@ export function RecentActivities() {
       .slice(0, 20);
 
     return combined;
-  }, [assignmentsData?.assignments, auditData?.auditLogs, employeesData?.employees]);
+  }, [
+    assignmentsData?.assignments,
+    auditData?.auditLogs,
+    employeesData?.employees,
+  ]);
 
   return (
     <Card>
@@ -264,9 +270,7 @@ export function RecentActivities() {
                 return (
                   <div key={activity.id} className="flex items-start gap-3">
                     <div className="flex h-6 w-6 items-center justify-center">
-                      <Icon
-                        className={`h-5 w-5 ${activity.iconColor}`}
-                      />
+                      <Icon className={`h-5 w-5 ${activity.iconColor}`} />
                     </div>
 
                     <div className="flex flex-col">

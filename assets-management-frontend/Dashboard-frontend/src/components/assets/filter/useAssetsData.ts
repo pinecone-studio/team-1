@@ -37,6 +37,18 @@ export function useAssetsData(statusFilter: string) {
     return map;
   }, [employeesData?.employees]);
 
+  const employeeStatusById = useMemo(() => {
+    const map = new Map<string, string>();
+    const employees = (employeesData?.employees ?? []) as Array<{
+      id: string;
+      status?: string | null;
+    }>;
+    employees.forEach((employee) => {
+      map.set(employee.id, employee.status ?? "");
+    });
+    return map;
+  }, [employeesData?.employees]);
+
   const mainCategoryBySubName = useMemo(() => {
     const map = new Map<string, string>();
     (categoriesData?.categories ?? []).forEach((main) => {
@@ -157,5 +169,12 @@ export function useAssetsData(statusFilter: string) {
     });
   }, [assets, statusFilter]);
 
-  return { assets, visibleAssets, loading, refetch, employeeNameById };
+  return {
+    assets,
+    visibleAssets,
+    loading,
+    refetch,
+    employeeNameById,
+    employeeStatusById,
+  };
 }

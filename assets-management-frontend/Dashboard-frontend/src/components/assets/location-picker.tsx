@@ -53,32 +53,50 @@ export function LocationPicker({
     return map;
   }, [locations]);
 
+  const uniqueByName = (items: LocationNode[]) => {
+    const seen = new Set<string>();
+    return items.filter((item) => {
+      const key = item.name.trim().toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+
   const [branchId, setBranchId] = useState<string>("");
   const [roomTypeId, setRoomTypeId] = useState<string>("");
-  const [sectionId, setSectionId] = useState<string>("");
-  const [roomId, setRoomId] = useState<string>("");
+  const [detailId, setDetailId] = useState<string>("");
 
   const roomTypes = useMemo(() => {
     if (!branchId) return [] as LocationNode[];
-    return (byParent.get(branchId) ?? []).filter((l) => l.type === "roomType");
+    return uniqueByName(
+      (byParent.get(branchId) ?? []).filter((l) => l.type === "roomType"),
+    );
   }, [branchId, byParent]);
 
   const sections = useMemo(() => {
     if (!roomTypeId) return [] as LocationNode[];
-    return (byParent.get(roomTypeId) ?? []).filter((l) => l.type === "section");
+    return uniqueByName(
+      (byParent.get(roomTypeId) ?? []).filter((l) => l.type === "section"),
+    );
   }, [roomTypeId, byParent]);
 
-  const rooms = useMemo(() => {
-    const parent = sectionId || roomTypeId || branchId || null;
-    if (!parent) return [] as LocationNode[];
-    return (byParent.get(parent) ?? []).filter((l) => l.type === "room");
-  }, [branchId, roomTypeId, sectionId, byParent]);
+  const details = useMemo(() => {
+    if (!roomTypeId) return [] as LocationNode[];
+
+    if (sections.length > 0) {
+      return sections;
+    }
+
+    return uniqueByName(
+      (byParent.get(roomTypeId) ?? []).filter((l) => l.type === "room"),
+    );
+  }, [roomTypeId, sections, byParent]);
 
   const handleChange = (
     nextBranchId: string,
     nextRoomTypeId: string,
-    nextSectionId: string,
-    nextRoomId: string,
+    nextDetailId: string,
   ) => {
     const branchName =
       branches.find((b) => b.id === nextBranchId)?.name ?? undefined;
@@ -88,14 +106,10 @@ export function LocationPicker({
       )?.name ?? undefined;
     const sectionName =
       (byParent.get(nextRoomTypeId) ?? []).find(
-        (l) => l.id === nextSectionId,
+        (l) => l.id === nextDetailId,
       )?.name ?? undefined;
-    const roomName =
-      (byParent.get(nextSectionId || nextRoomTypeId || nextBranchId || null) ??
-        []
-      ).find((l) => l.id === nextRoomId)?.name ?? undefined;
 
-    const parts = [branchName, roomTypeName, sectionName, roomName]
+    const parts = [branchName, roomTypeName, sectionName]
       .filter((p) => !!p && String(p).trim().length > 0)
       .map((p) => String(p).trim());
 
@@ -104,20 +118,19 @@ export function LocationPicker({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <Label className="text-sm font-medium text-foreground">{label}</Label>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Select
           value={branchId || undefined}
           onValueChange={(val) => {
             setBranchId(val);
             setRoomTypeId("");
-            setSectionId("");
-            setRoomId("");
-            handleChange(val, "", "", "");
+            setDetailId("");
+            handleChange(val, "", "");
           }}
         >
-          <SelectTrigger>
+          <SelectTrigger className="h-11 w-full">
             <SelectValue placeholder="Салбар" />
           </SelectTrigger>
           <SelectContent>
@@ -133,13 +146,12 @@ export function LocationPicker({
           value={roomTypeId || undefined}
           onValueChange={(val) => {
             setRoomTypeId(val);
-            setSectionId("");
-            setRoomId("");
-            handleChange(branchId, val, "", "");
+            setDetailId("");
+            handleChange(branchId, val, "");
           }}
           disabled={!branchId || roomTypes.length === 0}
         >
-          <SelectTrigger>
+          <SelectTrigger className="h-11 w-full">
             <SelectValue placeholder="Оффис / Анги" />
           </SelectTrigger>
           <SelectContent>
@@ -152,41 +164,20 @@ export function LocationPicker({
         </Select>
 
         <Select
-          value={sectionId || undefined}
+          value={detailId || undefined}
           onValueChange={(val) => {
-            setSectionId(val);
-            setRoomId("");
-            handleChange(branchId, roomTypeId, val, "");
+            setDetailId(val);
+            handleChange(branchId, roomTypeId, val);
           }}
-          disabled={!roomTypeId || sections.length === 0}
+          disabled={!roomTypeId || details.length === 0}
         >
-          <SelectTrigger>
+          <SelectTrigger className="h-11 w-full">
             <SelectValue placeholder="Хэсэг / Заал" />
           </SelectTrigger>
           <SelectContent>
-            {sections.map((sec) => (
-              <SelectItem key={sec.id} value={sec.id}>
-                {sec.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={roomId || undefined}
-          onValueChange={(val) => {
-            setRoomId(val);
-            handleChange(branchId, roomTypeId, sectionId, val);
-          }}
-          disabled={!branchId}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Өрөө / дугаар" />
-          </SelectTrigger>
-          <SelectContent>
-            {rooms.map((room) => (
-              <SelectItem key={room.id} value={room.id}>
-                {room.name}
+            {details.map((detail) => (
+              <SelectItem key={detail.id} value={detail.id}>
+                {detail.name}
               </SelectItem>
             ))}
           </SelectContent>
@@ -200,4 +191,3 @@ export function LocationPicker({
     </div>
   );
 }
-

@@ -7,6 +7,11 @@ const nextConfig: NextConfig = {
 		config.resolve.alias["@vercel/analytics/next"] = "@vercel/analytics/react";
 		return config;
 	},
+	turbopack: {
+		resolveAlias: {
+			"@vercel/analytics/next": "@vercel/analytics/react",
+		},
+	},
 	images: {
 		remotePatterns: [
 			{

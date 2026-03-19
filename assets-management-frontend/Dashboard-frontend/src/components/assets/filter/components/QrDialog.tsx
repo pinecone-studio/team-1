@@ -26,9 +26,15 @@ export function QrDialog({
   onPrint,
   onOpenPdfPreview,
 }: QrDialogProps) {
+  const isSingleQr = assets.length === 1;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] flex flex-col">
+      <DialogContent
+        className={`max-h-[90vh] flex flex-col ${
+          isSingleQr ? "w-[min(92vw,560px)]" : "max-w-6xl w-[95vw]"
+        }`}
+      >
         <DialogHeader>
           <DialogTitle>QR код хэвлэх / PDF болгох</DialogTitle>
           <DialogDescription>
@@ -46,7 +52,7 @@ export function QrDialog({
           </p>
         )}
         <div className="mt-4 bg-white p-4 border border-border rounded-lg shadow-sm overflow-auto min-h-70 max-h-[60vh] flex-1">
-          {assets.length === 1 ? (
+          {isSingleQr ? (
             <div className="flex items-center justify-center min-h-60">
               {assets.map((asset) => {
                 const qrUrl =
@@ -56,15 +62,18 @@ export function QrDialog({
                 return (
                   <div
                     key={asset.id}
-                    className="shrink-0 flex flex-col items-center gap-2"
+                    className="shrink-0 flex flex-col items-center gap-3"
                   >
                     <img
                       src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
                         qrUrl,
                       )}`}
                       alt={`${asset.assetId} QR`}
-                      className="h-48 w-48 rounded-md border border-border bg-white object-contain"
+                      className="h-44 w-44 rounded-md border border-border bg-white object-contain"
                     />
+                    <span className="text-sm font-medium text-slate-700">
+                      {asset.assetId || asset.serialNumber || "QR код"}
+                    </span>
                   </div>
                 );
               })}
@@ -111,7 +120,7 @@ export function QrDialog({
             >
               PDF файл болгох
             </Button>
-            <Button onClick={onPrint} className="gap-2">
+            <Button variant="outline" onClick={onPrint} className="gap-2">
               Хэвлэх (A4)
             </Button>
           </div>

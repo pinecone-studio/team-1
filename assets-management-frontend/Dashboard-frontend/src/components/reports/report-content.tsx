@@ -1,28 +1,38 @@
 "use client";
 
-import { type ComponentType, useMemo, useState } from "react";
+import {
+  type ComponentType,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useMutation } from "@apollo/client";
 import {
   ArrowRightLeft,
+  ChevronRight,
   ChevronDown,
+  ChevronsUpDown,
   FileSpreadsheet,
   FileText,
-  Filter,
-  PackagePlus,
+  Search,
   Undo2,
   UserPlus,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AssetFormDialog } from "@/components/assets/asset-form-dialog";
+import { StatusBadge } from "@/components/assets/filter/StatusBadge";
 import {
   AssetTransferDialog,
   type SelectedAsset,
 } from "@/components/assets/asset-transfer-dialog";
 import { AssignAssetDialog } from "@/components/assets/filter/components/AssignAssetDialog";
+import { STATUS_LABELS } from "@/components/assets/filter/constant";
 import { useAssetsData } from "@/components/assets/filter/useAssetsData";
+import { formatAssetId, formatName } from "@/components/assets/filter/utils";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -37,12 +47,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -53,10 +57,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  AssignAssetDocument,
-  RequestDisposalDocument,
-} from "@/gql/graphql";
+import { AssignAssetDocument, RequestDisposalDocument } from "@/gql/graphql";
 import type { Asset } from "@/lib/types";
 
 type ReportTab = "all" | "assign" | "transfer" | "return";
@@ -72,6 +73,8 @@ type ReportRow = {
   owner: string;
   amount: string;
 };
+
+type LocationNode = { name: string; children: Map<string, LocationNode> };
 
 type FilterState = {
   assetId: string;
@@ -97,30 +100,7 @@ const REPORT_TABS: Array<{
   key: ReportTab;
   label: string;
   icon: ComponentType<{ className?: string }>;
-}> = [
-  { key: "all", label: "Нийт хөрөнгө", icon: FileText },
-  { key: "assign", label: "Хөрөнгө олгох", icon: UserPlus },
-  { key: "transfer", label: "Хөрөнгө шилжүүлэх", icon: ArrowRightLeft },
-  { key: "return", label: "Хөрөнгө буцаах", icon: Undo2 },
-];
-
-const ACTION_CONFIG: Record<
-  ReportTab,
-  {
-    label: string;
-    icon: ComponentType<{ className?: string }>;
-    dialog?: "assign" | "transfer" | "return";
-  }
-> = {
-  all: { label: "Нийт хөрөнгө", icon: FileText },
-  assign: { label: "Хөрөнгө олгох", icon: UserPlus, dialog: "assign" },
-  transfer: {
-    label: "Хөрөнгө шилжүүлэх",
-    icon: ArrowRightLeft,
-    dialog: "transfer",
-  },
-  return: { label: "Хөрөнгө буцаах", icon: Undo2, dialog: "return" },
-};
+}> = [];
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("mn-MN").format(value);
@@ -130,35 +110,11 @@ function normalize(value: string | undefined | null) {
   return (value ?? "").trim().toLowerCase();
 }
 
-function formatStatus(status: string) {
-  switch (status) {
-    case "ASSIGNED":
-      return {
-        label: "Эзэмшигчтэй",
-        className: "border-[#8ac3f3] bg-[#eef7ff] text-[#1967a4]",
-      };
-    case "AVAILABLE":
-      return {
-        label: "Эзэмшигчгүй",
-        className: "border-[#9ed4aa] bg-[#eefcf0] text-[#2a8d3d]",
-      };
-    case "IN_REPAIR":
-      return {
-        label: "Эвдрэлтэй",
-        className: "border-[#f0a7a7] bg-[#fff1f1] text-[#da3e3e]",
-      };
-    case "PENDING_DISPOSAL":
-    case "DISPOSED":
-      return {
-        label: "Зарах болох",
-        className: "border-[#f0cf7d] bg-[#fff8e7] text-[#cc8a00]",
-      };
-    default:
-      return {
-        label: status || "Тодорхойгүй",
-        className: "border-[#d9d9d9] bg-[#f7f7f7] text-[#6b7280]",
-      };
-  }
+function formatStatusLabel(status: string) {
+  const key = (status ?? "").toUpperCase().replace(/-/g, "_");
+  return (
+    STATUS_LABELS[key as keyof typeof STATUS_LABELS]?.label ?? status ?? "—"
+  );
 }
 
 function downloadFile(filename: string, content: string, mimeType: string) {
@@ -208,48 +164,51 @@ function ReportTableSkeleton() {
   ));
 }
 
-function HeaderFilter({
-  label,
-  value,
-  placeholder,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  placeholder: string;
-  onChange: (value: string) => void;
-}) {
+function HoverValue({ value }: { value: string }) {
+  if (!value) {
+    return <span className="block truncate">—</span>;
+  }
+
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 text-white"
-        >
-          <Filter className="h-4 w-4" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-64 rounded-2xl p-4">
-        <div className="space-y-2">
-          <div className="text-sm font-semibold text-[#111827]">{label}</div>
-          <Input
-            value={value}
-            onChange={(event) => onChange(event.target.value)}
-            placeholder={placeholder}
-            className="h-10"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            className="h-9 w-full"
-            onClick={() => onChange("")}
-          >
-            Цэвэрлэх
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
+    <>
+      <span className="block truncate">{value}</span>
+      <div className="pointer-events-none absolute left-0 top-full z-50 mt-1 hidden max-w-72 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-lg group-hover:block">
+        {value}
+      </div>
+    </>
   );
+}
+
+function buildLocationTree(items: Asset[]) {
+  const root = new Map<string, LocationNode>();
+
+  items
+    .map((asset) => asset.location)
+    .filter(Boolean)
+    .forEach((location) => {
+      const parts = (location as string)
+        .split("/")
+        .map((part) => part.trim())
+        .filter(Boolean);
+
+      if (parts.length === 0) return;
+
+      let current = root;
+      parts.forEach((part) => {
+        if (!current.has(part)) {
+          current.set(part, { name: part, children: new Map() });
+        }
+        current = current.get(part)!.children;
+      });
+    });
+
+  return root;
+}
+
+function getUniqueOptions(values: Array<string | undefined | null>) {
+  return [
+    ...new Set(values.filter((value): value is string => Boolean(value))),
+  ];
 }
 
 export function ReportContent() {
@@ -264,13 +223,38 @@ export function ReportContent() {
   const [assignEmployeeId, setAssignEmployeeId] = useState("");
   const [returnReason, setReturnReason] = useState("");
   const [assigning, setAssigning] = useState(false);
+  const [openFilter, setOpenFilter] = useState<string | null>(null);
+  const [expandedLocations, setExpandedLocations] = useState<string[]>([]);
+  const filterRef = useRef<HTMLDivElement>(null);
+  const selectAllRef = useRef<HTMLInputElement>(null);
+
+  const handleHeaderClick = (key: string) => {
+    setOpenFilter((prev) => (prev === key ? null : key));
+  };
 
   const [assignAssetMutation] = useMutation(AssignAssetDocument);
   const [requestDisposalMutation, { loading: requestingDisposal }] =
     useMutation(RequestDisposalDocument);
 
-  const filteredAssets = useMemo(() => {
-    const byTab = assets.filter((asset) => {
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setOpenFilter(null);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (openFilter !== "location") {
+      setExpandedLocations([]);
+    }
+  }, [openFilter]);
+
+  const tabAssets = useMemo(() => {
+    return assets.filter((asset) => {
       if (activeTab === "assign") return asset.status === "AVAILABLE";
       if (activeTab === "transfer") return asset.status === "ASSIGNED";
       if (activeTab === "return") {
@@ -280,20 +264,44 @@ export function ReportContent() {
       }
       return true;
     });
+  }, [activeTab, assets]);
 
-    return byTab.filter((asset) => {
-      const statusLabel = formatStatus(asset.status).label;
+  const categoryOptions = useMemo(
+    () => getUniqueOptions(tabAssets.map((asset) => asset.mainCategory)),
+    [tabAssets],
+  );
+
+  const subCategoryOptions = useMemo(
+    () => getUniqueOptions(tabAssets.map((asset) => asset.category)),
+    [tabAssets],
+  );
+
+  const statusOptions = useMemo(
+    () => getUniqueOptions(tabAssets.map((asset) => asset.status)),
+    [tabAssets],
+  );
+
+  const locationTree = useMemo(() => buildLocationTree(tabAssets), [tabAssets]);
+
+  const filteredAssets = useMemo(() => {
+    return tabAssets.filter((asset) => {
+      const location = asset.location ?? "";
+      const locationMatch =
+        !filters.location ||
+        location === filters.location ||
+        location.startsWith(`${filters.location} /`);
+
       return (
         normalize(asset.assetId).includes(normalize(filters.assetId)) &&
         normalize(asset.category).includes(normalize(filters.assetName)) &&
-        normalize(asset.mainCategory).includes(normalize(filters.category)) &&
-        normalize(asset.category).includes(normalize(filters.subCategory)) &&
-        normalize(asset.location).includes(normalize(filters.location)) &&
-        normalize(asset.assignedEmployeeName).includes(normalize(filters.owner)) &&
-        normalize(statusLabel).includes(normalize(filters.status))
+        (!filters.category || asset.mainCategory === filters.category) &&
+        (!filters.subCategory || asset.category === filters.subCategory) &&
+        (!filters.status || asset.status === filters.status) &&
+        locationMatch &&
+        normalize(asset.assignedEmployeeName).includes(normalize(filters.owner))
       );
     });
-  }, [activeTab, assets, filters]);
+  }, [filters, tabAssets]);
 
   const rows = useMemo<ReportRow[]>(
     () =>
@@ -325,43 +333,79 @@ export function ReportContent() {
     [selectedAssets],
   );
 
-  const allSelected =
-    rows.length > 0 && rows.every((row) => selectedIds.has(row.id));
-  const activeActionConfig = ACTION_CONFIG[activeTab];
+  const visibleSelectedCount = rows.filter((row) =>
+    selectedIds.has(row.id),
+  ).length;
+  const allSelected = rows.length > 0 && visibleSelectedCount === rows.length;
+  const someSelected = visibleSelectedCount > 0 && !allSelected;
 
-  const openAction = (
-    tab: ReportTab,
-    dialog: "assign" | "transfer" | "return",
-  ) => {
-    setActiveTab(tab);
+  useEffect(() => {
+    const el = selectAllRef.current;
+    if (el) el.indeterminate = someSelected;
+  }, [someSelected]);
 
-    if (selectedIds.size === 0) {
-      toast.info("Эхлээд хүснэгтээс хөрөнгө сонгоно уу.");
-      return;
-    }
+  const isLocationSelected = (path: string) =>
+    filters.location === path || filters.location.startsWith(`${path} /`);
 
-    if (dialog === "assign") {
-      setShowAssignDialog(true);
-      return;
-    }
+  const isExpanded = (path: string) => expandedLocations.includes(path);
 
-    if (dialog === "transfer") {
-      setShowTransferDialog(true);
-      return;
-    }
-
-    setShowReturnDialog(true);
+  const toggleExpanded = (path: string) => {
+    setExpandedLocations((prev) =>
+      prev.includes(path) ? prev.filter((p) => p !== path) : [...prev, path],
+    );
   };
 
-  const handleActionSelect = (tab: ReportTab) => {
-    const config = ACTION_CONFIG[tab];
+  const renderLocationNode = (
+    current: LocationNode,
+    parentPath: string,
+    depth: number,
+  ) => {
+    const path = parentPath ? `${parentPath} / ${current.name}` : current.name;
+    const hasChildren = current.children.size > 0;
+    const expanded = isExpanded(path);
 
-    if (!config.dialog) {
-      setActiveTab("all");
-      return;
-    }
+    return (
+      <div key={path} className="flex flex-col">
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            className={`flex-1 rounded py-1 text-left ${
+              isLocationSelected(path)
+                ? "bg-gray-900 text-white"
+                : "hover:bg-gray-100"
+            }`}
+            style={{ paddingLeft: 8 + depth * 12, paddingRight: 8 }}
+            onClick={() => {
+              setFilters((prev) => ({ ...prev, location: path }));
+              setOpenFilter(null);
+            }}
+          >
+            {current.name}
+          </button>
+          {hasChildren ? (
+            <button
+              type="button"
+              className="rounded p-1 hover:bg-gray-100"
+              onClick={() => toggleExpanded(path)}
+            >
+              {expanded ? (
+                <ChevronDown className="h-3 w-3" />
+              ) : (
+                <ChevronRight className="h-3 w-3" />
+              )}
+            </button>
+          ) : null}
+        </div>
 
-    openAction(tab, config.dialog);
+        {hasChildren && expanded ? (
+          <div className="mt-1 flex flex-col gap-1">
+            {Array.from(current.children.values()).map((child) =>
+              renderLocationNode(child, path, depth + 1),
+            )}
+          </div>
+        ) : null}
+      </div>
+    );
   };
 
   const toggleSelectAll = (checked: boolean) => {
@@ -407,7 +451,7 @@ export function ReportContent() {
         row.assetName,
         row.category,
         row.subCategory,
-        formatStatus(row.status).label,
+        formatStatusLabel(row.status),
         row.location,
         row.owner,
         row.amount,
@@ -519,19 +563,11 @@ export function ReportContent() {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="space-y-2">
             <h1 className="text-[38px] font-bold tracking-[-0.03em] text-[#111827]">
-              Эд хөрөнгө / Нийт хөрөнгө
+              Тайлан
             </h1>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button
-              className="h-11 gap-2 rounded-xl bg-[#0d5f8f] px-5 text-[15px] font-medium text-white hover:bg-[#0a5179]"
-              onClick={() => setShowAddDialog(true)}
-            >
-              <PackagePlus className="h-4 w-4" />
-              Хөрөнгө нэмэх
-            </Button>
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -560,252 +596,500 @@ export function ReportContent() {
           </div>
         </div>
 
-        {/* <div className="flex flex-wrap items-center gap-3">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button className="h-11 gap-2 rounded-xl bg-[#0d5f8f] px-5 text-[15px] font-medium text-white hover:bg-[#0a5179]">
-                <activeActionConfig.icon className="h-4 w-4" />
-                {activeActionConfig.label}
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              className="w-52 rounded-xl border border-[#e2e8f0] bg-white p-1"
-            >
-              {REPORT_TABS.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <DropdownMenuItem
-                    key={tab.key}
-                    onClick={() => handleActionSelect(tab.key)}
-                    className="gap-2 rounded-lg px-3 py-2"
-                  >
-                    <Icon className="h-4 w-4" />
-                    {tab.label}
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div> */}
-
-        <div className="flex flex-wrap items-center gap-6 border-b border-[#dbe3ec] pb-4">
-          {REPORT_TABS.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.key;
-
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setActiveTab(tab.key)}
-                className={[
-                  "inline-flex items-center gap-2 border-b-2 pb-3 text-[17px] transition-colors",
-                  isActive
-                    ? "border-[#111827] font-semibold text-[#111827]"
-                    : "border-transparent text-[#374151] hover:text-[#111827]",
-                ].join(" ")}
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
         <div className="overflow-hidden rounded-2xl border border-[#d9e4ee] bg-white shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
-          {/* <div className="flex items-center justify-between border-b border-[#edf2f7] px-4 py-3">
-            <div className="text-sm font-medium text-[#334155]">
-              {selectedIds.size > 0
-                ? `${selectedIds.size} хөрөнгө сонгогдсон`
-                : `${rows.length} мөр харагдаж байна`}
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-auto px-0 py-0 text-sm text-[#64748b] hover:bg-transparent"
-              onClick={() => setFilters(INITIAL_FILTERS)}
-            >
-              Шүүлтүүр цэвэрлэх
-            </Button>
-          </div> */}
+          <div
+            className="rounded-md font-inter h-full overflow-auto"
+            onClick={() => setOpenFilter(null)}
+          >
+            <Table className="table-fixed w-full border-separate  border-spacing-y-2">
+              <TableHeader>
+                <TableRow className="bg-[#0f4c6e] text-white hover:bg-[#0f4c6e]!">
+                  <TableHead className="w-10 text-white">
+                    <input
+                      ref={selectAllRef}
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={(e) => toggleSelectAll(e.target.checked)}
+                      className="h-4 w-4 rounded border-white"
+                    />
+                  </TableHead>
+                  <TableHead className="w-10 text-white">№</TableHead>
 
-          <Table>
-            <TableHeader>
-              <TableRow className="border-0 bg-[#0d5f8f] hover:bg-[#0d5f8f]">
-                <TableHead className="w-12 px-4 py-4 text-white">
-                  <Checkbox
-                    checked={allSelected}
-                    onCheckedChange={(value) => toggleSelectAll(Boolean(value))}
-                    className="border-white data-[state=checked]:border-white data-[state=checked]:bg-white data-[state=checked]:text-[#0d5f8f]"
-                  />
-                </TableHead>
-                <TableHead className="w-14 px-4 py-4 text-[14px] font-medium text-white">
-                  №
-                </TableHead>
-                <TableHead className="px-4 py-4 text-[14px] font-medium text-white">
-                  <div className="flex items-center gap-2">
-                    Хөрөнгийн ID
-                    <HeaderFilter
-                      label="Хөрөнгийн ID"
-                      value={filters.assetId}
-                      placeholder="ID-аар хайх"
-                      onChange={(value) =>
-                        setFilters((prev) => ({ ...prev, assetId: value }))
-                      }
-                    />
-                  </div>
-                </TableHead>
-                <TableHead className="px-4 py-4 text-[14px] font-medium text-white">
-                  <div className="flex items-center gap-2">
-                    Хөрөнгийн нэр
-                    <HeaderFilter
-                      label="Хөрөнгийн нэр"
-                      value={filters.assetName}
-                      placeholder="Нэрээр хайх"
-                      onChange={(value) =>
-                        setFilters((prev) => ({ ...prev, assetName: value }))
-                      }
-                    />
-                  </div>
-                </TableHead>
-                <TableHead className="px-4 py-4 text-[14px] font-medium text-white">
-                  <div className="flex items-center gap-2">
-                    Ангилал
-                    <HeaderFilter
-                      label="Ангилал"
-                      value={filters.category}
-                      placeholder="Ангиллаар хайх"
-                      onChange={(value) =>
-                        setFilters((prev) => ({ ...prev, category: value }))
-                      }
-                    />
-                  </div>
-                </TableHead>
-                <TableHead className="px-4 py-4 text-[14px] font-medium text-white">
-                  <div className="flex items-center gap-2">
-                    Дэд ангилал
-                    <HeaderFilter
-                      label="Дэд ангилал"
-                      value={filters.subCategory}
-                      placeholder="Дэд ангиллаар хайх"
-                      onChange={(value) =>
-                        setFilters((prev) => ({ ...prev, subCategory: value }))
-                      }
-                    />
-                  </div>
-                </TableHead>
-                <TableHead className="px-4 py-4 text-[14px] font-medium text-white">
-                  <div className="flex items-center gap-2">
-                    Төлөв
-                    <HeaderFilter
-                      label="Төлөв"
-                      value={filters.status}
-                      placeholder="Төлвөөр хайх"
-                      onChange={(value) =>
-                        setFilters((prev) => ({ ...prev, status: value }))
-                      }
-                    />
-                  </div>
-                </TableHead>
-                <TableHead className="px-4 py-4 text-[14px] font-medium text-white">
-                  <div className="flex items-center gap-2">
-                    Байршил
-                    <HeaderFilter
-                      label="Байршил"
-                      value={filters.location}
-                      placeholder="Байршлаар хайх"
-                      onChange={(value) =>
-                        setFilters((prev) => ({ ...prev, location: value }))
-                      }
-                    />
-                  </div>
-                </TableHead>
-                <TableHead className="px-4 py-4 text-[14px] font-medium text-white">
-                  <div className="flex items-center gap-2">
-                    Эзэмшигч
-                    <HeaderFilter
-                      label="Эзэмшигч"
-                      value={filters.owner}
-                      placeholder="Эзэмшигчээр хайх"
-                      onChange={(value) =>
-                        setFilters((prev) => ({ ...prev, owner: value }))
-                      }
-                    />
-                  </div>
-                </TableHead>
-                <TableHead className="px-4 py-4 text-right text-[14px] font-medium text-white">
-                  Үнэ
-                </TableHead>
-              </TableRow>
-            </TableHeader>
+                  <TableHead className="truncate text-white min-w-[140px]">
+                    <div
+                      className="flex items-center justify-between gap-2 cursor-pointer select-none group"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleHeaderClick("assetId");
+                      }}
+                    >
+                      {openFilter === "assetId" ? (
+                        <div
+                          className="relative w-full"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            autoFocus
+                            placeholder="ID-аар хайх.."
+                            value={filters.assetId}
+                            onChange={(e) =>
+                              setFilters((prev) => ({
+                                ...prev,
+                                assetId: e.target.value,
+                              }))
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                setOpenFilter(null);
+                              }
+                            }}
+                            className="w-full rounded border border-blue-500 bg-white py-1 pl-2 pr-8 text-sm text-black outline-none shadow-sm"
+                          />
+                          <Search className="absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400" />
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between w-full">
+                          <span
+                            className={`truncate ${filters.assetId ? "font-bold text-white" : "text-white"}`}
+                          >
+                            {filters.assetId || "Хөрөнгийн ID"}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {filters.assetId ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFilters((prev) => ({
+                                    ...prev,
+                                    assetId: "",
+                                  }));
+                                }}
+                                className="rounded-full p-1 transition-colors hover:bg-white/20"
+                              >
+                                <X className="h-3 w-3 text-white" />
+                              </button>
+                            ) : (
+                              <Search className="h-3 w-3 text-white/70 group-hover:text-white" />
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </TableHead>
 
-            <TableBody>
-              {loading ? (
-                <ReportTableSkeleton />
-              ) : rows.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={10}
-                    className="px-4 py-12 text-center text-[15px] text-[#64748b]"
-                  >
-                    Харагдах хөрөнгө алга байна.
-                  </TableCell>
+                  <TableHead className="text-white relative min-w-[150px]">
+                    <div
+                      className="flex items-center justify-between gap-2 cursor-pointer select-none group"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleHeaderClick("assetName");
+                      }}
+                    >
+                      {openFilter === "assetName" ? (
+                        <div
+                          className="relative w-full"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            autoFocus
+                            placeholder="Нэрээр хайх.."
+                            value={filters.assetName}
+                            onChange={(e) =>
+                              setFilters((prev) => ({
+                                ...prev,
+                                assetName: e.target.value,
+                              }))
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                setOpenFilter(null);
+                              }
+                            }}
+                            className="w-full rounded border border-blue-500 bg-white py-1 pl-2 pr-8 text-sm text-black outline-none shadow-sm"
+                          />
+                          <Search className="absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400" />
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between w-full">
+                          <span
+                            className={`truncate ${filters.assetName ? "font-bold text-white" : "text-white"}`}
+                          >
+                            {filters.assetName || "Хөрөнгийн нэр"}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {filters.assetName ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFilters((prev) => ({
+                                    ...prev,
+                                    assetName: "",
+                                  }));
+                                }}
+                                className="rounded-full p-1 transition-colors hover:bg-white/20"
+                              >
+                                <X className="h-3 w-3 text-white" />
+                              </button>
+                            ) : (
+                              <Search className="h-3 w-3 text-white/70 group-hover:text-white" />
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </TableHead>
+
+                  <TableHead className="text-white relative">
+                    <div
+                      className="flex items-center gap-1 cursor-pointer select-none"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleHeaderClick("category");
+                      }}
+                    >
+                      <span className="truncate">Ангилал</span>
+                      <ChevronsUpDown className="h-3 w-3" />
+                    </div>
+
+                    {openFilter === "category" && (
+                      <div
+                        ref={filterRef}
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute left-0 top-full z-[9999] mt-1 w-44 rounded bg-white p-2 shadow"
+                      >
+                        <div className="flex flex-col gap-1 text-xs text-black">
+                          <button
+                            type="button"
+                            className={`rounded px-2 py-1 text-left ${
+                              filters.category === ""
+                                ? "bg-gray-200 text-black"
+                                : "hover:bg-gray-300"
+                            }`}
+                            onClick={() => {
+                              setFilters((prev) => ({ ...prev, category: "" }));
+                              setOpenFilter(null);
+                            }}
+                          >
+                            Бүгд
+                          </button>
+                          {categoryOptions.map((category) => (
+                            <button
+                              key={category}
+                              type="button"
+                              className={`rounded px-2 py-1 text-left ${
+                                filters.category === category
+                                  ? "bg-gray-200 text-black"
+                                  : "hover:bg-gray-300"
+                              }`}
+                              onClick={() => {
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  category,
+                                }));
+                                setOpenFilter(null);
+                              }}
+                            >
+                              {category}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </TableHead>
+
+                  <TableHead className="text-white relative">
+                    <div
+                      className="flex items-center gap-1 cursor-pointer select-none"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleHeaderClick("subCategory");
+                      }}
+                    >
+                      <span className="truncate">Дэд ангилал</span>
+                      <ChevronsUpDown className="h-3 w-3" />
+                    </div>
+
+                    {openFilter === "subCategory" && (
+                      <div
+                        ref={filterRef}
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute left-0 top-full z-[9999] mt-1 w-44 rounded bg-white p-2 shadow"
+                      >
+                        <div className="flex flex-col gap-1 text-xs text-black">
+                          <button
+                            type="button"
+                            className={`rounded px-2 py-1 text-left ${
+                              filters.subCategory === ""
+                                ? "bg-gray-200 text-black"
+                                : "hover:bg-gray-300"
+                            }`}
+                            onClick={() => {
+                              setFilters((prev) => ({
+                                ...prev,
+                                subCategory: "",
+                              }));
+                              setOpenFilter(null);
+                            }}
+                          >
+                            Бүгд
+                          </button>
+                          {subCategoryOptions.map((subCategory) => (
+                            <button
+                              key={subCategory}
+                              type="button"
+                              className={`rounded px-2 py-1 text-left ${
+                                filters.subCategory === subCategory
+                                  ? "bg-gray-200 text-black"
+                                  : "hover:bg-gray-300"
+                              }`}
+                              onClick={() => {
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  subCategory,
+                                }));
+                                setOpenFilter(null);
+                              }}
+                            >
+                              {subCategory}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </TableHead>
+
+                  <TableHead className="text-white relative">
+                    <div
+                      className="flex items-center gap-1 cursor-pointer select-none"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleHeaderClick("status");
+                      }}
+                    >
+                      <span>Төлөв</span>
+                      <ChevronsUpDown className="h-3 w-3" />
+                    </div>
+
+                    {openFilter === "status" && (
+                      <div
+                        ref={filterRef}
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute left-0 top-full z-[9999] mt-1 w-44 rounded bg-white p-2 shadow"
+                      >
+                        <div className="flex flex-col gap-1 text-xs text-black">
+                          <button
+                            type="button"
+                            className={`rounded px-2 py-1 text-left ${
+                              filters.status === ""
+                                ? "bg-gray-200 text-black"
+                                : "hover:bg-gray-300"
+                            }`}
+                            onClick={() => {
+                              setFilters((prev) => ({ ...prev, status: "" }));
+                              setOpenFilter(null);
+                            }}
+                          >
+                            Бүгд
+                          </button>
+                          {statusOptions.map((status) => (
+                            <button
+                              key={status}
+                              type="button"
+                              className={`rounded px-2 py-1 text-left ${
+                                filters.status === status
+                                  ? "bg-gray-200 text-black"
+                                  : "hover:bg-gray-300"
+                              }`}
+                              onClick={() => {
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  status,
+                                }));
+                                setOpenFilter(null);
+                              }}
+                            >
+                              {formatStatusLabel(status)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </TableHead>
+
+                  <TableHead className="text-white relative">
+                    <div
+                      className="flex items-center gap-1 cursor-pointer select-none"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleHeaderClick("location");
+                      }}
+                    >
+                      <span className="truncate">Байршил</span>
+                      <ChevronsUpDown className="h-3 w-3" />
+                    </div>
+
+                    {openFilter === "location" && (
+                      <div
+                        ref={filterRef}
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute left-0 top-full z-[9999] mt-1 w-64 rounded bg-white p-2 shadow"
+                      >
+                        <div className="max-h-64 overflow-auto flex flex-col gap-1 text-xs text-black">
+                          <button
+                            type="button"
+                            className={`rounded px-2 py-1 text-left ${
+                              filters.location === ""
+                                ? "bg-gray-200 text-black"
+                                : "hover:bg-gray-300"
+                            }`}
+                            onClick={() => {
+                              setFilters((prev) => ({ ...prev, location: "" }));
+                              setOpenFilter(null);
+                            }}
+                          >
+                            Бүгд
+                          </button>
+                          {Array.from(locationTree.values()).map((node) =>
+                            renderLocationNode(node, "", 0),
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </TableHead>
+
+                  <TableHead className="text-white relative min-w-[150px]">
+                    <div
+                      className="flex items-center justify-between gap-2 cursor-pointer select-none group px-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleHeaderClick("owner");
+                      }}
+                    >
+                      {openFilter === "owner" ? (
+                        <div
+                          className="relative w-full"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            autoFocus
+                            placeholder="Эзэмшигч хайх.."
+                            value={filters.owner}
+                            onChange={(e) =>
+                              setFilters((prev) => ({
+                                ...prev,
+                                owner: e.target.value,
+                              }))
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                setOpenFilter(null);
+                              }
+                            }}
+                            className="w-full rounded border border-blue-500 bg-white py-1 pl-2 pr-8 text-sm font-normal text-black outline-none shadow-sm"
+                          />
+                          <Search className="absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400" />
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between w-full">
+                          <span
+                            className={`truncate text-sm ${filters.owner ? "font-bold text-white" : "text-white"}`}
+                          >
+                            {filters.owner || "Эзэмшигч"}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {filters.owner ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFilters((prev) => ({
+                                    ...prev,
+                                    owner: "",
+                                  }));
+                                }}
+                                className="rounded-full p-1 transition-colors hover:bg-white/20"
+                              >
+                                <X className="h-3 w-3 text-white" />
+                              </button>
+                            ) : (
+                              <Search className="h-3 w-3 text-white/70 transition-opacity group-hover:text-white" />
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </TableHead>
+
+                  <TableHead className="text-white text-center">Үнэ</TableHead>
                 </TableRow>
-              ) : (
-                rows.map((row, index) => {
-                  const badge = formatStatus(row.status);
-                  return (
+              </TableHeader>
+
+              <TableBody>
+                {loading ? (
+                  <ReportTableSkeleton />
+                ) : rows.length === 0 ? (
+                  <TableRow className="bg-white">
+                    <TableCell
+                      colSpan={10}
+                      className="py-8 text-center text-sm text-muted-foreground"
+                    >
+                      Утга олдсонгүй.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  rows.map((row, index) => (
                     <TableRow
                       key={row.id}
-                      className="border-b border-[#edf2f7] hover:bg-[#f8fbff]"
+                      className="bg-white shadow-sm hover:bg-gray-50"
                     >
-                      <TableCell className="px-4 py-4">
-                        <Checkbox
+                      <TableCell className="py-2 rounded-l-md">
+                        <input
+                          type="checkbox"
                           checked={selectedIds.has(row.id)}
-                          onCheckedChange={(value) =>
-                            toggleRow(row.id, Boolean(value))
-                          }
+                          onChange={(e) => toggleRow(row.id, e.target.checked)}
+                          className="h-4 w-4"
                         />
                       </TableCell>
-                      <TableCell className="px-4 py-4 text-[15px] font-medium text-[#0f172a]">
+                      <TableCell className="py-2 font-medium">
                         {index + 1}
                       </TableCell>
-                      <TableCell className="px-4 py-4 text-[15px] font-medium text-[#0f172a]">
-                        {row.assetId}
-                      </TableCell>
-                      <TableCell className="px-4 py-4 text-[15px] text-[#0f172a]">
-                        {row.assetName}
-                      </TableCell>
-                      <TableCell className="px-4 py-4 text-[15px] text-[#0f172a]">
-                        {row.category}
-                      </TableCell>
-                      <TableCell className="px-4 py-4 text-[15px] text-[#0f172a]">
-                        {row.subCategory}
-                      </TableCell>
-                      <TableCell className="px-4 py-4">
+                      <TableCell className="py-2 w-27">
                         <span
-                          className={`inline-flex rounded-full border px-3 py-1 text-[13px] font-medium ${badge.className}`}
+                          className="block truncate text-sm font-medium text-black"
+                          title={row.assetId}
                         >
-                          {badge.label}
+                          {formatAssetId(row.assetId)}
                         </span>
                       </TableCell>
-                      <TableCell className="px-4 py-4 text-[15px] text-[#0f172a]">
-                        {row.location}
+                      <TableCell className="group relative py-2 max-w-40">
+                        <HoverValue value={row.assetName} />
                       </TableCell>
-                      <TableCell className="px-4 py-4 text-[15px] text-[#0f172a]">
-                        {row.owner}
+                      <TableCell className="group relative py-2 max-w-35">
+                        <HoverValue value={row.category} />
                       </TableCell>
-                      <TableCell className="px-4 py-4 text-right text-[15px] font-medium text-[#0f172a]">
+                      <TableCell className="group relative py-2 max-w-35">
+                        <HoverValue value={row.subCategory} />
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <StatusBadge status={row.status} />
+                      </TableCell>
+                      <TableCell className="group relative py-2 max-w-40">
+                        <HoverValue value={row.location} />
+                      </TableCell>
+                      <TableCell className="group relative py-2 max-w-35 text-left pl-6">
+                        <HoverValue value={formatName(row.owner)} />
+                      </TableCell>
+                      <TableCell className="py-2 text-center font-medium tabular-nums">
                         {row.amount}
                       </TableCell>
                     </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
 
