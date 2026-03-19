@@ -72,7 +72,9 @@ export function DemoEmployeeNotificationsCard({
   activeOffboarding,
   normalizeAssetTag,
 }: DemoEmployeeNotificationsCardProps) {
-  if (notifications.length === 0 || activeOffboarding) return null;
+  // Offboarding идэвхтэй байсан ч "Мэдэгдлүүд" хэсэгт offboarding хүсэлтийг харуулах хэрэгтэй.
+  // (Bell -> "Дэлгэрэнгүй" дархад expand хийх тул activeOffboarding дээр null return хийхгүй.)
+  if (notifications.length === 0) return null;
 
   const displayList =
     assetsToReturnList ??
@@ -83,7 +85,10 @@ export function DemoEmployeeNotificationsCard({
     }));
 
   return (
-    <Card className="mt-6 min-h-0 shrink-0 border-amber-200 bg-amber-50/50">
+    <Card
+      id="demo-employee-notifications-card-section"
+      className="mt-6 min-h-0 shrink-0 border-amber-200 bg-amber-50/50"
+    >
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-medium text-amber-800 flex items-center gap-2">
           Мэдэгдлүүд

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ interface AssetCardProps {
   selected: boolean;
   onToggleSelect: (id: string) => void;
   onOpenQr: (assets: Asset[]) => void;
+  onOpenAsset: (assetId: string) => void;
   onEdit: (asset: Asset) => void;
   onDelete: (id: string) => void;
 }
@@ -22,6 +22,7 @@ export function AssetCard({
   selected,
   onToggleSelect,
   onOpenQr,
+  onOpenAsset,
   onEdit,
   onDelete,
 }: AssetCardProps) {
@@ -77,11 +78,14 @@ export function AssetCard({
         </div>
 
         <div className="mt-4 flex items-center justify-end gap-1">
-          <Link href={`/assets/${asset.id}`}>
-            <Button variant="ghost" size="icon">
-              <Eye className="h-4 w-4" />
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onOpenAsset(asset.id)}
+            aria-label="Asset detail"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
           <Button variant="ghost" size="icon" onClick={() => onOpenQr([asset])}>
             QR
           </Button>

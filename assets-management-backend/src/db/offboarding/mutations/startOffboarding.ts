@@ -43,6 +43,10 @@ export async function startOffboarding(
   const totalAssets = openAssignments.length;
   const assetIds = openAssignments.map((a) => a.assetId);
 
+  // Demo-friendly: allow generic initiator labels like "HR".
+  const fkInitiatedBy = initiatedBy === "HR" ? null : initiatedBy;
+  const auditActorId = initiatedBy === "HR" ? null : initiatedBy;
+
   await db
     .update(employees)
     .set({
@@ -63,7 +67,7 @@ export async function startOffboarding(
   await db.insert(offboardingEvents).values({
     id,
     employeeId,
-    initiatedBy,
+    initiatedBy: fkInitiatedBy,
     status: "IN_PROGRESS",
     totalAssets,
     returnedAssets: 0,
@@ -104,9 +108,9 @@ export async function startOffboarding(
     "employees",
     employeeId,
     "OFFBOARDING_STARTED",
-    initiatedBy,
+    auditActorId,
     { status: employee.status },
-    { status: "OFFBOARDING", totalAssetsToReturn: totalAssets },
+    { status: "OFFBOARDING", totalAssetsToReturn: totalAssets, initiatedBy },
   );
 
   const created = await getOffboardingEvent(id);

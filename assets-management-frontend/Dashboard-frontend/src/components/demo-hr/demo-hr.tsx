@@ -4,12 +4,12 @@ import React, { useState } from "react";
 import { useQuery, useMutation } from "@apollo/client";
 import {
   Calendar as CalendarIcon,
-  CalendarDays,
   Loader2,
   UserPlus,
   UserCog,
   LogOut,
   Bell,
+  Filter,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -54,10 +54,7 @@ import {
   CreateEmployeeDocument,
   UpdateEmployeeDocument,
 } from "@/gql/graphql";
-import type {
-  EmployeeCreateInput,
-  EmployeeUpdateInput,
-} from "@/gql/graphql";
+import type { EmployeeCreateInput, EmployeeUpdateInput } from "@/gql/graphql";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -160,7 +157,7 @@ function OffboardingBell({
     <Button
       variant="outline"
       size="sm"
-      className="gap-1 relative"
+      className="relative h-7 gap-1 rounded-md border-slate-300 bg-white px-2 text-xs"
       onClick={onOpen}
     >
       <Bell className="h-4 w-4" />
@@ -211,14 +208,16 @@ export function DemoHRContent() {
 
   const [createEmployeeMutation, { loading: createEmployeeLoading }] =
     useMutation(CreateEmployeeDocument);
-  const [updateEmployeeMutation, { loading: updateRoleLoading }] =
-    useMutation(UpdateEmployeeDocument);
+  const [updateEmployeeMutation, { loading: updateRoleLoading }] = useMutation(
+    UpdateEmployeeDocument,
+  );
 
   const [roleChangeEmployeeId, setRoleChangeEmployeeId] = useState<string>("");
   const [roleChangeRole, setRoleChangeRole] = useState<string>("EMPLOYEE");
 
-  const [newEmployeeForm, setNewEmployeeForm] =
-    useState<NewEmployeeFormState>(() => getDefaultNewEmployeeForm());
+  const [newEmployeeForm, setNewEmployeeForm] = useState<NewEmployeeFormState>(
+    () => getDefaultNewEmployeeForm(),
+  );
 
   const { data, loading, error, refetch } = useQuery(EmployeesDocument, {
     fetchPolicy: "network-only",
@@ -373,7 +372,9 @@ export function DemoHRContent() {
       lastNameEng: d.lastNameEng.trim(),
       email: d.email.trim(),
       hireDate: hireDateTs,
-      numberOfVacationDays: d.numberOfVacationDays ? parseInt(d.numberOfVacationDays, 10) : undefined,
+      numberOfVacationDays: d.numberOfVacationDays
+        ? parseInt(d.numberOfVacationDays, 10)
+        : undefined,
       github: d.github.trim() || undefined,
       department: d.department.trim(),
       branch: d.branch.trim(),
@@ -386,12 +387,16 @@ export function DemoHRContent() {
     };
     try {
       await createEmployeeMutation({ variables: { input } });
-      toast.success("Шинэ ажилтан амжилттай бүртгэгдлээ. И-мэйлээр нэвтрэхэд төлөв ACTIVE болно.");
+      toast.success(
+        "Шинэ ажилтан амжилттай бүртгэгдлээ. И-мэйлээр нэвтрэхэд төлөв ACTIVE болно.",
+      );
       setNewEmployeeOpen(false);
       setNewEmployeeForm(getDefaultNewEmployeeForm());
       refetch();
     } catch (err) {
-      toast.error("Ажилтан бүртгэхэд алдаа гарлаа. Нэвтэрсэн эсэх, Bearer token шалгана уу.");
+      toast.error(
+        "Ажилтан бүртгэхэд алдаа гарлаа. Нэвтэрсэн эсэх, Bearer token шалгана уу.",
+      );
     }
   };
 
@@ -421,9 +426,10 @@ export function DemoHRContent() {
 
   return (
     <div className="flex min-h-[calc(100vh-5.5rem)] min-w-0 flex-1 flex-col p-6">
-      <div className="mb-4 shrink-0">
-        <h1 className="text-2xl font-semibold text-foreground">Хүний нөөц</h1>
-        <p className="text-muted-foreground mt-1 text-sm italic"></p>
+      <div className="mb-5 shrink-0">
+        <h1 className="text-4xl font-semibold tracking-tight text-slate-900">
+          Нийт идэвхтэй ажилчдын жагсаалт
+        </h1>
       </div>
 
       {error && (
@@ -434,44 +440,38 @@ export function DemoHRContent() {
       )}
 
       <div className="min-h-0 flex-1 overflow-auto">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CalendarDays className="h-5 w-5" />
-              Ажилчдын жагсаалт
-            </CardTitle>
-            <p className="text-muted-foreground text-sm">
-              Идэвхтэй ажилчид дээр, ажлаас гарсангууд доор.
-            </p>
+        <Card className="border-0 bg-transparent shadow-none">
+          <CardHeader className="sr-only">
+            <CardTitle>Ажилчдын жагсаалт</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-5 p-0">
             {loading && (
               <p className="text-muted-foreground flex items-center gap-2 text-sm">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Жагсаалт ачааллаж байна...
               </p>
             )}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               <Button
                 variant="outline"
                 onClick={() => setNewEmployeeOpen(true)}
-                className="gap-2"
+                className="h-11 rounded-[10px] border-slate-300 bg-white px-4 text-base font-medium text-slate-800 shadow-sm hover:bg-slate-50"
               >
                 <UserPlus className="h-4 w-4" />
-                Шинэ ажилтан бүртгэх
+                Ажилтан нэмэх
               </Button>
               <Button
                 variant="outline"
                 onClick={() => setRoleChangeOpen(true)}
-                className="gap-2"
+                className="h-11 rounded-[10px] border-slate-300 bg-white px-4 text-base font-medium text-slate-800 shadow-sm hover:bg-slate-50"
               >
                 <UserCog className="h-4 w-4" />
-                Ажилтны role солих
+                Ажилтны эрх солих
               </Button>
               <Button
                 variant="outline"
                 onClick={() => setOffboardOpen(true)}
-                className="gap-2"
+                className="h-11 rounded-[10px] border-slate-300 bg-white px-4 text-base font-medium text-slate-800 shadow-sm hover:bg-slate-50"
               >
                 <LogOut className="h-4 w-4" />
                 Ажлаас гаргах
@@ -486,78 +486,124 @@ export function DemoHRContent() {
                   );
                   setShowReturnRequestsModal(true);
                 }}
-                className="gap-2 border-amber-400 text-amber-800 hover:bg-amber-50"
+                className="h-11 shrink-0 rounded-[10px] border-amber-400 bg-amber-50 px-4 text-base font-medium text-amber-800 shadow-sm hover:bg-amber-100"
               >
                 <Bell className="h-4 w-4" />
                 Буцаах хүсэлтийн жишээ харах
               </Button>
             </div>
 
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Нэр</TableHead>
-                  <TableHead>И-мэйл</TableHead>
-                  <TableHead>Төлөв</TableHead>
-                  <TableHead>Ажлаас гарсан огноо</TableHead>
-                  <TableHead className="w-[100px]">Буцаах хүсэлт</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {!loading && employeesSorted.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-muted-foreground py-8 text-center"
-                    >
-                      Ажилтан олдсонгүй. Backend-ээс employees ирж байгаа
-                      эсэхийг шалгана уу.
-                    </TableCell>
+            <div className="overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b-0 bg-[#0e5f8c] hover:bg-[#0e5f8c]">
+                    <TableHead className="h-10 w-[76px] px-3 font-medium text-white">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          aria-label="all"
+                          className="h-4 w-4 rounded border-white/70 bg-transparent"
+                        />
+                        <span>№</span>
+                      </div>
+                    </TableHead>
+                    <TableHead className="h-10 font-medium text-white">
+                      <span className="inline-flex items-center gap-1.5">
+                        Нэр <Filter className="h-3.5 w-3.5" />
+                      </span>
+                    </TableHead>
+                    <TableHead className="h-10 font-medium text-white">
+                      <span className="inline-flex items-center gap-1.5">
+                        И-мэйл <Filter className="h-3.5 w-3.5" />
+                      </span>
+                    </TableHead>
+                    <TableHead className="h-10 font-medium text-white">
+                      <span className="inline-flex items-center gap-1.5">
+                        Төлөв <Filter className="h-3.5 w-3.5" />
+                      </span>
+                    </TableHead>
+                    <TableHead className="h-10 font-medium text-white">
+                      Ажлаас гарсан огноо
+                    </TableHead>
+                    <TableHead className="h-10 w-[130px] font-medium text-white">
+                      Буцах хүсэлт
+                    </TableHead>
                   </TableRow>
-                )}
-                {!loading &&
-                  employeesSorted.map((emp) => (
-                    <TableRow key={emp.id}>
-                      <TableCell>
-                        {emp.firstName} {emp.lastName}
-                      </TableCell>
-                      <TableCell>{emp.email}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            emp.status === "TERMINATED"
-                              ? "secondary"
-                              : "default"
-                          }
-                        >
-                          {EMPLOYEE_STATUS_LABELS[emp.status ?? ""] ??
-                            emp.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {emp.terminationDate
-                          ? new Date(emp.terminationDate).toLocaleDateString(
-                              "mn-MN",
-                            )
-                          : "—"}
-                      </TableCell>
-                      <TableCell>
-                        {emp.status === "OFFBOARDING" ? (
-                          <OffboardingBell
-                            employeeId={emp.id}
-                            onOpen={() => {
-                              setSelectedEmployeeForRequests(emp.id);
-                              setShowReturnRequestsModal(true);
-                            }}
-                          />
-                        ) : (
-                          "—"
-                        )}
+                </TableHeader>
+                <TableBody className="[&_tr]:border-0">
+                  {!loading && employeesSorted.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={6}
+                        className="text-muted-foreground py-8 text-center"
+                      >
+                        Ажилтан олдсонгүй. Backend-ээс employees ирж байгаа
+                        эсэхийг шалгана уу.
                       </TableCell>
                     </TableRow>
-                  ))}
-              </TableBody>
-            </Table>
+                  )}
+                  {!loading &&
+                    employeesSorted.map((emp, index) => (
+                      <TableRow
+                        key={emp.id}
+                        className="h-12 border-0 bg-white hover:bg-slate-50/50"
+                      >
+                        <TableCell className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              aria-label={`row-${index + 1}`}
+                              className="h-4 w-4 rounded border-slate-400"
+                            />
+                            <span>{index + 1}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2">
+                          {emp.firstName} {emp.lastName}
+                        </TableCell>
+                        <TableCell className="py-2">{emp.email}</TableCell>
+                        <TableCell className="py-2">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "rounded-md border px-2 py-0.5 text-xs font-medium",
+                              emp.status === "ACTIVE" &&
+                                "border-emerald-300 bg-emerald-50 text-emerald-700",
+                              emp.status === "OFFBOARDING" &&
+                                "border-amber-300 bg-amber-50 text-amber-700",
+                              emp.status === "TERMINATED" &&
+                                "border-slate-300 bg-slate-100 text-slate-600",
+                            )}
+                          >
+                            {EMPLOYEE_STATUS_LABELS[emp.status ?? ""] ??
+                              emp.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="py-2">
+                          {emp.terminationDate
+                            ? new Date(emp.terminationDate).toLocaleDateString(
+                                "mn-MN",
+                              )
+                            : "-"}
+                        </TableCell>
+                        <TableCell className="py-2">
+                          {emp.status === "OFFBOARDING" ? (
+                            <OffboardingBell
+                              employeeId={emp.id}
+                              onOpen={() => {
+                                setSelectedEmployeeForRequests(emp.id);
+                                setShowReturnRequestsModal(true);
+                              }}
+                            />
+                          ) : (
+                            "-"
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
 
@@ -585,7 +631,10 @@ export function DemoHRContent() {
                   id="firstName"
                   value={newEmployeeForm.firstName}
                   onChange={(e) =>
-                    setNewEmployeeForm((p) => ({ ...p, firstName: e.target.value }))
+                    setNewEmployeeForm((p) => ({
+                      ...p,
+                      firstName: e.target.value,
+                    }))
                   }
                   placeholder="Жишээ"
                 />
@@ -596,7 +645,10 @@ export function DemoHRContent() {
                   id="lastName"
                   value={newEmployeeForm.lastName}
                   onChange={(e) =>
-                    setNewEmployeeForm((p) => ({ ...p, lastName: e.target.value }))
+                    setNewEmployeeForm((p) => ({
+                      ...p,
+                      lastName: e.target.value,
+                    }))
                   }
                   placeholder="Жишээ"
                 />
@@ -607,7 +659,10 @@ export function DemoHRContent() {
                   id="firstNameEng"
                   value={newEmployeeForm.firstNameEng}
                   onChange={(e) =>
-                    setNewEmployeeForm((p) => ({ ...p, firstNameEng: e.target.value }))
+                    setNewEmployeeForm((p) => ({
+                      ...p,
+                      firstNameEng: e.target.value,
+                    }))
                   }
                   placeholder="First"
                 />
@@ -618,7 +673,10 @@ export function DemoHRContent() {
                   id="lastNameEng"
                   value={newEmployeeForm.lastNameEng}
                   onChange={(e) =>
-                    setNewEmployeeForm((p) => ({ ...p, lastNameEng: e.target.value }))
+                    setNewEmployeeForm((p) => ({
+                      ...p,
+                      lastNameEng: e.target.value,
+                    }))
                   }
                   placeholder="Last"
                 />
@@ -642,12 +700,17 @@ export function DemoHRContent() {
                   type="date"
                   value={newEmployeeForm.hireDate}
                   onChange={(e) =>
-                    setNewEmployeeForm((p) => ({ ...p, hireDate: e.target.value }))
+                    setNewEmployeeForm((p) => ({
+                      ...p,
+                      hireDate: e.target.value,
+                    }))
                   }
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="numberOfVacationDays">Чөлөөний өдрийн тоо</Label>
+                <Label htmlFor="numberOfVacationDays">
+                  Чөлөөний өдрийн тоо
+                </Label>
                 <Input
                   id="numberOfVacationDays"
                   type="number"
@@ -668,7 +731,10 @@ export function DemoHRContent() {
                   id="github"
                   value={newEmployeeForm.github}
                   onChange={(e) =>
-                    setNewEmployeeForm((p) => ({ ...p, github: e.target.value }))
+                    setNewEmployeeForm((p) => ({
+                      ...p,
+                      github: e.target.value,
+                    }))
                   }
                   placeholder="username"
                 />
@@ -679,7 +745,10 @@ export function DemoHRContent() {
                   id="department"
                   value={newEmployeeForm.department}
                   onChange={(e) =>
-                    setNewEmployeeForm((p) => ({ ...p, department: e.target.value }))
+                    setNewEmployeeForm((p) => ({
+                      ...p,
+                      department: e.target.value,
+                    }))
                   }
                   placeholder="IT"
                 />
@@ -690,7 +759,10 @@ export function DemoHRContent() {
                   id="branch"
                   value={newEmployeeForm.branch}
                   onChange={(e) =>
-                    setNewEmployeeForm((p) => ({ ...p, branch: e.target.value }))
+                    setNewEmployeeForm((p) => ({
+                      ...p,
+                      branch: e.target.value,
+                    }))
                   }
                   placeholder="Улаанбаатар"
                 />
@@ -701,7 +773,10 @@ export function DemoHRContent() {
                   id="employeeCode"
                   value={newEmployeeForm.employeeCode}
                   onChange={(e) =>
-                    setNewEmployeeForm((p) => ({ ...p, employeeCode: e.target.value }))
+                    setNewEmployeeForm((p) => ({
+                      ...p,
+                      employeeCode: e.target.value,
+                    }))
                   }
                   placeholder="EMP001"
                 />
@@ -734,7 +809,10 @@ export function DemoHRContent() {
                   id="isSalaryCompany"
                   checked={newEmployeeForm.isSalaryCompany}
                   onCheckedChange={(checked) =>
-                    setNewEmployeeForm((p) => ({ ...p, isSalaryCompany: !!checked }))
+                    setNewEmployeeForm((p) => ({
+                      ...p,
+                      isSalaryCompany: !!checked,
+                    }))
                   }
                 />
                 <Label htmlFor="isSalaryCompany" className="cursor-pointer">
@@ -742,7 +820,9 @@ export function DemoHRContent() {
                 </Label>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="birthDayAndMonth">Төрсөн сар/өдөр (MM-DD)</Label>
+                <Label htmlFor="birthDayAndMonth">
+                  Төрсөн сар/өдөр (MM-DD)
+                </Label>
                 <Input
                   id="birthDayAndMonth"
                   value={newEmployeeForm.birthDayAndMonth}
@@ -761,7 +841,10 @@ export function DemoHRContent() {
                   id="birthdayPoster"
                   value={newEmployeeForm.birthdayPoster}
                   onChange={(e) =>
-                    setNewEmployeeForm((p) => ({ ...p, birthdayPoster: e.target.value }))
+                    setNewEmployeeForm((p) => ({
+                      ...p,
+                      birthdayPoster: e.target.value,
+                    }))
                   }
                   placeholder="URL эсвэл тэмдэглэл"
                 />
@@ -781,7 +864,9 @@ export function DemoHRContent() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setNewEmployeeForm(getDefaultNewEmployeeForm())}
+                  onClick={() =>
+                    setNewEmployeeForm(getDefaultNewEmployeeForm())
+                  }
                 >
                   Цэвлэх
                 </Button>
@@ -822,7 +907,7 @@ export function DemoHRContent() {
             }
           }}
         >
-          <DialogContent className="sm:min-w-[380px]">
+          <DialogContent className="sm:min-w-[200px] ">
             <DialogHeader>
               <DialogTitle>Ажилтны role солих</DialogTitle>
               <DialogDescription>
@@ -843,7 +928,8 @@ export function DemoHRContent() {
                   <SelectContent>
                     {employeesSorted.map((emp) => (
                       <SelectItem key={emp.id} value={emp.id}>
-                        {emp.firstName} {emp.lastName} ({emp.email}) — {emp.role}
+                        {emp.firstName} {emp.lastName} ({emp.email}) —{" "}
+                        {emp.role}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -904,8 +990,8 @@ export function DemoHRContent() {
             }
           }}
         >
-          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
+          <DialogContent className="w-[min(96vw,1220px)] max-w-[96vw] max-h-[92vh] overflow-hidden">
+            <DialogHeader className="shrink-0">
               <DialogTitle className="flex items-center gap-2">
                 <Bell className="h-5 w-5" />
                 Буцаах хүсэлтүүд — HR шалгах
@@ -918,7 +1004,7 @@ export function DemoHRContent() {
                     : "Ажилтан сонгоно уу."}
               </DialogDescription>
             </DialogHeader>
-            <div className="py-4 space-y-6">
+            <div className="min-h-0 overflow-y-auto py-4 space-y-6">
               {!selectedEmployeeForRequests ? (
                 <p className="text-muted-foreground text-sm">
                   Ажилтан сонгоогүй байна.
@@ -929,143 +1015,145 @@ export function DemoHRContent() {
                     Жишээ (mock). Нөхцөл сонгоод, эвдрэлтэй бол зураг оруулж,
                     товчнуудыг туршина уу.
                   </p>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Хөрөнгө</TableHead>
-                        <TableHead>Serial</TableHead>
-                        <TableHead>Ажилтны нөхцөл</TableHead>
-                        <TableHead>Зураг</TableHead>
-                        <TableHead>HR шалгасан нөхцөл</TableHead>
-                        <TableHead>Эвдрэлтэй үед зураг</TableHead>
-                        <TableHead className="w-[200px]">Үйлдэл</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {[
-                        {
-                          id: "mock-ex-1",
-                          assetTag: "Laptop-001",
-                          serial: "SN-DEMO-01",
-                          conditionEmployee: "DAMAGED: Дэлгэц цуурсан",
-                          hasPhoto: true,
-                        },
-                        {
-                          id: "mock-ex-2",
-                          assetTag: "Mouse-002",
-                          serial: "SN-DEMO-02",
-                          conditionEmployee: "GOOD",
-                          hasPhoto: false,
-                        },
-                      ].map((row) => {
-                        const conditionHr =
-                          hrConditionByRequestId[row.id] ?? "GOOD";
-                        const isDamaged = conditionHr === "DAMAGED";
-                        const photoFile = hrPhotoByRequestId[row.id] ?? null;
-                        return (
-                          <TableRow key={row.id} className="bg-white/80">
-                            <TableCell className="font-medium">
-                              {row.assetTag}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground text-sm">
-                              {row.serial}
-                            </TableCell>
-                            <TableCell className="text-sm">
-                              {row.conditionEmployee}
-                            </TableCell>
-                            <TableCell className="text-sm">
-                              {row.hasPhoto ? (
-                                <span className="text-amber-600 text-xs">
-                                  Зураг байна
-                                </span>
-                              ) : (
-                                "—"
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                value={conditionHr}
-                                onValueChange={(v) =>
-                                  setHrConditionByRequestId((prev) => ({
-                                    ...prev,
-                                    [row.id]: v,
-                                  }))
-                                }
-                              >
-                                <SelectTrigger className="w-[120px] h-8">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="GOOD">
-                                    GOOD — Сайн
-                                  </SelectItem>
-                                  <SelectItem value="FAIR">
-                                    FAIR — Дунд
-                                  </SelectItem>
-                                  <SelectItem value="DAMAGED">
-                                    DAMAGED — Эвдрэлтэй
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              {isDamaged ? (
-                                <>
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="text-xs file:mr-1 file:rounded file:border-0 file:bg-amber-100 file:px-2 file:py-0.5 file:text-xs"
-                                    onChange={(e) =>
-                                      setHrPhotoByRequestId((prev) => ({
-                                        ...prev,
-                                        [row.id]: e.target.files?.[0] ?? null,
-                                      }))
+                  <div className="w-full overflow-x-auto">
+                    <Table className="min-w-[980px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Хөрөнгө</TableHead>
+                          <TableHead>Serial</TableHead>
+                          <TableHead>Ажилтны нөхцөл</TableHead>
+                          <TableHead>Зураг</TableHead>
+                          <TableHead>HR шалгасан нөхцөл</TableHead>
+                          <TableHead>Эвдрэлтэй үед зураг</TableHead>
+                          <TableHead className="w-[200px]">Үйлдэл</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {[
+                          {
+                            id: "mock-ex-1",
+                            assetTag: "Laptop-001",
+                            serial: "SN-DEMO-01",
+                            conditionEmployee: "DAMAGED: Дэлгэц цуурсан",
+                            hasPhoto: true,
+                          },
+                          {
+                            id: "mock-ex-2",
+                            assetTag: "Mouse-002",
+                            serial: "SN-DEMO-02",
+                            conditionEmployee: "GOOD",
+                            hasPhoto: false,
+                          },
+                        ].map((row) => {
+                          const conditionHr =
+                            hrConditionByRequestId[row.id] ?? "GOOD";
+                          const isDamaged = conditionHr === "DAMAGED";
+                          const photoFile = hrPhotoByRequestId[row.id] ?? null;
+                          return (
+                            <TableRow key={row.id} className="bg-white/80">
+                              <TableCell className="font-medium">
+                                {row.assetTag}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground text-sm">
+                                {row.serial}
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {row.conditionEmployee}
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {row.hasPhoto ? (
+                                  <span className="text-amber-600 text-xs">
+                                    Зураг байна
+                                  </span>
+                                ) : (
+                                  "—"
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Select
+                                  value={conditionHr}
+                                  onValueChange={(v) =>
+                                    setHrConditionByRequestId((prev) => ({
+                                      ...prev,
+                                      [row.id]: v,
+                                    }))
+                                  }
+                                >
+                                  <SelectTrigger className="w-[120px] h-8">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="GOOD">
+                                      GOOD — Сайн
+                                    </SelectItem>
+                                    <SelectItem value="FAIR">
+                                      FAIR — Дунд
+                                    </SelectItem>
+                                    <SelectItem value="DAMAGED">
+                                      DAMAGED — Эвдрэлтэй
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                {isDamaged ? (
+                                  <>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="text-xs file:mr-1 file:rounded file:border-0 file:bg-amber-100 file:px-2 file:py-0.5 file:text-xs"
+                                      onChange={(e) =>
+                                        setHrPhotoByRequestId((prev) => ({
+                                          ...prev,
+                                          [row.id]: e.target.files?.[0] ?? null,
+                                        }))
+                                      }
+                                    />
+                                    {photoFile && (
+                                      <span className="text-xs text-muted-foreground ml-1">
+                                        {photoFile.name}
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
+                                  "—"
+                                )}
+                              </TableCell>
+                              <TableCell className="flex flex-wrap gap-1">
+                                {!isDamaged ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-1 text-green-700 border-green-600 hover:bg-green-50"
+                                    onClick={() =>
+                                      toast.info(
+                                        "Mock: Зөвшөөрөх → AVAILABLE + IT wipe.",
+                                      )
                                     }
-                                  />
-                                  {photoFile && (
-                                    <span className="text-xs text-muted-foreground ml-1">
-                                      {photoFile.name}
-                                    </span>
-                                  )}
-                                </>
-                              ) : (
-                                "—"
-                              )}
-                            </TableCell>
-                            <TableCell className="flex flex-wrap gap-1">
-                              {!isDamaged ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="gap-1 text-green-700 border-green-600 hover:bg-green-50"
-                                  onClick={() =>
-                                    toast.info(
-                                      "Mock: Зөвшөөрөх → AVAILABLE + IT wipe.",
-                                    )
-                                  }
-                                >
-                                  Зөвшөөрөх (AVAILABLE + wipe)
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="gap-1 text-amber-700 border-amber-600 hover:bg-amber-50"
-                                  onClick={() =>
-                                    toast.info(
-                                      "Mock: Засвар хүсэх → IT REPAIR_REQUESTED.",
-                                    )
-                                  }
-                                >
-                                  Засвар хүсэх (IT)
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                                  >
+                                    Зөвшөөрөх (AVAILABLE + wipe)
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-1 text-amber-700 border-amber-600 hover:bg-amber-50"
+                                    onClick={() =>
+                                      toast.info(
+                                        "Mock: Засвар хүсэх → IT REPAIR_REQUESTED.",
+                                      )
+                                    }
+                                  >
+                                    Засвар хүсэх (IT)
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               ) : (
                 <>
@@ -1094,132 +1182,141 @@ export function DemoHRContent() {
                           </li>
                         </ul>
                       </div>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Хөрөнгө</TableHead>
-                            <TableHead>Serial</TableHead>
-                            <TableHead>Ажилтны нөхцөл</TableHead>
-                            <TableHead>Зураг</TableHead>
-                            <TableHead>HR шалгасан нөхцөл</TableHead>
-                            <TableHead>Эвдрэлтэй үед зураг</TableHead>
-                            <TableHead className="w-[200px]">Үйлдэл</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {pendingRequests.map((req) => {
-                            const conditionHr =
-                              hrConditionByRequestId[req.id] ?? "GOOD";
-                            const isDamaged = conditionHr === "DAMAGED";
-                            const photoFile =
-                              hrPhotoByRequestId[req.id] ?? null;
-                            return (
-                              <TableRow key={req.id}>
-                                <TableCell className="font-medium">
-                                  {req.asset?.assetTag ?? req.assetId}
-                                </TableCell>
-                                <TableCell className="text-muted-foreground text-sm">
-                                  {req.asset?.serialNumber ?? "—"}
-                                </TableCell>
-                                <TableCell className="text-sm">
-                                  {req.conditionEmployee}
-                                </TableCell>
-                                <TableCell className="text-sm">
-                                  {"photoR2Key" in req && req.photoR2Key ? (
-                                    <span className="text-amber-600 text-xs">
-                                      Зураг байна
-                                    </span>
-                                  ) : (
-                                    "—"
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <Select
-                                    value={conditionHr}
-                                    onValueChange={(v) =>
-                                      setHrConditionByRequestId((prev) => ({
-                                        ...prev,
-                                        [req.id]: v,
-                                      }))
-                                    }
-                                  >
-                                    <SelectTrigger className="w-[120px] h-8">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="GOOD">
-                                        GOOD — Сайн
-                                      </SelectItem>
-                                      <SelectItem value="FAIR">
-                                        FAIR — Дунд
-                                      </SelectItem>
-                                      <SelectItem value="DAMAGED">
-                                        DAMAGED — Эвдрэлтэй
-                                      </SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </TableCell>
-                                <TableCell>
-                                  {isDamaged ? (
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      className="text-xs file:mr-1 file:rounded file:border-0 file:bg-amber-100 file:px-2 file:py-0.5 file:text-xs"
-                                      onChange={(e) =>
-                                        setHrPhotoByRequestId((prev) => ({
+                      <div className="w-full overflow-x-auto">
+                        <Table className="min-w-[980px]">
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Хөрөнгө</TableHead>
+                              <TableHead>Serial</TableHead>
+                              <TableHead>Ажилтны нөхцөл</TableHead>
+                              <TableHead>Зураг</TableHead>
+                              <TableHead>HR шалгасан нөхцөл</TableHead>
+                              <TableHead>Эвдрэлтэй үед зураг</TableHead>
+                              <TableHead className="w-[200px]">
+                                Үйлдэл
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {pendingRequests.map((req) => {
+                              const conditionHr =
+                                hrConditionByRequestId[req.id] ?? "GOOD";
+                              const isDamaged = conditionHr === "DAMAGED";
+                              const photoFile =
+                                hrPhotoByRequestId[req.id] ?? null;
+                              return (
+                                <TableRow key={req.id}>
+                                  <TableCell className="font-medium">
+                                    {req.asset?.assetTag ?? req.assetId}
+                                  </TableCell>
+                                  <TableCell className="text-muted-foreground text-sm">
+                                    {req.asset?.serialNumber ?? "—"}
+                                  </TableCell>
+                                  <TableCell className="text-sm">
+                                    {req.conditionEmployee}
+                                  </TableCell>
+                                  <TableCell className="text-sm">
+                                    {"photoR2Key" in req && req.photoR2Key ? (
+                                      <span className="text-amber-600 text-xs">
+                                        Зураг байна
+                                      </span>
+                                    ) : (
+                                      "—"
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Select
+                                      value={conditionHr}
+                                      onValueChange={(v) =>
+                                        setHrConditionByRequestId((prev) => ({
                                           ...prev,
-                                          [req.id]: e.target.files?.[0] ?? null,
+                                          [req.id]: v,
                                         }))
                                       }
-                                    />
-                                  ) : (
-                                    "—"
-                                  )}
-                                  {photoFile && (
-                                    <span className="text-xs text-muted-foreground ml-1">
-                                      {photoFile.name}
-                                    </span>
-                                  )}
-                                </TableCell>
-                                <TableCell className="flex flex-wrap gap-1">
-                                  {!isDamaged ? (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="gap-1 text-green-700 border-green-600 hover:bg-green-50"
-                                      disabled={approveLoading || repairLoading}
-                                      onClick={() =>
-                                        handleApproveReturnRequest(
-                                          req.id,
-                                          conditionHr,
-                                        )
-                                      }
                                     >
-                                      Зөвшөөрөх (AVAILABLE + wipe)
-                                    </Button>
-                                  ) : (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="gap-1 text-amber-700 border-amber-600 hover:bg-amber-50"
-                                      disabled={approveLoading || repairLoading}
-                                      onClick={() =>
-                                        handleRequestRepair(
-                                          req.id,
-                                          conditionHr,
-                                          photoFile,
-                                        )
-                                      }
-                                    >
-                                      Засвар хүсэх (IT)
-                                    </Button>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
+                                      <SelectTrigger className="w-[120px] h-8">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="GOOD">
+                                          GOOD — Сайн
+                                        </SelectItem>
+                                        <SelectItem value="FAIR">
+                                          FAIR — Дунд
+                                        </SelectItem>
+                                        <SelectItem value="DAMAGED">
+                                          DAMAGED — Эвдрэлтэй
+                                        </SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </TableCell>
+                                  <TableCell>
+                                    {isDamaged ? (
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="text-xs file:mr-1 file:rounded file:border-0 file:bg-amber-100 file:px-2 file:py-0.5 file:text-xs"
+                                        onChange={(e) =>
+                                          setHrPhotoByRequestId((prev) => ({
+                                            ...prev,
+                                            [req.id]:
+                                              e.target.files?.[0] ?? null,
+                                          }))
+                                        }
+                                      />
+                                    ) : (
+                                      "—"
+                                    )}
+                                    {photoFile && (
+                                      <span className="text-xs text-muted-foreground ml-1">
+                                        {photoFile.name}
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="flex flex-wrap gap-1">
+                                    {!isDamaged ? (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="gap-1 text-green-700 border-green-600 hover:bg-green-50"
+                                        disabled={
+                                          approveLoading || repairLoading
+                                        }
+                                        onClick={() =>
+                                          handleApproveReturnRequest(
+                                            req.id,
+                                            conditionHr,
+                                          )
+                                        }
+                                      >
+                                        Зөвшөөрөх (AVAILABLE + wipe)
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="gap-1 text-amber-700 border-amber-600 hover:bg-amber-50"
+                                        disabled={
+                                          approveLoading || repairLoading
+                                        }
+                                        onClick={() =>
+                                          handleRequestRepair(
+                                            req.id,
+                                            conditionHr,
+                                            photoFile,
+                                          )
+                                        }
+                                      >
+                                        Засвар хүсэх (IT)
+                                      </Button>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
                     </>
                   ) : (
                     /* Бодит хүсэлт байхгүй үед бодит урсгалтай ижил UI (нөхцөл, зураг, товч) mock-оор */
@@ -1230,7 +1327,8 @@ export function DemoHRContent() {
                       </p>
                       <p className="text-muted-foreground text-xs mb-3">
                         Одоогоор энэ ажилтан буцаах хүсэлт илгээгээгүй байна.
-                        Доор жишээ (mock) — нөхцөл сонгоод товчнуудыг туршина уу.
+                        Доор жишээ (mock) — нөхцөл сонгоод товчнуудыг туршина
+                        уу.
                       </p>
                       <Table>
                         <TableHeader>

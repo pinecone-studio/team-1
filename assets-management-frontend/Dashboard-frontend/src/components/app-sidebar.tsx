@@ -8,8 +8,7 @@ import {
   Users,
   Monitor,
   Building2,
-  UserCheck,
-  ArrowLeftRight,
+  LogOut,
 } from "lucide-react";
 
 import {
@@ -66,6 +65,10 @@ const menuItems = [
   {
     title: "Demo HR",
     icon: Building2,
+  },
+  {
+    title: "Ажлаас гарах явц",
+    icon: LogOut,
   },
 ];
 

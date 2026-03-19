@@ -9,20 +9,14 @@ import { createDataWipeTask } from "@/db/dataWipeTasks/mutations/createDataWipeT
 import { updateDataWipeTask } from "@/db/dataWipeTasks/mutations/updateDataWipeTask";
 import type { GraphQLContext } from "@/graphql-gql/context";
 
-function requireAuth(ctx: GraphQLContext): void {
-  if (!ctx.userId) {
-    throw new Error("Unauthorized: Bearer token required (Clerk sign-in).");
-  }
-}
-
+// Offboarding flow: allow without Clerk token (demo / HR-initiated).
 export const offboardingMutations = {
   startOffboarding: (
     _: unknown,
     args: { employeeId: string; initiatedBy: string; terminationDate?: number | null },
-    ctx: GraphQLContext,
+    _ctx: GraphQLContext,
   ) => {
-    requireAuth(ctx);
-    return     startOffboarding(args.employeeId, args.initiatedBy, {
+    return startOffboarding(args.employeeId, args.initiatedBy, {
       terminationDate:
         args.terminationDate != null ? Number(args.terminationDate) : undefined,
     });
@@ -36,9 +30,8 @@ export const offboardingMutations = {
       conditionDetail?: string | null;
       photoR2Key?: string | null;
     },
-    ctx: GraphQLContext,
+    _ctx: GraphQLContext,
   ) => {
-    requireAuth(ctx);
     return submitReturnRequest(args.assetId, args.employeeId, args.condition, {
       conditionDetail: args.conditionDetail,
       photoR2Key: args.photoR2Key,
@@ -51,9 +44,8 @@ export const offboardingMutations = {
       conditionHr: string;
       inspectedBy: string;
     },
-    ctx: GraphQLContext,
+    _ctx: GraphQLContext,
   ) => {
-    requireAuth(ctx);
     return approveReturnRequest(
       args.returnRequestId,
       args.conditionHr,
@@ -68,9 +60,8 @@ export const offboardingMutations = {
       photoR2Key?: string | null;
       inspectedBy: string;
     },
-    ctx: GraphQLContext,
+    _ctx: GraphQLContext,
   ) => {
-    requireAuth(ctx);
     return requestRepair(
       args.returnRequestId,
       args.conditionHr,
@@ -86,9 +77,8 @@ export const offboardingMutations = {
       condition: string;
       inspectedBy: string;
     },
-    ctx: GraphQLContext,
+    _ctx: GraphQLContext,
   ) => {
-    requireAuth(ctx);
     return completeAssetReturn(
       args.assetId,
       args.employeeId,
@@ -99,17 +89,15 @@ export const offboardingMutations = {
   createDataWipeTask: (
     _: unknown,
     args: { assetId: string },
-    ctx: GraphQLContext,
+    _ctx: GraphQLContext,
   ) => {
-    requireAuth(ctx);
     return createDataWipeTask(args.assetId);
   },
   updateDataWipeTask: (
     _: unknown,
     args: { id: string; status: string },
-    ctx: GraphQLContext,
+    _ctx: GraphQLContext,
   ) => {
-    requireAuth(ctx);
     return updateDataWipeTask(args.id, args.status);
   },
 };

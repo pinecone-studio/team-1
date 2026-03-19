@@ -19,12 +19,18 @@ export type DemoITMaintenanceCardProps = {
   allMaintenanceTickets: MaintenanceItem[];
   MAINTENANCE_STATUS_LABELS: Record<string, string>;
   onOpenAsset: (assetId: string) => void;
+  onApprove: (id: string) => void;
+  onReject: (id: string) => void;
+  updatingMaintenance: boolean;
 };
 
 export function DemoITMaintenanceCard({
   allMaintenanceTickets,
   MAINTENANCE_STATUS_LABELS,
   onOpenAsset,
+  onApprove,
+  onReject,
+  updatingMaintenance,
 }: DemoITMaintenanceCardProps) {
   return (
     <Card className="border border-border/60 bg-white">
@@ -95,7 +101,10 @@ export function DemoITMaintenanceCard({
                       {(t as any)?.asset?.serialNumber ?? (t as any)?.serialNumber ?? "—"}
                     </TableCell>
                     <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
-                      {(t as any)?.reporter?.email ?? (t as any)?.reporterId ?? "Админ хэрэглэгч"}
+                      {(t as any)?.reporterName ??
+                        (t as any)?.reporter?.email ??
+                        (t as any)?.reporterId ??
+                        "Admin"}
                     </TableCell>
                     <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
                       {t.description}
@@ -107,14 +116,21 @@ export function DemoITMaintenanceCard({
                       <div className="flex items-center justify-end gap-2">
                         <Button
                           size="sm"
-                          className="h-8 gap-2 rounded-md bg-[#6b7280] text-white hover:bg-[#5b6473]"
-                          disabled
-                          title={`Одоогоор demo UI (status: ${MAINTENANCE_STATUS_LABELS[t.status] ?? t.status})`}
+                          className="h-8 gap-2 rounded-md bg-[#0b6fae] text-white hover:bg-[#095f93]"
+                          onClick={() => onApprove(t.id)}
+                          disabled={updatingMaintenance || t.status === "RESOLVED" || t.status === "CLOSED"}
+                          title={`Status: ${MAINTENANCE_STATUS_LABELS[t.status] ?? t.status}`}
                         >
                           <Check className="h-4 w-4" />
                           Батлах
                         </Button>
-                        <Button variant="outline" size="sm" className="h-8 gap-2 rounded-md" disabled>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-2 rounded-md"
+                          onClick={() => onReject(t.id)}
+                          disabled={updatingMaintenance || t.status === "CLOSED"}
+                        >
                           <X className="h-4 w-4" />
                           Цуцлах
                         </Button>

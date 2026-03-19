@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import Link from "next/link";
 import { ApolloError } from "@apollo/client";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { AssetCard } from "./asset-card";
@@ -35,6 +34,7 @@ interface AssetsGridProps {
   onSelectFirstFour: () => void;
   onClearSelection: () => void;
   onOpenQr: (assets: Asset[]) => void;
+  onOpenAsset: (assetId: string) => void;
   onEdit: (asset: Asset) => void;
   onDelete: (id: string) => void;
   loading: boolean;
@@ -61,6 +61,7 @@ export function AssetsGrid({
   onSelectFirstFour,
   onClearSelection,
   onOpenQr,
+  onOpenAsset,
   onEdit,
   onDelete,
   loading,
@@ -252,11 +253,14 @@ export function AssetsGrid({
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <Link href={`/assets/${asset.id}`}>
-                          <Button variant="ghost" size="icon">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </Link>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onOpenAsset(asset.id)}
+                          aria-label="Asset detail"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -294,6 +298,7 @@ export function AssetsGrid({
                 selected={selectedIds.has(asset.id)}
                 onToggleSelect={onToggleSelect}
                 onOpenQr={onOpenQr}
+                onOpenAsset={onOpenAsset}
                 onEdit={onEdit}
                 onDelete={onDelete}
               />

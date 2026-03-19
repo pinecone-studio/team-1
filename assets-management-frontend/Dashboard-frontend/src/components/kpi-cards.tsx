@@ -18,6 +18,13 @@ const formatMoney = (value: number) =>
 
 const formatPercent = (value: number) => `${Math.round(value)}%`;
 
+const formatPartAndPercent = (part: number, total: number) => {
+  const safeTotal = Number.isFinite(total) && total > 0 ? total : 0;
+  const safePart = Number.isFinite(part) && part >= 0 ? part : 0;
+  const pct = safeTotal > 0 ? (safePart / safeTotal) * 100 : 0;
+  return `${formatMoney(safePart)} / ${pct.toFixed(1)}%`;
+};
+
 export function KPICards() {
   const { data, loading: assetsLoading } = useQuery(GetAssetsDocument, {
     variables: {
@@ -89,6 +96,15 @@ export function KPICards() {
   const brokenPercent =
     totalAssets > 0 ? (brokenAssets.length / totalAssets) * 100 : 0;
 
+  const valuePercentOfTotal = (value: number) =>
+    totalValue > 0 ? (value / totalValue) * 100 : 0;
+
+  const assignedValuePercent = valuePercentOfTotal(kpis?.assignedValue ?? 0);
+  const unassignedValuePercent = valuePercentOfTotal(kpis?.unassignedValue ?? 0);
+  const forSaleValuePercent =
+    totalValue > 0 ? ((kpis?.forSaleValue ?? 0) / totalValue) * 100 : 0;
+  const brokenValuePercent = valuePercentOfTotal(kpis?.brokenValue ?? 0);
+
   const kpiData = [
     {
       title: "Нийт хөрөнгө",
@@ -101,7 +117,8 @@ export function KPICards() {
     },
     {
       title: "Эзэмшигчтэй",
-      value: formatMoney(assignedValue),
+      value: formatMoney(kpis?.assignedValue ?? 0),
+      valueSuffix: `/${assignedValuePercent.toFixed(1)}%`,
       subtitle: formatPercent(assignedPercent),
       progress: assignedPercent,
       icon: UserCheck,
@@ -110,7 +127,8 @@ export function KPICards() {
     },
     {
       title: "Эзэмшигчгүй",
-      value: formatMoney(unassignedValue),
+      value: formatMoney(kpis?.unassignedValue ?? 0),
+      valueSuffix: `/${unassignedValuePercent.toFixed(1)}%`,
       subtitle: formatPercent(unassignedPercent),
       progress: unassignedPercent,
       icon: UserRoundX,
@@ -119,7 +137,8 @@ export function KPICards() {
     },
     {
       title: "Зарж болох",
-      value: formatMoney(sellableValue),
+      value: formatMoney(kpis?.forSaleValue ?? 0),
+      valueSuffix: `/${forSaleValuePercent.toFixed(1)}%`,
       subtitle: formatPercent(sellablePercent),
       progress: sellablePercent,
       icon: CircleDollarSign,
@@ -128,7 +147,8 @@ export function KPICards() {
     },
     {
       title: "Эвдрэлтэй",
-      value: formatMoney(brokenValue),
+      value: formatMoney(kpis?.brokenValue ?? 0),
+      valueSuffix: `/${brokenValuePercent.toFixed(1)}%`,
       subtitle: formatPercent(brokenPercent),
       progress: brokenPercent,
       icon: Wrench,
@@ -155,7 +175,9 @@ export function KPICards() {
 interface KPICardProps {
   title: string;
   value: string;
+  valueSuffix?: string;
   subtitle: string;
+  secondary?: string;
   progress: number;
   icon: LucideIcon;
   iconBorder?: string;
@@ -166,7 +188,9 @@ interface KPICardProps {
 function KPICard({
   title,
   value,
+  valueSuffix,
   subtitle,
+  secondary,
   progress,
   icon: Icon,
   iconBorder,
@@ -200,7 +224,14 @@ function KPICard({
           <div>
             <p className="text-base text-foreground">{title}</p>
 
-            <p className="text-xl font-bold mt-2.5 ">{value}</p>
+            <p className="mt-2.5 flex items-baseline gap-1">
+              <span className="text-xl font-bold">{value}</span>
+              {valueSuffix ? (
+                <span className="text-[11px] font-medium text-slate-400">
+                  {valueSuffix}
+                </span>
+              ) : null}
+            </p>
           </div>
 
           <div
@@ -211,6 +242,9 @@ function KPICard({
         </div>
         <div>
           <p className="text-sm text-muted-foreground mb-3">{subtitle}</p>{" "}
+          {secondary ? (
+            <p className="mb-2 text-[11px] text-slate-400">{secondary}</p>
+          ) : null}
           <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
             <div
               className="h-full bg-sky-600 rounded-full"

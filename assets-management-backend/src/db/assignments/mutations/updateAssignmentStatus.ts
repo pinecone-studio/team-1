@@ -51,7 +51,12 @@ export async function updateAssignmentStatus(
   }
   await db
     .update(assignments)
-    .set({ status, updatedAt: now })
+    .set({
+      status,
+      // Close rejected assignments so the asset can be assigned again.
+      returnedAt: status === "REJECTED" ? now : undefined,
+      updatedAt: now,
+    })
     .where(eq(assignments.id, assignmentId));
   return db
     .select()

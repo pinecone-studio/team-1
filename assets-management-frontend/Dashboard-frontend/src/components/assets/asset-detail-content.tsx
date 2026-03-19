@@ -3,15 +3,28 @@
 import { useApolloClient, useMutation, useQuery } from "@apollo/client";
 import { useMemo, useState, useEffect } from "react";
 import type { AssetFieldsFragment } from "@/gql/graphql";
+import { toast } from "sonner";
 import {
+  AssignAssetDocument,
   DeleteAssetDocument,
+  EmployeesDocument,
   GetAssetDocument,
   GetAssetHistoryDocument,
   GetAssetKpisDocument,
   GetAssetsDocument,
   GetLocationsDocument,
+  ReturnAssetDocument,
+  TransferAssetDocument,
   UpdateAssetDocument,
 } from "@/gql/graphql";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -219,6 +232,7 @@ export function AssetDetailContent({
     mainCategory: "",
     category: "",
     locationId: "",
+    assignedEmployeeId: "",
     purchaseCost: "",
     salePrice: "",
     notes: "",
@@ -238,6 +252,7 @@ export function AssetDetailContent({
     skip: !assetId,
   });
   const { data: locationsData } = useQuery(GetLocationsDocument);
+  const { data: employeesData } = useQuery(EmployeesDocument);
   const client = useApolloClient();
   const [updateAsset] = useMutation(UpdateAssetDocument, {
     refetchQueries: [
@@ -257,6 +272,39 @@ export function AssetDetailContent({
       awaitRefetchQueries: true,
     },
   );
+  const [assignAsset, { loading: assigning }] = useMutation(AssignAssetDocument, {
+    refetchQueries: [
+      { query: GetAssetDocument, variables: { id: assetId } },
+      { query: GetAssetKpisDocument },
+      { query: GetAssetsDocument },
+    ],
+    awaitRefetchQueries: true,
+  });
+  const [returnAsset, { loading: returning }] = useMutation(ReturnAssetDocument, {
+    refetchQueries: [
+      { query: GetAssetDocument, variables: { id: assetId } },
+      { query: GetAssetKpisDocument },
+      { query: GetAssetsDocument },
+    ],
+    awaitRefetchQueries: true,
+  });
+  const [transferAsset, { loading: transferring }] = useMutation(
+    TransferAssetDocument,
+    {
+      refetchQueries: [
+        { query: GetAssetDocument, variables: { id: assetId } },
+        { query: GetAssetKpisDocument },
+        { query: GetAssetsDocument },
+      ],
+      awaitRefetchQueries: true,
+    },
+  );
+
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
+  const [assignEmployeeId, setAssignEmployeeId] = useState("");
+  const [transferToEmployeeId, setTransferToEmployeeId] = useState("");
+  const actionLoading = assigning || returning || transferring;
 
   const asset = data?.asset as
     | (AssetFieldsFragment & { locationPath?: string })
@@ -281,6 +329,15 @@ export function AssetDetailContent({
       name: loc.name,
     }));
   }, [locationsData]);
+  const employeeOptions = useMemo(() => {
+    return (employeesData?.employees ?? []).map((employee) => ({
+      id: employee.id,
+      name:
+        [employee.firstName, employee.lastName].filter(Boolean).join(" ") ||
+        employee.email ||
+        employee.id,
+    }));
+  }, [employeesData]);
 
   const mainCategoryOptions = useMemo(
     () => Object.keys(SUB_CATEGORIES_BY_MAIN),
@@ -303,6 +360,7 @@ export function AssetDetailContent({
       mainCategory: MAIN_CATEGORY_BY_SUB[asset.category ?? ""] || "",
       category: asset.category ?? "",
       locationId: asset.locationId ?? "",
+      assignedEmployeeId: asset.assignedTo ?? "",
       purchaseCost: formatNumberInput(asset.purchaseCost?.toString() ?? ""),
       salePrice: formatNumberInput(bookValue?.toString() ?? ""),
       notes: asset.notes ?? "",
@@ -327,6 +385,7 @@ export function AssetDetailContent({
       mainCategory: MAIN_CATEGORY_BY_SUB[asset.category ?? ""] || "",
       category: asset.category ?? "",
       locationId: asset.locationId ?? "",
+      assignedEmployeeId: asset.assignedTo ?? "",
       purchaseCost: formatNumberInput(asset.purchaseCost?.toString() ?? ""),
       salePrice: formatNumberInput(asset.currentBookValue?.toString() ?? ""),
       notes: asset.notes ?? "",
@@ -335,14 +394,42 @@ export function AssetDetailContent({
   }, [asset, hasInitializedEdit]);
 
   const handleSave = async () => {
-    const parsedSalePrice = parseNumberInput(editData.salePrice);
-    if (editData.status === "FOR_SALE" && parsedSalePrice <= 0) {
-      window.alert("`Зарж болох` төлөвт заавал `Зарах үнэ` оруулна.");
+    const hasSalePriceInput = editData.salePrice.trim().length > 0;
+    const parsedSalePrice = hasSalePriceInput
+      ? parseNumberInput(editData.salePrice)
+      : undefined;
+    if (hasSalePriceInput && editData.status !== "FOR_SALE") {
+      toast.error(
+        "`Зарах үнэ` оруулах бол төлөвийг `Зарж болох` гэж сонгоно уу.",
+      );
+      return;
+    }
+    if (
+      editData.status === "FOR_SALE" &&
+      (!parsedSalePrice || parsedSalePrice <= 0)
+    ) {
+      toast.error("`Зарж болох` төлөвт заавал `Зарах үнэ` оруулна.");
+      return;
+    }
+    if (editData.status === "ASSIGNED" && !editData.assignedEmployeeId) {
+      toast.error("`Эзэмшигчтэй` болгох бол ажилтан сонгоно уу.");
       return;
     }
 
+    const hasPurchaseCostInput = editData.purchaseCost.trim().length > 0;
+    const parsedPurchaseCost = hasPurchaseCostInput
+      ? parseNumberInput(editData.purchaseCost)
+      : undefined;
+
     setSaving(true);
     try {
+      // Rule:
+      // - If user changed "Худалдаж авсан үнэ" input -> update purchaseCost only.
+      // - If user changed "Зарах үнэ" input (FOR_SALE only) -> update currentBookValue only.
+      // - Do not overwrite fields with 0 when input is empty.
+      const nextPurchaseCost = parsedPurchaseCost;
+      const nextCurrentBookValue =
+        editData.status === "FOR_SALE" ? parsedSalePrice : undefined;
       await updateAsset({
         variables: {
           id: assetId,
@@ -353,14 +440,33 @@ export function AssetDetailContent({
             mainCategory: editData.mainCategory,
             category: editData.category,
             locationId: editData.locationId,
-            purchaseCost: parseNumberInput(editData.purchaseCost),
-            currentBookValue: parsedSalePrice,
+            purchaseCost: nextPurchaseCost,
+            currentBookValue: nextCurrentBookValue,
             notes: editData.notes,
           },
         },
       });
-      const savedBookValue = parsedSalePrice;
-      setOptimisticBookValue(savedBookValue);
+      if (editData.status === "ASSIGNED" && editData.assignedEmployeeId) {
+        await assignAsset({
+          variables: {
+            assetId,
+            employeeId: editData.assignedEmployeeId,
+            conditionAtAssign: "GOOD",
+          },
+        });
+      } else if (asset?.assignedTo && editData.status !== "ASSIGNED") {
+        await returnAsset({
+          variables: {
+            assetId,
+          },
+        });
+      }
+      if (editData.status === "FOR_SALE" && nextCurrentBookValue != null) {
+        // Keep UI coherent for sale price display.
+        setOptimisticBookValue(nextCurrentBookValue);
+      } else if (nextPurchaseCost != null) {
+        setOptimisticBookValue(nextPurchaseCost);
+      }
       await refetch();
       await client.refetchQueries({
         include: [GetAssetsDocument, GetAssetKpisDocument],
@@ -385,7 +491,7 @@ export function AssetDetailContent({
       setIsStatusEditing(false);
       handleEditToggle();
       setEditData((prev) => ({ ...prev, status: "FOR_SALE" }));
-      window.alert("`Зарж болох` сонгохын тулд `Зарах үнэ` заавал оруулна.");
+      toast.error("`Зарж болох` сонгохын тулд `Зарах үнэ` заавал оруулна.");
       return;
     }
 
@@ -417,13 +523,76 @@ export function AssetDetailContent({
       if (result.data?.deleteAsset) {
         onClose?.();
       } else {
-        window.alert(
+        toast.error(
           "Хөрөнгийг устгаж чадсангүй. Хөрөнгө одоогоор эзэмшигчтэй эсвэл холбоотой үйлдэлтэй байж болно.",
         );
       }
     } catch (e) {
       console.error("Failed to delete asset:", e);
-      window.alert("Хөрөнгийг устгахад алдаа гарлаа.");
+      toast.error("Хөрөнгийг устгахад алдаа гарлаа.");
+    }
+  };
+
+  const handleReturnAsset = async () => {
+    try {
+      await returnAsset({
+        variables: { assetId, conditionAtReturn: "GOOD" },
+      });
+      toast.success("Хөрөнгө амжилттай буцаагдалаа.");
+      await refetch();
+      onClose?.();
+    } catch (e) {
+      console.error(e);
+      toast.error("Хөрөнгө буцаах үед алдаа гарлаа.");
+    }
+  };
+
+  const handleAssignConfirm = async () => {
+    if (!assignEmployeeId) {
+      toast.error("Ажилтан сонгоно уу.");
+      return;
+    }
+    try {
+      await assignAsset({
+        variables: {
+          assetId,
+          employeeId: assignEmployeeId,
+          conditionAtAssign: "GOOD",
+        },
+      });
+      toast.success("Хөрөнгө амжилттай олголоо.");
+      setShowAssignDialog(false);
+      setAssignEmployeeId("");
+      await refetch();
+      onClose?.();
+    } catch (e) {
+      console.error(e);
+      toast.error("Хөрөнгө олгоход алдаа гарлаа.");
+    }
+  };
+
+  const handleTransferConfirm = async () => {
+    if (!asset?.assignedTo || !transferToEmployeeId) {
+      toast.error("Шилжүүлэх ажилтан сонгоно уу.");
+      return;
+    }
+    try {
+      await transferAsset({
+        variables: {
+          assetId,
+          fromEmployeeId: asset.assignedTo,
+          toEmployeeId: transferToEmployeeId,
+          reason: "Шилжүүлсэн",
+        },
+      });
+      toast.success("Хөрөнгө амжилттай шилжүүллээ.");
+      setShowTransferDialog(false);
+      setTransferToEmployeeId("");
+      await refetch();
+      onClose?.();
+    } catch (e) {
+      console.error(e);
+      toast.error("Хөрөнгө шилжүүлэхэд алдаа гарлаа.");
     }
   };
 
@@ -439,7 +608,7 @@ export function AssetDetailContent({
   const isModal = Boolean(onClose);
   const salePriceValue = optimisticBookValue ?? asset.currentBookValue ?? null;
   const resolvedStatus = optimisticStatus ?? asset.status ?? "";
-  const ownerName = asset.assignedTo?.trim() || "Эзэмшигчгүй";
+  const ownerName = asset.assignedTo?.trim() || "Admin";
   const ownerInitials = getInitials(ownerName);
 
   return (
@@ -614,6 +783,10 @@ export function AssetDetailContent({
                           setEditData({
                             ...editData,
                             status: event.target.value,
+                            assignedEmployeeId:
+                              event.target.value === "ASSIGNED"
+                                ? editData.assignedEmployeeId
+                                : "",
                           })
                         }
                         className={FIELD_NATIVE_SELECT_OVERLAY_CLASS}
@@ -632,6 +805,29 @@ export function AssetDetailContent({
                     </div>
                   )}
                 </div>
+
+                {isEditing && editData.status === "ASSIGNED" ? (
+                  <div className="space-y-1.5">
+                    <Label className={FIELD_LABEL_CLASS}>Ажилтан</Label>
+                    <Select
+                      value={editData.assignedEmployeeId || undefined}
+                      onValueChange={(value) =>
+                        setEditData({ ...editData, assignedEmployeeId: value })
+                      }
+                    >
+                      <SelectTrigger className={FIELD_SELECT_TRIGGER_CLASS}>
+                        <SelectValue placeholder="Ажилтан сонгох" />
+                      </SelectTrigger>
+                      <SelectContent className={FIELD_SELECT_CONTENT_CLASS}>
+                        {employeeOptions.map((employee) => (
+                          <SelectItem key={employee.id} value={employee.id}>
+                            {employee.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
 
                 <div className="space-y-1.5">
                   <Label className={FIELD_LABEL_CLASS}>Байршил</Label>
@@ -655,7 +851,10 @@ export function AssetDetailContent({
                     </Select>
                   ) : (
                     <div
-                      className={cn(FIELD_BOX_CLASS, "wrap-break-word leading-6")}
+                      className={cn(
+                        FIELD_BOX_CLASS,
+                        "wrap-break-word leading-6",
+                      )}
                     >
                       {asset.locationPath || "—"}
                     </div>
@@ -719,39 +918,46 @@ export function AssetDetailContent({
                   )}
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label className={FIELD_LABEL_CLASS}>
-                    Худалдаж авсан үнэ
-                  </Label>
-                  {isEditing ? (
-                    <div className="relative">
-                      <Input
-                        value={editData.purchaseCost}
-                        onChange={(e) =>
-                          setEditData({
-                            ...editData,
-                            purchaseCost: formatNumberInput(e.target.value),
-                          })
-                        }
-                        inputMode="numeric"
-                        className={cn(FIELD_INPUT_CLASS, "pr-9 font-semibold")}
-                      />
-                      <X
-                        className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 cursor-pointer text-slate-300"
-                        onClick={() =>
-                          setEditData({ ...editData, purchaseCost: "" })
-                        }
-                      />
-                    </div>
-                  ) : (
-                    <div className={cn(FIELD_BOX_CLASS, "font-semibold")}>
-                      {formatCurrency(asset.purchaseCost)}
-                    </div>
-                  )}
-                </div>
+                {resolvedStatus !== "FOR_SALE" ? (
+                  <div className="space-y-1.5">
+                    <Label className={FIELD_LABEL_CLASS}>
+                      Худалдаж авсан үнэ
+                    </Label>
+                    {isEditing ? (
+                      <div className="relative">
+                        <Input
+                          value={editData.purchaseCost}
+                          onChange={(e) =>
+                            setEditData({
+                              ...editData,
+                              purchaseCost: formatNumberInput(e.target.value),
+                            })
+                          }
+                          inputMode="numeric"
+                          className={cn(
+                            FIELD_INPUT_CLASS,
+                            "pr-9 font-semibold",
+                          )}
+                        />
+                        <X
+                          className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 cursor-pointer text-slate-300"
+                          onClick={() =>
+                            setEditData({ ...editData, purchaseCost: "" })
+                          }
+                        />
+                      </div>
+                    ) : (
+                      <div className={cn(FIELD_BOX_CLASS, "font-semibold")}>
+                        {formatCurrency(asset.purchaseCost)}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
 
                 <div className="space-y-1.5">
-                  <Label className={FIELD_LABEL_CLASS}>Зарах үнэ</Label>
+                  <Label className={FIELD_LABEL_CLASS}>
+                    {resolvedStatus === "FOR_SALE" ? "Зарах үнэ" : "Зарах үнэ"}
+                  </Label>
                   {isEditing ? (
                     <div className="relative">
                       <Input
@@ -947,19 +1153,42 @@ export function AssetDetailContent({
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-4 pt-5">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-14 rounded-xl border-slate-300 px-8 text-[18px] text-slate-800 hover:bg-slate-50"
-                >
-                  Хөрөнгө буцаах
-                </Button>
-                <Button
-                  type="button"
-                  className="h-14 rounded-xl bg-[#0b4d78] px-9 text-[18px] text-white hover:bg-[#0a4166]"
-                >
-                  Хөрөнгө шилжүүлэх
-                </Button>
+                {asset.assignedTo ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={actionLoading}
+                      onClick={handleReturnAsset}
+                      className="h-14 rounded-xl border-slate-300 px-8 text-[18px] text-slate-800 hover:bg-slate-50"
+                    >
+                      {returning ? "Буцааж байна..." : "Хөрөнгө буцаах"}
+                    </Button>
+                    <Button
+                      type="button"
+                      disabled={actionLoading}
+                      onClick={() => {
+                        setTransferToEmployeeId("");
+                        setShowTransferDialog(true);
+                      }}
+                      className="h-14 rounded-xl bg-[#0b4d78] px-9 text-[18px] text-white hover:bg-[#0a4166]"
+                    >
+                      {transferring ? "Шилжүүлж байна..." : "Хөрөнгө шилжүүлэх"}
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    type="button"
+                    disabled={actionLoading}
+                    onClick={() => {
+                      setAssignEmployeeId("");
+                      setShowAssignDialog(true);
+                    }}
+                    className="h-14 rounded-xl bg-[#0b4d78] px-9 text-[18px] text-white hover:bg-[#0a4166]"
+                  >
+                    {assigning ? "Олгож байна..." : "Хөрөнгө олгох"}
+                  </Button>
+                )}
               </div>
             </div>
           )}
@@ -1037,6 +1266,92 @@ export function AssetDetailContent({
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Хөрөнгө олгох</DialogTitle>
+            <DialogDescription>
+              Хөрөнгийг ямар ажилтанд олгох вэ?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Select
+              value={assignEmployeeId || undefined}
+              onValueChange={setAssignEmployeeId}
+            >
+              <SelectTrigger className={FIELD_SELECT_TRIGGER_CLASS}>
+                <SelectValue placeholder="Ажилтан сонгоно уу" />
+              </SelectTrigger>
+              <SelectContent className={FIELD_SELECT_CONTENT_CLASS}>
+                {employeeOptions.map((emp) => (
+                  <SelectItem key={emp.id} value={emp.id}>
+                    {emp.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setShowAssignDialog(false)}
+            >
+              Цуцлах
+            </Button>
+            <Button
+              onClick={handleAssignConfirm}
+              disabled={!assignEmployeeId || assigning}
+            >
+              {assigning ? "Олгож байна..." : "Олгох"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Хөрөнгө шилжүүлэх</DialogTitle>
+            <DialogDescription>
+              Хөрөнгийг ямар ажилтан руу шилжүүлэх вэ?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Select
+              value={transferToEmployeeId || undefined}
+              onValueChange={setTransferToEmployeeId}
+            >
+              <SelectTrigger className={FIELD_SELECT_TRIGGER_CLASS}>
+                <SelectValue placeholder="Ажилтан сонгоно уу" />
+              </SelectTrigger>
+              <SelectContent className={FIELD_SELECT_CONTENT_CLASS}>
+                {employeeOptions
+                  .filter((emp) => emp.id !== asset.assignedTo)
+                  .map((emp) => (
+                    <SelectItem key={emp.id} value={emp.id}>
+                      {emp.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setShowTransferDialog(false)}
+            >
+              Цуцлах
+            </Button>
+            <Button
+              onClick={handleTransferConfirm}
+              disabled={!transferToEmployeeId || transferring}
+            >
+              {transferring ? "Шилжүүлж байна..." : "Шилжүүлэх"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -58,6 +58,7 @@ export const employees = sqliteTable("employees", {
   lastNameEng: text().notNull(),
   email: text().notNull(),
   imageUrl: text(),
+  signUrl: text(),
   hireDate: integer().notNull(),
   terminationDate: integer(),
   status: text().default("INACTIVE").notNull(),
@@ -463,9 +464,11 @@ export const offboardingEvents = sqliteTable(
     employeeId: text()
       .notNull()
       .references(() => employees.id),
-    initiatedBy: text()
-      .notNull()
-      .references(() => employees.id),
+    /**
+     * Demo-friendly: allow system initiators like "HR" by storing null
+     * (while keeping the label in audit/newValueJson).
+     */
+    initiatedBy: text().references(() => employees.id),
     status: text().default("IN_PROGRESS").notNull(),
     totalAssets: integer().default(0).notNull(),
     returnedAssets: integer().default(0).notNull(),
@@ -475,8 +478,8 @@ export const offboardingEvents = sqliteTable(
     ...timestamps,
   },
   (t) => ({
-    employeeIdx: index("offboarding_events_employee_idx").on(t.employeeId),
-    statusIdx: index("offboarding_events_status_idx").on(t.status),
+    employeeIdx: index("offboarding_events_employee_id_idx").on(t.employeeId),
+    statusIdx: index("offboarding_events_status_value_idx").on(t.status),
   }),
 );
 
@@ -583,15 +586,13 @@ export const auditLogs = sqliteTable(
     action: text().notNull(),
     oldValueJson: text(),
     newValueJson: text(),
-    actorId: text()
-      .notNull()
-      .references(() => employees.id),
+    actorId: text().references(() => employees.id),
     createdAt: ts(),
   },
   (t) => ({
-    tableIdx: index("audit_logs_table_idx").on(t.tableName),
-    recordIdx: index("audit_logs_record_idx").on(t.recordId),
-    actorIdx: index("audit_logs_actor_idx").on(t.actorId),
+    tableIdx: index("audit_logs_table_name_idx").on(t.tableName),
+    recordIdx: index("audit_logs_record_id_idx").on(t.recordId),
+    actorIdx: index("audit_logs_actor_id_idx").on(t.actorId),
   }),
 );
 

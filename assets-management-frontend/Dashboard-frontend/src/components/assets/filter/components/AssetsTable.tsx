@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import type { Asset, AssetCategory } from "@/lib/types";
 import {
   Table,
@@ -32,6 +31,7 @@ type AssetsTableProps = {
   onSelectAll: () => void;
   onToggleSelect: (id: string) => void;
   onOpenQrForSingle: (asset: Asset) => void;
+  onOpenAsset: (assetId: string) => void;
 };
 
 const statusMap: Record<string, string> = {
@@ -59,6 +59,7 @@ export function AssetsTable({
   onSelectAll,
   onToggleSelect,
   onOpenQrForSingle,
+  onOpenAsset,
 }: AssetsTableProps) {
   const [nameSearch, setNameSearch] = useState("");
   const [employeeSearch, setEmployeeSearch] = useState("");
@@ -836,13 +837,14 @@ export function AssetsTable({
                 <TableCell className="py-2 font-medium">{index + 1}</TableCell>
 
                 <TableCell className="py-2 w-27">
-                  <Link
-                    href={`/assets/${asset.id}`}
+                  <button
+                    type="button"
                     className="block truncate text-black hover:underline text-sm"
                     title={asset.assetId}
+                    onClick={() => onOpenAsset(asset.id)}
                   >
                     {formatAssetId(asset.assetId)}
-                  </Link>
+                  </button>
                 </TableCell>
 
                 <TableCell className="py-2 truncate max-w-40">

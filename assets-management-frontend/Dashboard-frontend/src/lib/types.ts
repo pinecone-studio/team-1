@@ -129,6 +129,7 @@ export type AssetStatus =
   | "AVAILABLE"
   | "ASSIGNED"
   | "IN_REPAIR"
+  | "FOR_SALE"
   | "PENDING_DISPOSAL"
   | "DISPOSED";
 

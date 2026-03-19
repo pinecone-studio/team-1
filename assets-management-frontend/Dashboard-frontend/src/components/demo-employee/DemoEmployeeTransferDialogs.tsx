@@ -23,13 +23,16 @@ type EmployeeOption = { id: string; name: string };
 export type DemoEmployeeTransferDialogsProps = {
   showItTransferDialog: boolean;
   setShowItTransferDialog: (v: boolean) => void;
-  transferToEmployeeId: string;
-  setTransferToEmployeeId: (v: string) => void;
   otherEmployees: EmployeeOption[];
-  handleTransferToIt: () => void;
+  handleTransferToIt: (
+    kind: "DATA_WIPE" | "REPAIR",
+    opts?: { description?: string },
+  ) => void;
   transferSending: boolean;
   showTransferDialog: boolean;
   setShowTransferDialog: (v: boolean) => void;
+  transferToEmployeeId: string;
+  setTransferToEmployeeId: (v: string) => void;
   transferReason: string;
   setTransferReason: (v: string) => void;
   handleTransferToEmployee: () => void;
@@ -38,17 +41,19 @@ export type DemoEmployeeTransferDialogsProps = {
 export function DemoEmployeeTransferDialogs({
   showItTransferDialog,
   setShowItTransferDialog,
-  transferToEmployeeId,
-  setTransferToEmployeeId,
   otherEmployees,
   handleTransferToIt,
   transferSending,
   showTransferDialog,
   setShowTransferDialog,
+  transferToEmployeeId,
+  setTransferToEmployeeId,
   transferReason,
   setTransferReason,
   handleTransferToEmployee,
 }: DemoEmployeeTransferDialogsProps) {
+  const [repairDescription, setRepairDescription] = React.useState("");
+
   return (
     <>
       <Dialog
@@ -57,40 +62,49 @@ export function DemoEmployeeTransferDialogs({
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>IT ажилтан сонгох</DialogTitle>
+            <DialogTitle>IT хүсэлт үүсгэх</DialogTitle>
             <DialogDescription>
-              Хөрөнгийг ямар IT ажилтан руу шилжүүлэх вэ?
+              Ямар төрлийн хүсэлт илгээх вэ?
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Select
-              value={transferToEmployeeId || undefined}
-              onValueChange={setTransferToEmployeeId}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="IT ажилтан сонгоно уу" />
-              </SelectTrigger>
-              <SelectContent>
-                {otherEmployees.map((emp) => (
-                  <SelectItem key={emp.id} value={emp.id}>
-                    {emp.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
+          <div className="space-y-2 py-2">
+            <label className="text-sm font-medium">
+              Засварын тайлбар (засвар сонговол заавал)
+            </label>
+            <textarea
+              className="w-full min-h-[88px] rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+              placeholder="Жишээ: дэлгэц асахгүй байна"
+              value={repairDescription}
+              onChange={(e) => setRepairDescription(e.target.value)}
+              disabled={transferSending}
+            />
           </div>
+
           <DialogFooter>
             <Button
               variant="ghost"
-              onClick={() => setShowItTransferDialog(false)}
+              onClick={() => {
+                setShowItTransferDialog(false);
+                setRepairDescription("");
+              }}
             >
               Цуцлах
             </Button>
             <Button
-              onClick={handleTransferToIt}
-              disabled={!transferToEmployeeId || transferSending}
+              variant="outline"
+              onClick={() => handleTransferToIt("DATA_WIPE")}
+              disabled={transferSending}
             >
-              {transferSending ? "Шилжүүлж байна..." : "Шилжүүлэх"}
+              {transferSending ? "Илгээж байна..." : "Data wipe"}
+            </Button>
+            <Button
+              onClick={() =>
+                handleTransferToIt("REPAIR", { description: repairDescription })
+              }
+              disabled={transferSending || repairDescription.trim().length === 0}
+            >
+              {transferSending ? "Илгээж байна..." : "Засвар"}
             </Button>
           </DialogFooter>
         </DialogContent>

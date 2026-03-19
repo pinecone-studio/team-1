@@ -14,6 +14,7 @@ import { useAuth } from "@clerk/nextjs";
 
 const graphqlEndpoint =
   process.env.NEXT_PUBLIC_GRAPHQL_URL ?? "/api/graphql";
+const disableAuth = process.env.NEXT_PUBLIC_DISABLE_AUTH === "1";
 
 export function ApolloProviderWrapper({
   children,
@@ -23,7 +24,7 @@ export function ApolloProviderWrapper({
   const { getToken } = useAuth();
   const client = useMemo(() => {
     const authLink = setContext(async (_, { headers }) => {
-      const token = await getToken();
+      const token = disableAuth ? null : await getToken();
       return {
         headers: {
           ...headers,

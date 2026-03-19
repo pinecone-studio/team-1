@@ -78,6 +78,9 @@ export function DemoITContent({
           allMaintenanceTickets={s.allMaintenanceTickets}
           MAINTENANCE_STATUS_LABELS={MAINTENANCE_STATUS_LABELS}
           onOpenAsset={(assetId) => setDetailAssetId(assetId)}
+          onApprove={s.handleApproveMaintenance}
+          onReject={s.handleRejectMaintenance}
+          updatingMaintenance={s.updatingMaintenance}
         />
         <DemoITAllDisposalsCard
           allDisposals={s.allDisposals}

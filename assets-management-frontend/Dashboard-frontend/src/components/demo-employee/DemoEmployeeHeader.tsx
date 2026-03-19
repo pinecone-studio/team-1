@@ -29,8 +29,10 @@ export type DemoEmployeeHeaderProps = {
   onDemoEmployeeChange: (id: string) => void;
   currentEmployeeId: string | null;
   activeOffboarding: ActiveOffboarding | null;
+  offboardingCreatedAt?: number | null;
   offboardingStarting: boolean;
   onShowOffboardingModal: () => void;
+  onOpenOffboarding?: () => void;
   pendingList: AssignmentItem[];
   currentPending: AssignmentItem | null;
   isChecked: boolean;
@@ -48,8 +50,10 @@ export function DemoEmployeeHeader({
   onDemoEmployeeChange,
   currentEmployeeId,
   activeOffboarding,
+  offboardingCreatedAt,
   offboardingStarting,
   onShowOffboardingModal,
+  onOpenOffboarding,
   pendingList,
   currentPending,
   isChecked,
@@ -63,6 +67,7 @@ export function DemoEmployeeHeader({
 
   const [open, setOpen] = useState(false);
   const pendingCount = pendingList.length;
+  const totalNotificationCount = pendingCount + (hasActiveOffboarding ? 1 : 0);
 
   const formatAgo = (ts?: number | null) => {
     if (!ts) return "";
@@ -134,9 +139,9 @@ export function DemoEmployeeHeader({
                 onClick={() => setOpen((v) => !v)}
               >
                 <Bell className="h-5 w-5" />
-                {pendingCount > 0 && (
+                {totalNotificationCount > 0 && (
                   <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white">
-                    {pendingCount}
+                    {totalNotificationCount}
                   </span>
                 )}
               </Button>
@@ -160,12 +165,49 @@ export function DemoEmployeeHeader({
             </div>
 
             <div className="max-h-[520px] overflow-y-auto overflow-x-hidden px-6 pb-6">
-              {pendingCount === 0 ? (
+              {totalNotificationCount === 0 ? (
                 <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
                   Танд одоогоор шинэ хүсэлт байхгүй байна.
                 </div>
               ) : (
                 <div className="space-y-4">
+                  {hasActiveOffboarding && (
+                    <div>
+                      <div className="flex items-start gap-3 w-fit">
+                        <Bell className="mt-1 h-4 w-4 shrink-0 text-slate-600" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[15px] font-semibold text-slate-900">
+                            Танд шинэ хүсэлт ирлээ ({totalNotificationCount})
+                          </p>
+                          <p className="mt-1 text-sm text-slate-700 wrap-break-word">
+                            HR-ээс таны ажлаас гарах процесс эхэллээ. Хөрөнгөө буцааж өгнө үү.
+                          </p>
+                          <div className="mt-3 flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 gap-2 rounded-md border-[#EAB308] bg-amber-50 text-[#EAB308] hover:bg-amber-100 text-xs font-medium"
+                              onClick={() => {
+                                setOpen(false);
+                                onOpenOffboarding?.();
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                              Дэлгэрэнгүй
+                            </Button>
+                          </div>
+                          {formatAgo(offboardingCreatedAt) ? (
+                            <p className="mt-3 text-xs text-slate-500">
+                              {formatAgo(offboardingCreatedAt)}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                      {pendingItems.length > 0 && (
+                        <div className="mt-4 h-px w-full bg-slate-200" />
+                      )}
+                    </div>
+                  )}
                   {pendingItems.map((a, idx) => {
                     const isCurrent = currentPending?.id === a.id;
                     const assetTag = normalizeAssetTag(a.asset?.assetTag) || a.assetId;
@@ -182,7 +224,7 @@ export function DemoEmployeeHeader({
                           <Bell className="mt-1 h-4 w-4 text-slate-600" />
                           <div className="min-w-0 flex-1">
                             <p className="text-[15px] font-semibold text-slate-900">
-                              Танд шинэ хүсэлт ирлээ ({pendingCount})
+                              Танд шинэ хүсэлт ирлээ ({totalNotificationCount})
                             </p>
                             <p className="mt-1 text-sm text-slate-700">
                               <span className="wrap-break-word">

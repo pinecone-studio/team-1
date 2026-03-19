@@ -90,6 +90,19 @@ export function useAssetsData(statusFilter: string) {
         updatedAt: number;
       }>
     ).map((a) => {
+      // Treat currentBookValue=0 as "unset".
+      // FOR_SALE: value should follow sale price (currentBookValue) with fallback to purchaseCost.
+      // Otherwise: value follows currentBookValue with fallback to purchaseCost.
+      const hasBookValue =
+        a.currentBookValue != null && Number(a.currentBookValue) > 0;
+      const resolvedValue =
+        String(a.status) === "FOR_SALE"
+          ? hasBookValue
+            ? a.currentBookValue!
+            : a.purchaseCost ?? 0
+          : hasBookValue
+            ? a.currentBookValue!
+            : a.purchaseCost ?? 0;
       const categoryName = typeof a.category === "string" ? a.category : "";
       const rawLocationPath = (a.locationPath ?? "").trim();
       const normalizedStatus =
@@ -116,8 +129,8 @@ export function useAssetsData(statusFilter: string) {
         purchaseDate: a.purchaseDate
           ? new Date(a.purchaseDate).toISOString()
           : new Date().toISOString(),
-        currentBookValue: a.currentBookValue ?? a.purchaseCost ?? 0,
-        status: normalizedStatus as Asset["status"],
+        currentBookValue: resolvedValue,
+        status: a.status as Asset["status"],
         assignedEmployeeId: a.assignedTo ?? undefined,
         assignedEmployeeName: a.assignedTo
           ? employeeNameById.get(a.assignedTo)

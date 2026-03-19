@@ -10,12 +10,19 @@ import { DemoEmployeeNotificationsCard } from "./DemoEmployeeNotificationsCard";
 import { DemoEmployeeRequestsDialog } from "./DemoEmployeeRequestsDialog";
 import { DemoEmployeeMyAssetsCard } from "./DemoEmployeeMyAssetsCard";
 import { DemoEmployeeSignModal } from "./DemoEmployeeSignModal";
-import { DemoEmployeeAssetDetailDialog } from "./DemoEmployeeAssetDetailDialog";
 import { DemoEmployeeTransferDialogs } from "./DemoEmployeeTransferDialogs";
 import { DemoEmployeeReturnRequestDialog } from "./DemoEmployeeReturnRequestDialog";
 import { DEMO_EMPLOYEE_EMAIL } from "./demo-employee-utils";
 import { DemoEmployeeIncomingRequestsCard } from "./DemoEmployeeIncomingRequestsCard";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { AssetDetailContent } from "@/components/assets/asset-detail-content";
 
 export function DemoEmployeeContent({
@@ -25,6 +32,7 @@ export function DemoEmployeeContent({
 }) {
   const s = useDemoEmployee();
   const [detailAssetId, setDetailAssetId] = useState<string | null>(null);
+  const [showDisposalDialog, setShowDisposalDialog] = useState(false);
 
   const openSignModal = (a: any) => {
     s.setSignAssignment(a);
@@ -32,6 +40,15 @@ export function DemoEmployeeContent({
     s.setSignatureFileUrl(null);
     s.setIsSignModalOpen(true);
   };
+
+  const offboardingNotificationId =
+    s.notifications?.find(
+      (n: any) =>
+        n?.title === "Ажлаас гарах — хөрөнгө буцаах" ||
+        (typeof n?.message === "string" &&
+          (n.message.includes("Буцаах эцсийн хугацаа") ||
+            n.message.includes("ажлаас гарах"))),
+    )?.id ?? null;
 
   return (
     <div className="flex flex-col p-6 overflow-visible">
@@ -54,7 +71,6 @@ export function DemoEmployeeContent({
           </div>
         </DialogContent>
       </Dialog>
-
       {s.employeeNotFound && (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           Демо ажилтан олдсонгүй: <strong>{DEMO_EMPLOYEE_EMAIL}</strong>{" "}
@@ -68,9 +84,18 @@ export function DemoEmployeeContent({
         demoEmployeeId={s.demoEmployeeId}
         onDemoEmployeeChange={s.setDemoEmployeeId}
         currentEmployeeId={s.currentEmployeeId}
-        activeOffboarding={s.activeOffboarding}
+        activeOffboarding={s.activeOffboarding ? { deadline: (s.activeOffboarding as { deadline?: number }).deadline, returnedAssets: (s.activeOffboarding as { returnedAssets?: number }).returnedAssets, totalAssets: (s.activeOffboarding as { totalAssets?: number }).totalAssets } : null}
+        offboardingCreatedAt={(s.activeOffboarding as { createdAt?: number })?.createdAt}
         offboardingStarting={s.offboardingStarting}
         onShowOffboardingModal={() => s.setShowOffboardingModal(true)}
+        onOpenOffboarding={() => {
+          if (offboardingNotificationId) {
+            s.setExpandedNotificationId(offboardingNotificationId);
+          }
+          document
+            .getElementById("demo-employee-notifications-card-section")
+            ?.scrollIntoView({ behavior: "smooth" });
+        }}
         pendingList={s.pendingList as any}
         currentPending={s.currentPending as any}
         isChecked={s.isChecked}
@@ -97,8 +122,9 @@ export function DemoEmployeeContent({
         />
       )}
 
-      <DemoEmployeeOffboardingCard
-        activeOffboarding={
+      <div id="demo-employee-offboarding-section" className="scroll-mt-4">
+        <DemoEmployeeOffboardingCard
+          activeOffboarding={
           s.activeOffboarding
             ? {
                 deadline: (s.activeOffboarding as { deadline?: number })
@@ -124,29 +150,32 @@ export function DemoEmployeeContent({
         onOpenReturnRequest={s.onOpenReturnRequest}
         completeReturnLoading={s.completeReturnLoading}
       />
+      </div>
 
       {/* Offboarding байхгүй үед “шар” мэдэгдлийн card-ууд (өмнөх шиг). */}
-      <DemoEmployeeNotificationsCard
-        notifications={s.notifications}
-        expandedNotificationId={s.expandedNotificationId}
-        setExpandedNotificationId={s.setExpandedNotificationId}
-        bulkReturnInstructionsRead={s.bulkReturnInstructionsRead}
-        setBulkReturnInstructionsRead={s.setBulkReturnInstructionsRead}
-        handleBulkSubmitReturnRequests={s.handleBulkSubmitReturnRequests}
-        bulkReturnSending={s.bulkReturnSending}
-        submitReturnRequestLoading={s.submitReturnRequestLoading}
-        selectedReturnAssetIds={s.selectedReturnAssetIds}
-        eligibleReturnAssignmentsLength={s.eligibleReturnAssignmentsLength}
-        selectAllEligibleReturns={s.selectAllEligibleReturns}
-        assetsToReturnList={s.assetsToReturnList}
-        myAssetsList={s.myAssetsList}
-        pendingReturnRequestAssetIds={s.pendingReturnRequestAssetIds}
-        toggleReturnSelection={s.toggleReturnSelection}
-        onOpenReturnRequest={s.onOpenReturnRequest}
-        completeReturnLoading={s.completeReturnLoading}
-        activeOffboarding={s.activeOffboarding}
-        normalizeAssetTag={s.normalizeAssetTag}
-      />
+      {!s.activeOffboarding && (
+        <DemoEmployeeNotificationsCard
+          notifications={s.notifications}
+          expandedNotificationId={s.expandedNotificationId}
+          setExpandedNotificationId={s.setExpandedNotificationId}
+          bulkReturnInstructionsRead={s.bulkReturnInstructionsRead}
+          setBulkReturnInstructionsRead={s.setBulkReturnInstructionsRead}
+          handleBulkSubmitReturnRequests={s.handleBulkSubmitReturnRequests}
+          bulkReturnSending={s.bulkReturnSending}
+          submitReturnRequestLoading={s.submitReturnRequestLoading}
+          selectedReturnAssetIds={s.selectedReturnAssetIds}
+          eligibleReturnAssignmentsLength={s.eligibleReturnAssignmentsLength}
+          selectAllEligibleReturns={s.selectAllEligibleReturns}
+          assetsToReturnList={s.assetsToReturnList}
+          myAssetsList={s.myAssetsList}
+          pendingReturnRequestAssetIds={s.pendingReturnRequestAssetIds}
+          toggleReturnSelection={s.toggleReturnSelection}
+          onOpenReturnRequest={s.onOpenReturnRequest}
+          completeReturnLoading={s.completeReturnLoading}
+          activeOffboarding={s.activeOffboarding}
+          normalizeAssetTag={s.normalizeAssetTag}
+        />
+      )}
 
       {/* Offboarding-оос бусад ерөнхий “ирсэн хүсэлтүүд” UI (зураг дээрхтэй адил). */}
       <DemoEmployeeIncomingRequestsCard
@@ -154,7 +183,7 @@ export function DemoEmployeeContent({
         currentPending={s.currentPending as any}
         isChecked={s.isChecked}
         onConditionCheck={openSignModal}
-        onOpenAsset={(assetId) => setDetailAssetId(assetId)}
+        onOpenAsset={() => {}}
         onApprove={s.handleApprove}
         onReject={s.handleReject}
         updatingStatus={s.updatingStatus}
@@ -191,7 +220,9 @@ export function DemoEmployeeContent({
           s.setTransferReason("");
           s.setShowItTransferDialog(true);
         }}
-        onSendToFinanceDisposal={s.handleRequestDisposal}
+        onSendToFinanceDisposal={() => {
+          setShowDisposalDialog(true);
+        }}
         onTransferToEmployee={() => {
           s.setTransferToEmployeeId("");
           s.setTransferReason("");
@@ -226,31 +257,61 @@ export function DemoEmployeeContent({
         PDF_FONT_NAME={s.PDF_FONT_NAME}
       />
 
-      <DemoEmployeeAssetDetailDialog
-        selectedAssignment={s.selectedAssignment}
-        setSelectedAssignment={s.setSelectedAssignment}
-        disposalReason={s.disposalReason}
-        setDisposalReason={s.setDisposalReason}
-        setShowTransferDialog={s.setShowTransferDialog}
-        setShowItTransferDialog={s.setShowItTransferDialog}
-        setTransferToEmployeeId={s.setTransferToEmployeeId}
-        handleRequestDisposal={s.handleRequestDisposal}
-        disposalSending={s.disposalSending}
-        setTransferReason={s.setTransferReason}
-        transferSending={s.transferSending}
-        normalizeAssetTag={s.normalizeAssetTag}
-      />
+      <Dialog open={showDisposalDialog} onOpenChange={setShowDisposalDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Устгах хүсэлт илгээх</DialogTitle>
+            <DialogDescription>
+              {s.selectedAssignment?.asset
+                ? `${s.normalizeAssetTag(s.selectedAssignment.asset.assetTag)} — устгах хүсэлт IT руу очиж, дараа нь санхүү баталгаажуулна.`
+                : "Эхлээд хүсэлт илгээх хөрөнгөө сонгоно уу."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 py-2">
+            <label className="text-sm font-medium">
+              Устгах шалтгаан (заавал биш)
+            </label>
+            <textarea
+              className="w-full min-h-[96px] rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+              placeholder="Жишээ: эвдрэлтэй, ашиглахаа больсон..."
+              value={s.disposalReason}
+              onChange={(e) => s.setDisposalReason(e.target.value)}
+              disabled={!s.selectedAssignment}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setShowDisposalDialog(false)}
+            >
+              Хаах
+            </Button>
+            <Button
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+              disabled={!s.selectedAssignment || s.disposalSending}
+              onClick={async () => {
+                await s.handleRequestDisposal();
+                setShowDisposalDialog(false);
+              }}
+            >
+              {s.disposalSending ? "Илгээж байна..." : "Илгээх"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <DemoEmployeeTransferDialogs
         showItTransferDialog={s.showItTransferDialog}
         setShowItTransferDialog={s.setShowItTransferDialog}
-        transferToEmployeeId={s.transferToEmployeeId}
-        setTransferToEmployeeId={s.setTransferToEmployeeId}
         otherEmployees={s.otherEmployees}
         handleTransferToIt={s.handleTransferToIt}
         transferSending={s.transferSending}
         showTransferDialog={s.showTransferDialog}
         setShowTransferDialog={s.setShowTransferDialog}
+        transferToEmployeeId={s.transferToEmployeeId}
+        setTransferToEmployeeId={s.setTransferToEmployeeId}
         transferReason={s.transferReason}
         setTransferReason={s.setTransferReason}
         handleTransferToEmployee={s.handleTransferToEmployee}

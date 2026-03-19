@@ -80,6 +80,17 @@ export function AssetFormDialog({
   initialAsset = null,
   initialSerialNumber = "",
 }: AssetFormDialogProps) {
+  const formatNumberInput = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    if (!digits) return "";
+    return Number(digits).toLocaleString();
+  };
+
+  const parseNumberInput = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    return digits ? Number(digits) : 0;
+  };
+
   const [showCsvUploadDialog, setShowCsvUploadDialog] = useState(false);
   const [assetId, setAssetId] = useState("");
   const [subCategory, setSubCategory] = useState("");
@@ -97,6 +108,8 @@ export function AssetFormDialog({
   const [note, setNote] = useState("");
   const [purchaseDate, setPurchaseDate] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
+  const [salePrice, setSalePrice] = useState("");
+  const [assetStatus, setAssetStatus] = useState<string>("AVAILABLE");
   const [assetImage, setAssetImage] = useState<File | null>(null);
   const [assetImagePreview, setAssetImagePreview] = useState<string | null>(
     null,
@@ -128,27 +141,33 @@ export function AssetFormDialog({
     return { list, byParent };
   }, [locationsFromDb]);
 
+  const uniqueSorted = (values: string[]) =>
+    Array.from(new Set(values.filter(Boolean))).sort((a, b) =>
+      a.localeCompare(b),
+    );
+
   const locationDatalistOptions = useMemo(() => {
     const { list, byParent } = locationTree;
     const roots = byParent.get(null) ?? [];
     const locOpts =
       roots.length > 0
-        ? roots.map((r) => r.name).sort((a, b) => a.localeCompare(b))
-        : LOCATION_OPTIONS;
+        ? uniqueSorted(roots.map((r) => r.name))
+        : uniqueSorted(LOCATION_OPTIONS);
     const branchById = new Map(roots.map((r) => [r.name, r]));
     const typeOpts =
       roots.length > 0
         ? location
-          ? (byParent.get(branchById.get(location)?.id ?? "") ?? [])
+          ? uniqueSorted(
+              (byParent.get(branchById.get(location)?.id ?? "") ?? [])
+              .filter((l) => l.type === "roomType")
+              .map((l) => l.name),
+            )
+          : uniqueSorted(
+              list
               .filter((l) => l.type === "roomType")
               .map((l) => l.name)
-              .sort((a, b) => a.localeCompare(b))
-          : list
-              .filter((l) => l.type === "roomType")
-              .map((l) => l.name)
-              .filter((v, i, a) => a.indexOf(v) === i)
-              .sort((a, b) => a.localeCompare(b))
-        : ROOM_TYPE_OPTIONS.map((o) => o.label);
+            )
+        : uniqueSorted(ROOM_TYPE_OPTIONS.map((o) => o.label));
     const roomTypeNode =
       location && roomType
         ? (byParent.get(branchById.get(location)?.id ?? "") ?? []).find(
@@ -165,16 +184,17 @@ export function AssetFormDialog({
     const subTypeOpts =
       roots.length > 0
         ? roomTypeNode
-          ? (byParent.get(roomTypeNode.id) ?? [])
+          ? uniqueSorted(
+              (byParent.get(roomTypeNode.id) ?? [])
+              .filter((l) => l.type === "section")
+              .map((l) => l.name),
+            )
+          : uniqueSorted(
+              list
               .filter((l) => l.type === "section")
               .map((l) => l.name)
-              .sort((a, b) => a.localeCompare(b))
-          : list
-              .filter((l) => l.type === "section")
-              .map((l) => l.name)
-              .filter((v, i, a) => a.indexOf(v) === i)
-              .sort((a, b) => a.localeCompare(b))
-        : SUB_ROOM_TYPES[roomType] || [];
+            )
+        : uniqueSorted(SUB_ROOM_TYPES[roomType] || []);
     const sectionNode = subRoomType
       ? (sectionById.get(subRoomType) ??
         (byParent.get(roomTypeNode?.id ?? "") ?? []).find(
@@ -184,16 +204,17 @@ export function AssetFormDialog({
     const finalOpts =
       roots.length > 0
         ? sectionNode
-          ? (byParent.get(sectionNode.id) ?? [])
+          ? uniqueSorted(
+              (byParent.get(sectionNode.id) ?? [])
+              .filter((l) => l.type === "room")
+              .map((l) => l.name),
+            )
+          : uniqueSorted(
+              list
               .filter((l) => l.type === "room")
               .map((l) => l.name)
-              .sort((a, b) => a.localeCompare(b))
-          : list
-              .filter((l) => l.type === "room")
-              .map((l) => l.name)
-              .filter((v, i, a) => a.indexOf(v) === i)
-              .sort((a, b) => a.localeCompare(b))
-        : FINAL_ROOM_OPTIONS[subRoomType] || [];
+            )
+        : uniqueSorted(FINAL_ROOM_OPTIONS[subRoomType] || []);
     return { locOpts, typeOpts, subTypeOpts, finalOpts };
   }, [locationTree, location, roomType, subRoomType]);
 
@@ -370,6 +391,8 @@ export function AssetFormDialog({
       `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`,
     );
     setPurchasePrice("");
+    setSalePrice("");
+    setAssetStatus("AVAILABLE");
     setAssetImage(null);
     setAssetImagePreview(null);
     setImageUrl(null);
@@ -391,11 +414,13 @@ export function AssetFormDialog({
     setSerialNumber("");
     setPurchaseDate(`${yyyy}-${mm}-${dd}`);
     setPurchasePrice("1200");
+    setSalePrice("");
+    setAssetStatus("AVAILABLE");
     setLocation("Гурван гол");
-    setRoomType("Оффис");
-    setSubRoomType("Заал");
-    setRoomNumber("3 давхар заал");
-    setLocationStep("roomNumber");
+    setRoomType("3 давхар");
+    setSubRoomType("Event area");
+    setRoomNumber("");
+    setLocationStep("subRoomType");
     setNote("Demo asset");
     toast.info("Туршилтын өгөгдөл бөглөгдлөө");
   };
@@ -421,7 +446,16 @@ export function AssetFormDialog({
 
     if (serialList.length === 0) return;
 
-    const purchaseCost = Number(purchasePrice) || 0;
+    const purchaseCost = parseNumberInput(purchasePrice);
+    const parsedSalePrice = salePrice.trim()
+      ? parseNumberInput(salePrice)
+      : undefined;
+
+    if (assetStatus === "FOR_SALE" && (!parsedSalePrice || parsedSalePrice <= 0)) {
+      toast.error("`Зарж болох` төлөвт заавал `Зарах үнэ` оруулна.");
+      return;
+    }
+
     const year = purchaseDate.slice(0, 4);
     const autoSeed = `${resolvedAssetCategory}-${year}`;
     const baseId = assetIdAuto ? autoSeed : assetId;
@@ -447,10 +481,11 @@ export function AssetFormDialog({
             category: resolvedAssetCategory,
             mainCategory: mainCategory || undefined,
             serialNumber: serialList[0],
-            status: initialAsset.status,
+            status: assetStatus,
             purchaseDate: purchaseTimestamp,
             purchaseCost,
-            currentBookValue: purchaseCost,
+            currentBookValue:
+              assetStatus === "FOR_SALE" ? parsedSalePrice : undefined,
             locationId: resolvedLocation || undefined,
             imageUrl:
               uploadedUrl ??
@@ -510,10 +545,11 @@ export function AssetFormDialog({
             category: resolvedAssetCategory,
             mainCategory: mainCategory || undefined,
             serialNumber: serial,
-            status: "AVAILABLE",
+            status: assetStatus || "AVAILABLE",
             purchaseDate: purchaseTimestamp,
             purchaseCost,
-            currentBookValue: purchaseCost,
+            currentBookValue:
+              assetStatus === "FOR_SALE" ? parsedSalePrice : undefined,
             locationId: resolvedLocation || undefined,
             imageUrl:
               uploadedUrl ??
@@ -572,8 +608,14 @@ export function AssetFormDialog({
     setMainCategory(initialAsset.mainCategory ?? "");
     setSerialNumber(initialAsset.serialNumber);
     setSerialItems([]);
-    setPurchasePrice(String(initialAsset.purchaseCost ?? 0));
+    setPurchasePrice(formatNumberInput(String(initialAsset.purchaseCost ?? 0)));
+    setSalePrice(
+      initialAsset.status === "FOR_SALE"
+        ? formatNumberInput(String(initialAsset.currentBookValue ?? 0))
+        : "",
+    );
     setPurchaseDate(initialAsset.purchaseDate.slice(0, 10));
+    setAssetStatus(initialAsset.status ?? "AVAILABLE");
     setImageUrl(initialAsset.imageUrl ?? null);
     setNote(initialAsset.notes ?? "");
     setAssetImage(null);
@@ -988,14 +1030,63 @@ export function AssetFormDialog({
                   Худалдан авсан үнэ (₮)
                 </p>
                 <Input
-                  type="number"
-                  min={0}
                   value={purchasePrice}
-                  onChange={(event) => setPurchasePrice(event.target.value)}
+                  inputMode="numeric"
+                  onChange={(event) =>
+                    setPurchasePrice(formatNumberInput(event.target.value))
+                  }
                   placeholder="1500"
                   className="h-12 rounded-md border-0 bg-gray-100 text-base shadow-none focus:ring-0"
                 />
               </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <p className="text-lg font-semibold text-foreground">Төлөв</p>
+                <Select
+                  value={assetStatus}
+                  onValueChange={(value) => {
+                    setAssetStatus(value);
+                    if (value !== "FOR_SALE") {
+                      setSalePrice("");
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-12 rounded-md border-0 bg-gray-100 text-base shadow-none focus:ring-0">
+                    <SelectValue placeholder="Төлөв сонгох" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AVAILABLE">Эзэмшигчгүй</SelectItem>
+                    <SelectItem value="ASSIGNED">Эзэмшигчтэй</SelectItem>
+                    <SelectItem value="IN_REPAIR">Эвдрэлтэй</SelectItem>
+                    <SelectItem value="FOR_SALE">Зарж болох</SelectItem>
+                    <SelectItem value="PENDING_DISPOSAL">
+                      Устгах хүлээгдэж буй
+                    </SelectItem>
+                    <SelectItem value="DISPOSED">Устгасан</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {assetStatus === "FOR_SALE" ? (
+                <div className="space-y-2">
+                  <p className="text-lg font-semibold text-foreground">
+                    Зарах үнэ (₮)
+                  </p>
+                  <Input
+                    value={salePrice}
+                    inputMode="numeric"
+                    onChange={(event) =>
+                      setSalePrice(formatNumberInput(event.target.value))
+                    }
+                    placeholder="1500"
+                    className="h-12 rounded-md border-0 bg-gray-100 text-base shadow-none focus:ring-0"
+                  />
+                </div>
+              ) : (
+                <div />
+              )}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -1155,6 +1246,7 @@ export function AssetFormDialog({
                 !assetId ||
                 !subCategory.trim() ||
                 !purchaseDate ||
+                (assetStatus === "FOR_SALE" && !salePrice.trim()) ||
                 isSaving ||
                 imageUploadStatus === "uploading"
               }

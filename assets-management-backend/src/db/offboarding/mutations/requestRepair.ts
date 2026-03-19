@@ -19,6 +19,9 @@ export async function requestRepair(
   const db = await getDb();
   const now = Date.now();
 
+  // Demo-friendly: allow generic inspector labels like "HR".
+  const fkInspectedBy = inspectedBy === "HR" ? null : inspectedBy;
+
   const inspector =
     (await db
       .select({ id: employees.id })
@@ -32,7 +35,8 @@ export async function requestRepair(
       )
       .limit(1)
       .get()) ?? null;
-  const actorId = inspector?.id ?? inspectedBy;
+  const actorId =
+    inspectedBy === "HR" ? null : (inspector?.id ?? inspectedBy);
 
   const req = await db
     .select()
@@ -74,7 +78,7 @@ export async function requestRepair(
       status: "REPAIR_REQUESTED",
       conditionHr,
       photoR2Key: photoR2Key ?? null,
-      inspectedBy,
+      inspectedBy: fkInspectedBy,
       updatedAt: now,
     })
     .where(eq(offboardingReturnRequests.id, returnRequestId));
@@ -111,7 +115,7 @@ export async function requestRepair(
         "OFFBOARDING_COMPLETED",
         actorId,
         { status: "IN_PROGRESS" },
-        { status: "COMPLETED" },
+        { status: "COMPLETED", inspectedBy },
       );
     }
   }

@@ -51,6 +51,14 @@ export function DemoEmployeeMyAssetsCard({
     action();
   };
 
+  const statusLabel = (assetStatus?: string, assignmentStatus?: string) => {
+    const s = (assetStatus ?? "").toUpperCase();
+    if (s === "PENDING_DISPOSAL") return { text: "Устгах хүлээгдэж буй", tone: "amber" as const };
+    if (s === "DISPOSED") return { text: "Устгасан", tone: "slate" as const };
+    if ((assignmentStatus ?? "").toUpperCase() !== "ACTIVE") return { text: "Хүлээгдэж буй", tone: "amber" as const };
+    return { text: "Эзэмшигчтэй", tone: "emerald" as const };
+  };
+
   return (
     <Card className="border border-border/60 bg-white mt-10">
       <CardHeader className="pb-3">
@@ -125,8 +133,9 @@ export function DemoEmployeeMyAssetsCard({
             <TableBody className="[&_tr:last-child]:border-0">
               {myAssetsList.length > 0 ? (
                 myAssetsList.map((assignment, index) => {
-                  const isPending = assignment.status !== "ACTIVE";
                   const assetAny = assignment.asset as any;
+                  const selected = selectedAssignment?.id === assignment.id;
+                  const st = statusLabel(assetAny?.status, assignment.status);
 
                   return (
                     <TableRow
@@ -144,7 +153,12 @@ export function DemoEmployeeMyAssetsCard({
                           type="checkbox"
                           aria-label="Сонгох"
                           className="h-4 w-4 rounded border-border"
-                          disabled
+                          checked={selected}
+                          onChange={(e) => {
+                            const next = e.target.checked;
+                            if (!next) setSelectedAssignment(null);
+                            else setSelectedAssignment(assignment as AssignmentItem);
+                          }}
                         />
                       </TableCell>
                       <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
@@ -167,19 +181,26 @@ export function DemoEmployeeMyAssetsCard({
                         {assignment.asset?.serialNumber || "—"}
                       </TableCell>
                       <TableCell className="px-3 py-3 md:px-4">
-                        {isPending ? (
+                        {st.tone === "amber" ? (
                           <Badge
                             variant="secondary"
                             className="border-amber-200 bg-amber-50 text-amber-700"
                           >
-                            Хүлээгдэж буй
+                            {st.text}
+                          </Badge>
+                        ) : st.tone === "slate" ? (
+                          <Badge
+                            variant="secondary"
+                            className="border-slate-200 bg-slate-50 text-slate-700"
+                          >
+                            {st.text}
                           </Badge>
                         ) : (
                           <Badge
                             variant="secondary"
                             className="border-emerald-100 bg-emerald-50 text-emerald-700"
                           >
-                            Эзэмшигчтэй
+                            {st.text}
                           </Badge>
                         )}
                       </TableCell>

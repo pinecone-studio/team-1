@@ -63,9 +63,6 @@ const buildAssetUpdate = (input: AssetUpdateInput) => {
   setIfDefined("imageUrl", input.imageUrl);
   setIfDefined("notes", input.notes);
   setIfDefined("deletedAt", input.deletedAt);
-  if (input.currentBookValue === undefined && input.purchaseCost !== undefined) {
-    updates.currentBookValue = input.purchaseCost;
-  }
   return updates;
 };
 

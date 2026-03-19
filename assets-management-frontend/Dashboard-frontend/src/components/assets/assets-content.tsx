@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { useMutation, useQuery } from "@apollo/client";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   GetAssetsDocument,
   GetLocationsDocument,
@@ -18,6 +19,7 @@ import { AssetsGrid, type FilterGroup } from "./assets-grid";
 import { AssetsSearchBar } from "./assets-search-bar";
 import { CATEGORY_LABELS } from "./constants";
 import { useFragment } from "@/gql/fragment-masking";
+import { AssetDetailContent } from "./asset-detail-content";
 
 type LocationFromApi = {
   id: string;
@@ -48,6 +50,7 @@ export function AssetsContent() {
   const [editAsset, setEditAsset] = useState<Asset | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [qrAssets, setQrAssets] = useState<Asset[]>([]);
+  const [detailAssetId, setDetailAssetId] = useState<string | null>(null);
   const [filterState, setFilterState] = useState<
     Record<FilterGroup, Set<string>>
   >({
@@ -378,6 +381,26 @@ export function AssetsContent() {
           initialAsset={editAsset}
         />
 
+        <Dialog
+          open={!!detailAssetId}
+          onOpenChange={(open) => !open && setDetailAssetId(null)}
+        >
+          <DialogContent
+            showCloseButton={false}
+            className="w-[min(92vw,760px)] max-h-[90vh] overflow-hidden rounded-[28px] border border-slate-200 bg-white p-0 shadow-[0_32px_90px_rgba(15,23,42,0.18)]"
+          >
+            <DialogTitle className="sr-only">Хөрөнгийн дэлгэрэнгүй</DialogTitle>
+            <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1">
+              {detailAssetId && (
+                <AssetDetailContent
+                  assetId={detailAssetId}
+                  onClose={() => setDetailAssetId(null)}
+                />
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <AssetsSearchBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -434,6 +457,7 @@ export function AssetsContent() {
           }
           viewMode={viewMode}
           categoryNameById={categoryNameById}
+          onOpenAsset={(assetId) => setDetailAssetId(assetId)}
         />
       </div>
     </div>

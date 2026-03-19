@@ -56,6 +56,14 @@ const { handleRequest } = Yoga.createYoga({
     const db = drizzle(env.DB, { schema: dbSchema });
     const secretKey =
       envTyped.CLERK_SECRET_KEY ?? (typeof process !== "undefined" ? process.env?.CLERK_SECRET_KEY : undefined);
+
+    const authHeader = request.headers.get("Authorization");
+    if (envTyped.DISABLE_AUTH !== "1" && authHeader?.startsWith("Bearer ") && !secretKey) {
+      throw new Error(
+        "Server misconfigured: missing CLERK_SECRET_KEY (required to verify Clerk Bearer token).",
+      );
+    }
+
     let userId = await getUserIdFromRequest(request, secretKey);
     if (userId && secretKey) {
       await syncEmployeeClerkId(db, userId, secretKey);

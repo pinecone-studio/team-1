@@ -21,3 +21,12 @@ mutation CreateMaintenanceTicket(
     severity
   }
 }
+
+mutation UpdateMaintenanceTicket($id: ID!, $status: String!, $repairCost: Int, $resolvedAt: Float) {
+  updateMaintenanceTicket(id: $id, status: $status, repairCost: $repairCost, resolvedAt: $resolvedAt) {
+    id
+    status
+    resolvedAt
+    updatedAt
+  }
+}

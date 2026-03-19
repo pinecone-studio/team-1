@@ -198,6 +198,7 @@ function renderHighlightedText(
 
 export function DashboardHeader({ sidebarOpen }: { sidebarOpen: boolean }) {
   const { isSignedIn } = useAuth();
+  const [mounted, setMounted] = useState(false);
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [showAllAssetResults, setShowAllAssetResults] = useState(false);
@@ -279,6 +280,10 @@ export function DashboardHeader({ sidebarOpen }: { sidebarOpen: boolean }) {
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    setMounted(true);
   }, []);
 
   const dividerWidth = sidebarOpen ? "0.5px" : "1px";
@@ -528,7 +533,9 @@ export function DashboardHeader({ sidebarOpen }: { sidebarOpen: boolean }) {
         <Button variant="ghost" size="icon" className="h-8 w-8">
           <BellDot />
         </Button>
-        {isSignedIn ? (
+        {!mounted ? (
+          <div className="h-8 w-8 rounded-full border border-slate-200 bg-slate-100" />
+        ) : isSignedIn ? (
           <UserButton
             afterSignOutUrl="/"
             appearance={{
