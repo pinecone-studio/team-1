@@ -36,7 +36,8 @@ export function DemoITAllDisposalsCard({
       </CardHeader>
       <CardContent className="pt-0">
         <div className="overflow-hidden rounded-2xl border border-border/60">
-          <Table>
+          <div className="w-full overflow-x-auto">
+            <Table className="min-w-[980px]">
             <TableHeader>
               <TableRow className="border-0 bg-[#0b6fae] hover:bg-[#0b6fae]">
                 <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
@@ -91,7 +92,7 @@ export function DemoITAllDisposalsCard({
                       <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
                         {index + 1}
                       </TableCell>
-                      <TableCell className="px-3 py-3 text-sm font-medium text-foreground md:px-4">
+                      <TableCell className="max-w-[220px] whitespace-normal break-words px-3 py-3 text-sm font-medium text-foreground md:px-4">
                         {r.asset?.name ?? r.asset?.category ?? "—"}
                       </TableCell>
                       <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
@@ -139,7 +140,8 @@ export function DemoITAllDisposalsCard({
                 })
               )}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </div>
       </CardContent>
     </Card>

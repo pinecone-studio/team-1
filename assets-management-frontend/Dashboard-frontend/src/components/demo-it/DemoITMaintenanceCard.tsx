@@ -40,7 +40,8 @@ export function DemoITMaintenanceCard({
           </p>
         ) : (
           <div className="overflow-hidden rounded-2xl border border-border/60">
-            <Table>
+            <div className="w-full overflow-x-auto">
+              <Table className="min-w-[980px]">
               <TableHeader>
                 <TableRow className="border-0 bg-[#0b6fae] hover:bg-[#0b6fae]">
                   <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
@@ -67,63 +68,92 @@ export function DemoITMaintenanceCard({
                 </TableRow>
               </TableHeader>
               <TableBody className="[&_tr:last-child]:border-0">
-                {allMaintenanceTickets.map((t, index) => (
-                  <TableRow
-                    key={t.id}
-                    className={[
-                      "border-b border-border/60",
-                      index % 2 === 0 ? "bg-white" : "bg-[#fafafa]",
-                    ].join(" ")}
-                  >
-                    <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
-                      {index + 1}
-                    </TableCell>
-                    <TableCell className="px-3 py-3 text-sm font-medium text-foreground md:px-4">
-                      <button
-                        type="button"
-                        className="text-left hover:underline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpenAsset(t.assetId);
-                        }}
-                        title="Хөрөнгийн дэлгэрэнгүй"
-                      >
-                        {t.assetId}
-                      </button>
-                    </TableCell>
-                    <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
-                      {(t as any)?.asset?.serialNumber ?? (t as any)?.serialNumber ?? "—"}
-                    </TableCell>
-                    <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
-                      {(t as any)?.reporter?.email ?? (t as any)?.reporterId ?? "Админ хэрэглэгч"}
-                    </TableCell>
-                    <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
-                      {t.description}
-                    </TableCell>
-                    <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
-                      {new Date(t.createdAt).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="px-3 py-2 md:px-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          size="sm"
-                          className="h-8 gap-2 rounded-md bg-[#6b7280] text-white hover:bg-[#5b6473]"
-                          disabled
-                          title={`Одоогоор demo UI (status: ${MAINTENANCE_STATUS_LABELS[t.status] ?? t.status})`}
+                {allMaintenanceTickets.map((t, index) => {
+                  const serialNumber =
+                    (
+                      t as MaintenanceItem & {
+                        asset?: { serialNumber?: string | null };
+                        serialNumber?: string | null;
+                      }
+                    ).asset?.serialNumber ??
+                    (t as MaintenanceItem & { serialNumber?: string | null })
+                      .serialNumber ??
+                    "—";
+                  const reporter =
+                    (
+                      t as MaintenanceItem & {
+                        reporter?: { email?: string | null };
+                        reporterId?: string | null;
+                      }
+                    ).reporter?.email ??
+                    (t as MaintenanceItem & { reporterId?: string | null })
+                      .reporterId ??
+                    "Админ хэрэглэгч";
+
+                  return (
+                    <TableRow
+                      key={t.id}
+                      className={[
+                        "border-b border-border/60",
+                        index % 2 === 0 ? "bg-white" : "bg-[#fafafa]",
+                      ].join(" ")}
+                    >
+                      <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
+                        {index + 1}
+                      </TableCell>
+                      <TableCell className="px-3 py-3 text-sm font-medium text-foreground md:px-4">
+                        <button
+                          type="button"
+                          className="text-left hover:underline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenAsset(t.assetId);
+                          }}
+                          title="Хөрөнгийн дэлгэрэнгүй"
                         >
-                          <Check className="h-4 w-4" />
-                          Батлах
-                        </Button>
-                        <Button variant="outline" size="sm" className="h-8 gap-2 rounded-md" disabled>
-                          <X className="h-4 w-4" />
-                          Цуцлах
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          {t.assetId}
+                        </button>
+                      </TableCell>
+                      <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
+                        {serialNumber}
+                      </TableCell>
+                      <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
+                        {reporter}
+                      </TableCell>
+                      <TableCell className="max-w-[300px] whitespace-normal break-words px-3 py-3 text-sm text-foreground md:px-4">
+                        {t.description}
+                      </TableCell>
+                      <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
+                        {new Date(t.createdAt).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="px-3 py-2 md:px-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            className="h-8 gap-2 rounded-md bg-[#6b7280] text-white hover:bg-[#5b6473]"
+                            disabled
+                            title={`Одоогоор demo UI (status: ${MAINTENANCE_STATUS_LABELS[t.status] ?? t.status})`}
+                          >
+                            <Check className="h-4 w-4" />
+                            Батлах
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 gap-2 rounded-md"
+                            disabled
+                          >
+                            <X className="h-4 w-4" />
+                            Цуцлах
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
-            </Table>
+              </Table>
+            </div>
           </div>
         )}
       </CardContent>
