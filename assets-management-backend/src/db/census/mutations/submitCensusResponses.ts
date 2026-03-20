@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { getDb } from "../../client";
-import { censusTasks, transfers } from "@/schema";
+import { censusTasks, notifications, transfers } from "@/schema";
 
 export type CensusResponseInput = {
   assetId: string;
@@ -51,6 +51,15 @@ export async function submitCensusResponses(input: {
     }
   }
 
+  await db
+    .update(notifications)
+    .set({ isRead: 1 })
+    .where(
+      and(
+        eq(notifications.employeeId, input.employeeId),
+        eq(notifications.link, `census:${input.censusId}`),
+      ),
+    );
+
   return true;
 }
-

@@ -1,5 +1,8 @@
 import {
+  type CensusResponseInput,
+  type CensusScope,
   getCensusProgress,
+  registerOpenCensusAssetScan,
   startCensus,
   submitCensusResponses,
   closeCensus,
@@ -14,14 +17,20 @@ export const censusMutations = {
         scope: string;
         scopeEmployeeIds?: string[] | null;
         createdBy: string;
+        coverageMode?: string | null;
+        department?: string | null;
+        categoryId?: string | null;
       };
     },
   ) => {
     const started = await startCensus({
       name: args.input.name,
-      scope: (args.input.scope as any) ?? "ORG",
+      scope: (args.input.scope as CensusScope) ?? "ORG",
       scopeEmployeeIds: args.input.scopeEmployeeIds ?? null,
       createdBy: args.input.createdBy,
+      coverageMode: args.input.coverageMode ?? null,
+      department: args.input.department ?? null,
+      categoryId: args.input.categoryId ?? null,
     });
     return getCensusProgress(started.id);
   },
@@ -30,23 +39,13 @@ export const censusMutations = {
     args: {
       censusId: string;
       employeeId: string;
-      responses: Array<{
-        assetId: string;
-        status: string;
-        reason?: string | null;
-        transferredToEmployeeId?: string | null;
-      }>;
+      responses: CensusResponseInput[];
     },
   ) =>
     submitCensusResponses({
       censusId: args.censusId,
       employeeId: args.employeeId,
-      responses: args.responses.map((r) => ({
-        assetId: r.assetId,
-        status: r.status as any,
-        reason: (r.reason ?? null) as any,
-        transferredToEmployeeId: r.transferredToEmployeeId ?? null,
-      })),
+      responses: args.responses,
     }),
   closeCensus: (
     _: unknown,
@@ -55,5 +54,6 @@ export const censusMutations = {
       closedBy: string;
     },
   ) => closeCensus(args.censusId, args.closedBy),
+  registerOpenCensusAssetScan: (_: unknown, args: { assetId: string }) =>
+    registerOpenCensusAssetScan(args.assetId),
 };
-

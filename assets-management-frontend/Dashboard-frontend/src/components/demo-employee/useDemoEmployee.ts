@@ -246,7 +246,10 @@ export function useDemoEmployee() {
         typeof (n as { link?: string | null }).link === "string" &&
         (n as { link: string }).link.startsWith("census:"),
     );
-    const unread = census.filter((n) => (n as { isRead?: boolean }).isRead !== true);
+    const unread = census.filter((n) => {
+      const isRead = (n as { isRead?: number | boolean | null }).isRead;
+      return Number(isRead ?? 0) === 0;
+    });
     if (unread.length === 0) return [];
     const sorted = [...unread].sort(
       (a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0),

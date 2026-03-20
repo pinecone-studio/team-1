@@ -12,7 +12,7 @@ import { DemoEmployeeMyAssetsCard } from "./DemoEmployeeMyAssetsCard";
 import { DemoEmployeeSignModal } from "./DemoEmployeeSignModal";
 import { DemoEmployeeTransferDialogs } from "./DemoEmployeeTransferDialogs";
 import { DemoEmployeeReturnRequestDialog } from "./DemoEmployeeReturnRequestDialog";
-import { DEMO_EMPLOYEE_EMAIL } from "./demo-employee-utils";
+import { DEMO_EMPLOYEE_EMAIL, type AssignmentItem } from "./demo-employee-utils";
 import { DemoEmployeeIncomingRequestsCard } from "./DemoEmployeeIncomingRequestsCard";
 import {
   Dialog,
@@ -52,9 +52,10 @@ export function DemoEmployeeContent({
         },
       },
     ],
+    awaitRefetchQueries: true,
   });
 
-  const openSignModal = (a: any) => {
+  const openSignModal = (a: AssignmentItem) => {
     s.setSignAssignment(a);
     s.setSignatureData(null);
     s.setSignatureFileUrl(null);
@@ -115,8 +116,8 @@ export function DemoEmployeeContent({
           setOpenCensusId(censusId);
           setOpenNotificationId(notificationId);
         }}
-        pendingList={s.pendingList as any}
-        currentPending={s.currentPending as any}
+        pendingList={s.pendingList}
+        currentPending={s.currentPending}
         isChecked={s.isChecked}
         onConditionCheck={openSignModal}
         onApprove={s.handleApprove}
@@ -199,8 +200,8 @@ export function DemoEmployeeContent({
 
       {/* Offboarding-оос бусад ерөнхий “ирсэн хүсэлтүүд” UI (зураг дээрхтэй адил). */}
       <DemoEmployeeIncomingRequestsCard
-        pendingList={s.pendingList as any}
-        currentPending={s.currentPending as any}
+        pendingList={s.pendingList}
+        currentPending={s.currentPending}
         isChecked={s.isChecked}
         onConditionCheck={openSignModal}
         onOpenAsset={() => {}}
@@ -369,7 +370,9 @@ export function DemoEmployeeContent({
           censusId={openCensusId}
           employeeId={s.currentEmployeeId}
           notificationId={openNotificationId}
-          onMarkRead={(id) => void markRead({ variables: { id } }).catch(() => {})}
+          onMarkRead={(id) =>
+            markRead({ variables: { id } }).catch(() => undefined)
+          }
         />
       ) : null}
     </div>

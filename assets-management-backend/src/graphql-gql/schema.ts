@@ -468,11 +468,27 @@ export const typeDefs = /* GraphQL */ `
     verifier: Employee
   }
 
+  type OpenCensusAssetScanStatus {
+    censusId: ID
+    censusName: String
+    coverageMode: String
+    assetId: ID!
+    taskId: ID
+    taskStatus: String
+    canRegister: Boolean!
+    alreadyRegistered: Boolean!
+    isUnassignedAsset: Boolean!
+    reason: String
+  }
+
   input StartCensusInput {
     name: String!
     scope: String!
     scopeEmployeeIds: [ID!]
     createdBy: ID!
+    coverageMode: String
+    department: String
+    categoryId: ID
   }
 
   input CensusResponseInput {
@@ -531,6 +547,7 @@ export const typeDefs = /* GraphQL */ `
     auditLogs(tableName: String, recordId: String): [AuditLog!]!
     censusProgress(censusId: ID!): CensusProgress!
     openCensusProgress: CensusProgress
+    openCensusAssetScanStatus(assetId: ID!): OpenCensusAssetScanStatus!
     employeeCensusTasks(censusId: ID!, employeeId: ID!): [CensusTask!]!
     censusTaskDetails(censusId: ID!): [CensusTaskDetail!]!
     maintenanceTickets(status: String): [MaintenanceTicket!]!
@@ -763,6 +780,7 @@ export const typeDefs = /* GraphQL */ `
       responses: [CensusResponseInput!]!
     ): Boolean!
     closeCensus(censusId: ID!, closedBy: ID!): Boolean!
+    registerOpenCensusAssetScan(assetId: ID!): Boolean!
 
     adminOverrideDisposal(id: ID!, status: String!): DisposalRequest!
     adminOverridePurchase(token: String!, status: String!): [PurchaseRequest!]!

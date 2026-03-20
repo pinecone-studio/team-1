@@ -1,10 +1,14 @@
-import { createNotification, markNotificationAsRead } from "@/db/notifications";
+import {
+  createNotification,
+  markNotificationAsRead,
+  type CreateNotificationInput,
+} from "@/db/notifications";
 
 export const notificationMutations = {
-  sendNotification: (_: unknown, args: { input: any }) =>
+  sendNotification: (_: unknown, args: { input: CreateNotificationInput }) =>
     createNotification(args.input),
-  markNotificationAsRead: (_: unknown, args: { id: string }) => {
-    markNotificationAsRead(args.id);
+  markNotificationAsRead: async (_: unknown, args: { id: string }) => {
+    await markNotificationAsRead(args.id);
     return true;
   },
 };

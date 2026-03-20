@@ -2,6 +2,7 @@ import {
   getCensusProgress,
   getCensusTaskDetails,
   getEmployeeCensusTasks,
+  getOpenCensusAssetScanStatus,
   getOpenCensusProgress,
 } from "@/db/census";
 
@@ -15,5 +16,6 @@ export const censusQueries = {
   censusTaskDetails: (_: unknown, args: { censusId: string }) =>
     getCensusTaskDetails(args.censusId),
   openCensusProgress: () => getOpenCensusProgress(),
+  openCensusAssetScanStatus: (_: unknown, args: { assetId: string }) =>
+    getOpenCensusAssetScanStatus(args.assetId),
 };
-

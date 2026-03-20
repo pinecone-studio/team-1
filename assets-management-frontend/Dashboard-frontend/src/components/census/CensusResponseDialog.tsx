@@ -20,10 +20,12 @@ import {
   CensusProgressDocument,
   EmployeeCensusTasksDocument,
   EmployeesDocument,
+  OpenCensusProgressDocument,
   SubmitCensusResponsesDocument,
 } from "@/gql/graphql";
 
 type NotAvailableReason = "BROKEN" | "LOST" | "TRANSFERRED";
+type ResponseStatus = "CONFIRMED" | "NOT_AVAILABLE";
 
 export function CensusResponseDialog({
   open,
@@ -38,7 +40,7 @@ export function CensusResponseDialog({
   censusId: string;
   employeeId: string;
   notificationId?: string | null;
-  onMarkRead?: (id: string) => void;
+  onMarkRead?: (id: string) => Promise<unknown> | void;
 }) {
   const [local, setLocal] = useState<
     Record<
@@ -79,15 +81,26 @@ export function CensusResponseDialog({
 
   const model = { ...defaults, ...local };
 
-  const [submit, { loading: submitting }] = useMutation(SubmitCensusResponsesDocument, {
-    onCompleted: async () => {
-      toast.success("Тооллогын хариуг илгээлээ.");
-      await refetch();
-      if (notificationId && onMarkRead) onMarkRead(notificationId);
-      onOpenChange(false);
+  const [submit, { loading: submitting }] = useMutation(
+    SubmitCensusResponsesDocument,
+    {
+      refetchQueries: [
+        { query: CensusProgressDocument, variables: { censusId } },
+        { query: OpenCensusProgressDocument },
+        { query: EmployeeCensusTasksDocument, variables: { censusId, employeeId } },
+      ],
+      awaitRefetchQueries: true,
+      onCompleted: async () => {
+        toast.success("Тооллогын хариуг илгээлээ.");
+        await refetch();
+        if (notificationId && onMarkRead) {
+          await onMarkRead(notificationId);
+        }
+        onOpenChange(false);
+      },
+      onError: () => toast.error("Илгээхэд алдаа гарлаа."),
     },
-    onError: () => toast.error("Илгээхэд алдаа гарлаа."),
-  });
+  );
 
   const canSubmit = tasks.length > 0;
 
@@ -161,7 +174,7 @@ export function CensusResponseDialog({
                         onValueChange={(v) =>
                           setLocal((prev) => ({
                             ...prev,
-                            [t.assetId]: { status: v as any },
+                            [t.assetId]: { status: v as ResponseStatus },
                           }))
                         }
                         className="grid gap-2"
@@ -242,11 +255,11 @@ export function CensusResponseDialog({
             <Button
               className="bg-[#0b6fae] text-white hover:bg-[#095f93]"
               onClick={() => {
-                try {
-                  void handleSubmit();
-                } catch (e: any) {
-                  toast.error(e?.message ?? "Шалгана уу.");
-                }
+                void handleSubmit().catch((error: unknown) => {
+                  const message =
+                    error instanceof Error ? error.message : "Шалгана уу.";
+                  toast.error(message);
+                });
               }}
               disabled={!canSubmit || submitting}
             >
@@ -258,4 +271,3 @@ export function CensusResponseDialog({
     </Dialog>
   );
 }
-

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@apollo/client";
 import { Camera, CircleAlert, ScanLine } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -15,10 +16,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OpenCensusProgressDocument } from "@/gql/graphql";
 import { getAppBaseUrl } from "@/lib/asset-qr";
 import type { Asset } from "@/lib/types";
 
 type ScanStatus = "idle" | "starting" | "scanning" | "unsupported" | "error";
+type CoverageMode = "ALL_ORG" | "BY_DEPARTMENT" | "BY_CATEGORY" | null;
 
 declare global {
   interface Window {
@@ -34,6 +37,18 @@ declare global {
 }
 
 const INTERNAL_QR_BASE_URL = getAppBaseUrl();
+
+function readCoverageMode(scopeFilter?: string | null, scope?: string | null) {
+  const fallback: CoverageMode = scope === "ORG" ? "ALL_ORG" : null;
+  if (!scopeFilter) return fallback;
+
+  try {
+    const parsed = JSON.parse(scopeFilter) as { coverageMode?: CoverageMode };
+    return parsed.coverageMode ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 function parseInternalAssetId(scannedValue: string) {
   const trimmedValue = scannedValue.trim();
@@ -65,6 +80,29 @@ export default function QRScanPage() {
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
   const [scannedValue, setScannedValue] = useState("");
 
+  const { data: openCensusData, loading: openCensusLoading } = useQuery(
+    OpenCensusProgressDocument,
+    {
+      fetchPolicy: "network-only",
+      pollInterval: 8000,
+    },
+  );
+
+  const openCensus = openCensusData?.openCensusProgress ?? null;
+  const coverageMode = readCoverageMode(
+    openCensus?.event.scopeFilter,
+    openCensus?.event.scope,
+  );
+  const canScanForCensus =
+    Boolean(openCensus?.event.id) && coverageMode === "ALL_ORG";
+  const censusGateMessage = openCensusLoading
+    ? "Тооллогын төлөв шалгаж байна..."
+    : !openCensus?.event.id
+      ? "Тооллого эхлээгүй байна."
+      : coverageMode !== "ALL_ORG"
+        ? 'QR scan зөвхөн "Байгууллага бүхлээр" тооллогод ажиллана.'
+        : null;
+
   const canUseBarcodeDetector = useMemo(
     () => typeof window !== "undefined" && "BarcodeDetector" in window,
     [],
@@ -84,6 +122,13 @@ export default function QRScanPage() {
       }
     };
 
+    if (!canScanForCensus) {
+      setScanStatus("idle");
+      setScanError(null);
+      stopScanner();
+      return () => stopScanner();
+    }
+
     const handleScannedValue = (value: string) => {
       if (!value || value === lastProcessedRef.current) return;
       lastProcessedRef.current = value;
@@ -91,7 +136,7 @@ export default function QRScanPage() {
 
       const assetId = parseInternalAssetId(value);
       if (assetId) {
-        router.replace(`/qr/${assetId}`);
+        router.replace(`/qr/${assetId}?source=qrscan`);
         return;
       }
 
@@ -187,7 +232,7 @@ export default function QRScanPage() {
       cancelled = true;
       stopScanner();
     };
-  }, [canUseBarcodeDetector, router]);
+  }, [canScanForCensus, canUseBarcodeDetector, router]);
 
   const handleRegisterConfirm = () => {
     setShowUnregisteredDialog(false);
@@ -255,15 +300,23 @@ export default function QRScanPage() {
                 </div>
                 <div className="space-y-1 text-sm">
                   <p className="font-medium text-foreground">
-                    {scanStatus === "starting" && "Камер асаж байна..."}
-                    {scanStatus === "scanning" && "QR кодыг камер луу чиглүүлнэ үү"}
-                    {scanStatus === "idle" && "Scan дууссан эсвэл түр зогссон байна"}
+                    {!canScanForCensus
+                      ? censusGateMessage || "Тооллого эхлээгүй байна"
+                      : scanStatus === "starting"
+                        ? "Камер асаж байна..."
+                        : scanStatus === "scanning"
+                          ? "QR кодыг камер луу чиглүүлнэ үү"
+                          : scanStatus === "idle"
+                            ? "Scan дууссан эсвэл түр зогссон байна"
+                            : null}
                     {scanStatus === "unsupported" && "QR scan дэмжигдэхгүй байна"}
                     {scanStatus === "error" && "Камерын алдаа гарлаа"}
                   </p>
                   <p className="text-muted-foreground">
                     {scanError ||
-                      `Дотоод QR формат: ${INTERNAL_QR_BASE_URL}/qr/[id]`}
+                      (openCensus?.event.name
+                        ? `Идэвхтэй тооллого: ${openCensus.event.name}`
+                        : `Дотоод QR формат: ${INTERNAL_QR_BASE_URL}/qr/[id]`)}
                   </p>
                 </div>
               </div>

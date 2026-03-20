@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import Image from "next/image";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   ArrowRightLeft,
@@ -32,6 +32,8 @@ import {
   GetAssetDocument,
   GetAssetHistoryDocument,
   GetAssetsDocument,
+  OpenCensusAssetScanStatusDocument,
+  RegisterOpenCensusAssetScanDocument,
   TransferAssetDocument,
 } from "@/gql/graphql";
 import { useFragment } from "@/gql/fragment-masking";
@@ -101,8 +103,11 @@ const formatCurrency = (value?: number | null) => {
 };
 
 export default function QRAssetPage() {
+  const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const assetId = (params?.id as string) ?? "";
+  const fromQrScan = searchParams.get("source") === "qrscan";
 
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [condition, setCondition] = useState("GOOD");
@@ -123,6 +128,15 @@ export default function QRAssetPage() {
       fetchPolicy: "cache-and-network",
     },
   );
+  const {
+    data: scanStatusData,
+    loading: scanStatusLoading,
+    refetch: refetchScanStatus,
+  } = useQuery(OpenCensusAssetScanStatusDocument, {
+    variables: { assetId },
+    skip: !assetId || !fromQrScan,
+    fetchPolicy: "network-only",
+  });
 
   const [assignAsset, { loading: assigning }] = useMutation(
     AssignAssetDocument,
@@ -144,8 +158,18 @@ export default function QRAssetPage() {
       awaitRefetchQueries: true,
     },
   );
+  const [registerOpenCensusAssetScan, { loading: registeringToCensus }] =
+    useMutation(RegisterOpenCensusAssetScanDocument, {
+      onCompleted: async () => {
+        toast.success("Хөрөнгийг тооллогод амжилттай бүртгэлээ.");
+        await refetchScanStatus();
+      },
+      onError: (error) =>
+        toast.error(error.message || "Тооллогод бүртгэх үед алдаа гарлаа."),
+    });
 
   const asset = useFragment(AssetFieldsFragmentDoc, data?.asset);
+  const scanStatus = scanStatusData?.openCensusAssetScanStatus ?? null;
   const employees = useMemo(
     () =>
       (employeesData?.employees ?? []).map((employee) => ({
@@ -174,6 +198,7 @@ export default function QRAssetPage() {
   const canSubmit = Boolean(asset && selectedEmployeeId && condition.trim());
   const canAssign = canSubmit && !asset?.assignedTo;
   const canTransfer = canSubmit && Boolean(asset?.assignedTo);
+  const canRegisterToCensus = Boolean(scanStatus?.canRegister);
 
   const resetForm = () => {
     setSelectedEmployeeId("");
@@ -221,6 +246,11 @@ export default function QRAssetPage() {
       console.error(error);
       toast.error("Шилжүүлэх үед алдаа гарлаа.");
     }
+  };
+
+  const handleRegisterToCensus = async () => {
+    if (!assetId) return;
+    await registerOpenCensusAssetScan({ variables: { assetId } });
   };
 
   if (loading) {
@@ -402,7 +432,11 @@ export default function QRAssetPage() {
                 Эзэмшигч: {currentOwner?.name || "Хуваарилагдаагүй"}
               </p>
               <p className="mt-1 text-muted-foreground">
-                {asset.assignedTo
+                {fromQrScan
+                  ? scanStatusLoading
+                    ? "Тооллогын төлөв шалгаж байна..."
+                    : scanStatus?.reason || "Тооллогын мэдээлэл олдсонгүй."
+                  : asset.assignedTo
                   ? "Энэ хөрөнгийг шинэ ажилтан руу шилжүүлэх боломжтой."
                   : "Энэ хөрөнгө одоогоор эзэмшигчгүй тул шууд хуваарилах боломжтой."}
               </p>
@@ -451,29 +485,60 @@ export default function QRAssetPage() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <Button
-                onClick={handleAssign}
-                disabled={!canAssign || isBusy}
-                className="h-11 w-full gap-2"
-                variant="secondary"
-              >
-                <UserPlus className="h-4 w-4" />
-                {assigning ? "Хуваарилж байна..." : "Хуваарилах"}
-              </Button>
-              <Button
-                onClick={handleTransfer}
-                disabled={!canTransfer || isBusy}
-                className="h-11 w-full gap-2"
-              >
-                <ArrowRightLeft className="h-4 w-4" />
-                {transferring ? "Шилжүүлж байна..." : "Шилжүүлэх"}
-              </Button>
+              {fromQrScan ? (
+                <>
+                  <Button
+                    onClick={() => void handleRegisterToCensus()}
+                    disabled={!canRegisterToCensus || registeringToCensus}
+                    className="h-11 w-full gap-2"
+                    variant="secondary"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    {registeringToCensus
+                      ? "Бүртгэж байна..."
+                      : scanStatus?.alreadyRegistered
+                        ? "Тооллогод бүртгэгдсэн"
+                        : "Тооллогод бүртгэх"}
+                  </Button>
+                  <Button
+                    onClick={() => router.push("/qrscan")}
+                    className="h-11 w-full gap-2"
+                  >
+                    <ArrowRightLeft className="h-4 w-4" />
+                    Дахин QR уншуулах
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    onClick={handleAssign}
+                    disabled={!canAssign || isBusy}
+                    className="h-11 w-full gap-2"
+                    variant="secondary"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    {assigning ? "Хуваарилж байна..." : "Хуваарилах"}
+                  </Button>
+                  <Button
+                    onClick={handleTransfer}
+                    disabled={!canTransfer || isBusy}
+                    className="h-11 w-full gap-2"
+                  >
+                    <ArrowRightLeft className="h-4 w-4" />
+                    {transferring ? "Шилжүүлж байна..." : "Шилжүүлэх"}
+                  </Button>
+                </>
+              )}
             </div>
 
             <div className="rounded-2xl border border-dashed border-border/70 p-4 text-xs text-muted-foreground">
-              {asset.assignedTo
-                ? "`Шилжүүлэх` товч нь одоогийн эзэмшигчээс сонгосон ажилтан руу transfer request илгээнэ. `Хуваарилах` товч энэ үед идэвхгүй байна."
-                : "`Хуваарилах` товч нь эзэмшигчгүй хөрөнгийг сонгосон ажилтанд assign хийнэ. `Шилжүүлэх` товч энэ үед идэвхгүй байна."}
+              {fromQrScan
+                ? scanStatus?.alreadyRegistered
+                  ? "Энэ хөрөнгө нээлттэй тооллогод аль хэдийн бүртгэгдсэн байна."
+                  : scanStatus?.reason || "Тооллогын мэдээлэл олдсонгүй."
+                : asset.assignedTo
+                  ? "`Шилжүүлэх` товч нь одоогийн эзэмшигчээс сонгосон ажилтан руу transfer request илгээнэ. `Хуваарилах` товч энэ үед идэвхгүй байна."
+                  : "`Хуваарилах` товч нь эзэмшигчгүй хөрөнгийг сонгосон ажилтанд assign хийнэ. `Шилжүүлэх` товч энэ үед идэвхгүй байна."}
             </div>
           </CardContent>
         </Card>
