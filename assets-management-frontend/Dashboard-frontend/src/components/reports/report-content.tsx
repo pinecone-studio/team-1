@@ -226,7 +226,6 @@ export function ReportContent() {
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [expandedLocations, setExpandedLocations] = useState<string[]>([]);
   const filterRef = useRef<HTMLDivElement>(null);
-  const selectAllRef = useRef<HTMLInputElement>(null);
 
   const handleHeaderClick = (key: string) => {
     setOpenFilter((prev) => (prev === key ? null : key));
@@ -333,17 +332,6 @@ export function ReportContent() {
     [selectedAssets],
   );
 
-  const visibleSelectedCount = rows.filter((row) =>
-    selectedIds.has(row.id),
-  ).length;
-  const allSelected = rows.length > 0 && visibleSelectedCount === rows.length;
-  const someSelected = visibleSelectedCount > 0 && !allSelected;
-
-  useEffect(() => {
-    const el = selectAllRef.current;
-    if (el) el.indeterminate = someSelected;
-  }, [someSelected]);
-
   const isLocationSelected = (path: string) =>
     filters.location === path || filters.location.startsWith(`${path} /`);
 
@@ -406,24 +394,6 @@ export function ReportContent() {
         ) : null}
       </div>
     );
-  };
-
-  const toggleSelectAll = (checked: boolean) => {
-    if (!checked) {
-      setSelectedIds(new Set());
-      return;
-    }
-
-    setSelectedIds(new Set(rows.map((row) => row.id)));
-  };
-
-  const toggleRow = (rowId: string, checked: boolean) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (checked) next.add(rowId);
-      else next.delete(rowId);
-      return next;
-    });
   };
 
   const exportRows = (type: "excel" | "pdf" | "word") => {
@@ -604,15 +574,6 @@ export function ReportContent() {
             <Table className="table-fixed w-full border-separate  border-spacing-y-2">
               <TableHeader>
                 <TableRow className="bg-[#0f4c6e] text-white hover:bg-[#0f4c6e]!">
-                  <TableHead className="w-10 text-white">
-                    <input
-                      ref={selectAllRef}
-                      type="checkbox"
-                      checked={allSelected}
-                      onChange={(e) => toggleSelectAll(e.target.checked)}
-                      className="h-4 w-4 rounded border-white"
-                    />
-                  </TableHead>
                   <TableHead className="w-10 text-white">№</TableHead>
 
                   <TableHead className="truncate text-white min-w-[140px]">
@@ -1032,7 +993,7 @@ export function ReportContent() {
                 ) : rows.length === 0 ? (
                   <TableRow className="bg-white">
                     <TableCell
-                      colSpan={10}
+                      colSpan={9}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       Утга олдсонгүй.
@@ -1044,15 +1005,7 @@ export function ReportContent() {
                       key={row.id}
                       className="bg-white shadow-sm hover:bg-gray-50"
                     >
-                      <TableCell className="py-2 rounded-l-md">
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.has(row.id)}
-                          onChange={(e) => toggleRow(row.id, e.target.checked)}
-                          className="h-4 w-4"
-                        />
-                      </TableCell>
-                      <TableCell className="py-2 font-medium">
+                      <TableCell className="py-2 rounded-l-md font-medium">
                         {index + 1}
                       </TableCell>
                       <TableCell className="py-2 w-27">

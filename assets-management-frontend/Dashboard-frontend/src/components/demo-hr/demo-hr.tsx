@@ -493,14 +493,7 @@ export function DemoHRContent() {
                 <TableHeader>
                   <TableRow className="border-b-0 bg-[#0e5f8c] hover:bg-[#0e5f8c]">
                     <TableHead className="h-10 w-[76px] px-3 font-medium text-white">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          aria-label="all"
-                          className="h-4 w-4 rounded border-white/70 bg-transparent"
-                        />
-                        <span>№</span>
-                      </div>
+                      <span>№</span>
                     </TableHead>
                     <TableHead className="h-10 font-medium text-white">
                       <span className="inline-flex items-center gap-1.5">
@@ -544,14 +537,7 @@ export function DemoHRContent() {
                         className="h-12 border-0 bg-white hover:bg-slate-50/50"
                       >
                         <TableCell className="px-3 py-2">
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              aria-label={`row-${index + 1}`}
-                              className="h-4 w-4 rounded border-slate-400"
-                            />
-                            <span>{index + 1}</span>
-                          </div>
+                          <span>{index + 1}</span>
                         </TableCell>
                         <TableCell className="py-2">
                           {emp.firstName} {emp.lastName}
