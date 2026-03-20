@@ -242,9 +242,10 @@ export function useDemoEmployee() {
         typeof (n as { link?: string | null }).link === "string" &&
         (n as { link: string }).link.startsWith("census:"),
     );
-    const unread = census.filter(
-      (n) => (n as { isRead?: boolean }).isRead !== true,
-    );
+    const unread = census.filter((n) => {
+      const isRead = (n as { isRead?: number | boolean | null }).isRead;
+      return Number(isRead ?? 0) === 0;
+    });
     if (unread.length === 0) return [];
     const sorted = [...unread].sort(
       (a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0),
@@ -297,20 +298,16 @@ export function useDemoEmployee() {
     });
   })();
   const currentPending = pendingList[0] ?? null;
-  const activeAssignments = (activeData?.employeeAssignments ?? []).filter(
-    (a) => (a.asset as any)?.assetTag,
-  );
+  const activeAssignments = activeData?.employeeAssignments ?? [];
   const myAssetsList = (() => {
     const seen = new Set<string>();
     const list: Array<(typeof activeAssignments)[0] & { status: string }> = [];
     activeAssignments.forEach((a) => {
-      if ((a.asset as any)?.assetTag) {
-        seen.add(a.id);
-        list.push({ ...a, status: "ACTIVE" });
-      }
+      seen.add(a.id);
+      list.push({ ...a, status: "ACTIVE" });
     });
     pendingList.forEach((a) => {
-      if (!seen.has(a.id) && (a.asset as any)?.assetTag) {
+      if (!seen.has(a.id)) {
         seen.add(a.id);
         list.push({
           ...a,

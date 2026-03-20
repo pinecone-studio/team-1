@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { getDb } from "../../client";
-import { censusTasks, transfers } from "@/schema";
+import { censusTasks, notifications, transfers } from "@/schema";
 
 export type CensusResponseInput = {
   assetId: string;
@@ -36,7 +36,11 @@ export async function submitCensusResponses(input: {
       );
 
     // Optional: if TRANSFERRED, create a transfer record draft (no auto-approval here).
-    if (r.status === "NOT_AVAILABLE" && r.reason === "TRANSFERRED" && r.transferredToEmployeeId) {
+    if (
+      r.status === "NOT_AVAILABLE" &&
+      r.reason === "TRANSFERRED" &&
+      r.transferredToEmployeeId
+    ) {
       await db.insert(transfers).values({
         id: crypto.randomUUID(),
         assetId: r.assetId,
@@ -51,6 +55,15 @@ export async function submitCensusResponses(input: {
     }
   }
 
+  await db
+    .update(notifications)
+    .set({ isRead: 1 })
+    .where(
+      and(
+        eq(notifications.employeeId, input.employeeId),
+        eq(notifications.link, `census:${input.censusId}`),
+      ),
+    );
+
   return true;
 }
-

@@ -14,6 +14,7 @@ fragment AssetFields on Asset {
   notes
   createdAt
   updatedAt
+  deletedAt
 }
 
 fragment EmployeeFields on Employee {

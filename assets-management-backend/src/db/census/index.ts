@@ -1,9 +1,10 @@
 export * from "./types";
+export * from "./mutations/registerOpenCensusAssetScan";
 export * from "./mutations/startCensus";
 export * from "./mutations/submitCensusResponses";
 export * from "./queries/getCensusProgress";
 export * from "./queries/getEmployeeCensusTasks";
 export * from "./mutations/closeCensus";
+export * from "./queries/getOpenCensusAssetScanStatus";
 export * from "./queries/getOpenCensusProgress";
 export * from "./queries/getCensusTaskDetails";
-

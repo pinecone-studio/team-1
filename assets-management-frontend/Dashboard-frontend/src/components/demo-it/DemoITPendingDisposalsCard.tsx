@@ -53,7 +53,7 @@ export function DemoITPendingDisposalsCard({
           <div className="overflow-hidden rounded-2xl border border-border/60">
             <Table>
               <TableHeader>
-                <TableRow className="border-0 bg-[#0f4c6e] hover:bg-[#0b6fae]">
+                <TableRow className="border-0 bg-[#0e5f8c] hover:bg-[#0e5f8c]">
                   <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
                     №
                   </TableHead>

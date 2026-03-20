@@ -60,7 +60,7 @@ export function DemoITMaintenanceCard({
             <div className="overflow-hidden rounded-2xl border border-border/60">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-0 bg-[#0f4c6e] hover:bg-[#0b6fae]">
+                  <TableRow className="border-0 bg-[#0e5f8c] hover:bg-[#0e5f8c]">
                     <TableHead className="h-11 px-3 text-xs font-semibold text-white md:px-4">
                       №
                     </TableHead>
@@ -122,7 +122,7 @@ export function DemoITMaintenanceCard({
                       </TableCell>
                       <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
                         <div className="flex items-center gap-2">
-                          <span className="line-clamp-1 max-w-[220px]">
+                          <span className="line-clamp-1 max-w-55">
                             {t.description}
                           </span>
                           <Button
@@ -142,7 +142,7 @@ export function DemoITMaintenanceCard({
                         <div className="flex items-center justify-end gap-2">
                           <Button
                             size="sm"
-                            className="h-8 gap-2 rounded-md bg-[#0f4c6e] text-white hover:bg-[#095f93]"
+                            className="h-8 gap-2 rounded-md bg-[#0e5f8c] text-white hover:bg-[#095f93]"
                             onClick={() => onApprove(t.id)}
                             disabled={
                               updatingMaintenance ||

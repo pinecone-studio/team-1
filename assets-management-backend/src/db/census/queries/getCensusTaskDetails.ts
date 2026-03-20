@@ -34,9 +34,9 @@ export async function getCensusTaskDetails(censusId: string) {
       id: r.asset.id,
       assetTag: r.asset.assetTag,
       serialNumber: r.asset.serialNumber,
-      category: (r.asset as any).category ?? (r.asset as any).categoryId ?? null,
+      category:
+        (r.asset as any).category ?? (r.asset as any).categoryId ?? null,
     },
     verifier: r.verifier?.id ? r.verifier : null,
   }));
 }
-

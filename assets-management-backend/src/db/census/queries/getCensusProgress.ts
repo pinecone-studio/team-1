@@ -79,4 +79,3 @@ export async function getCensusProgress(censusId: string) {
     verifierProgress,
   };
 }
-

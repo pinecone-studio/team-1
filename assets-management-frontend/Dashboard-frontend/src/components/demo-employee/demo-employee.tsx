@@ -12,7 +12,10 @@ import { DemoEmployeeMyAssetsCard } from "./DemoEmployeeMyAssetsCard";
 import { DemoEmployeeSignModal } from "./DemoEmployeeSignModal";
 import { DemoEmployeeTransferDialogs } from "./DemoEmployeeTransferDialogs";
 import { DemoEmployeeReturnRequestDialog } from "./DemoEmployeeReturnRequestDialog";
-import { DEMO_EMPLOYEE_EMAIL } from "./demo-employee-utils";
+import {
+  DEMO_EMPLOYEE_EMAIL,
+  type AssignmentItem,
+} from "./demo-employee-utils";
 import { DemoEmployeeIncomingRequestsCard } from "./DemoEmployeeIncomingRequestsCard";
 import {
   Dialog,
@@ -41,7 +44,9 @@ export function DemoEmployeeContent({
   const [detailAssetId, setDetailAssetId] = useState<string | null>(null);
   const [showDisposalDialog, setShowDisposalDialog] = useState(false);
   const [openCensusId, setOpenCensusId] = useState<string | null>(null);
-  const [openNotificationId, setOpenNotificationId] = useState<string | null>(null);
+  const [openNotificationId, setOpenNotificationId] = useState<string | null>(
+    null,
+  );
   const [markRead] = useMutation(MarkNotificationAsReadDocument, {
     refetchQueries: [
       {
@@ -52,17 +57,17 @@ export function DemoEmployeeContent({
         },
       },
     ],
+    awaitRefetchQueries: true,
   });
 
-  const openSignModal = (a: any) => {
+  const openSignModal = (a: AssignmentItem) => {
     s.setSignAssignment(a);
     s.setSignatureData(null);
     s.setSignatureFileUrl(null);
     s.setIsSignModalOpen(true);
   };
 
-  const offboardingNotificationId =
-    s.offboardingNotifications?.[0]?.id ?? null;
+  const offboardingNotificationId = s.offboardingNotifications?.[0]?.id ?? null;
 
   return (
     <div className="flex flex-col p-6 overflow-visible">
@@ -98,8 +103,22 @@ export function DemoEmployeeContent({
         demoEmployeeId={s.demoEmployeeId}
         onDemoEmployeeChange={s.setDemoEmployeeId}
         currentEmployeeId={s.currentEmployeeId}
-        activeOffboarding={s.activeOffboarding ? { deadline: (s.activeOffboarding as { deadline?: number }).deadline, returnedAssets: (s.activeOffboarding as { returnedAssets?: number }).returnedAssets, totalAssets: (s.activeOffboarding as { totalAssets?: number }).totalAssets } : null}
-        offboardingCreatedAt={(s.activeOffboarding as { createdAt?: number })?.createdAt}
+        activeOffboarding={
+          s.activeOffboarding
+            ? {
+                deadline: (s.activeOffboarding as { deadline?: number })
+                  .deadline,
+                returnedAssets: (
+                  s.activeOffboarding as { returnedAssets?: number }
+                ).returnedAssets,
+                totalAssets: (s.activeOffboarding as { totalAssets?: number })
+                  .totalAssets,
+              }
+            : null
+        }
+        offboardingCreatedAt={
+          (s.activeOffboarding as { createdAt?: number })?.createdAt
+        }
         offboardingStarting={s.offboardingStarting}
         onShowOffboardingModal={() => s.setShowOffboardingModal(true)}
         onOpenOffboarding={() => {
@@ -115,8 +134,8 @@ export function DemoEmployeeContent({
           setOpenCensusId(censusId);
           setOpenNotificationId(notificationId);
         }}
-        pendingList={s.pendingList as any}
-        currentPending={s.currentPending as any}
+        pendingList={s.pendingList}
+        currentPending={s.currentPending}
         isChecked={s.isChecked}
         onConditionCheck={openSignModal}
         onApprove={s.handleApprove}
@@ -144,31 +163,32 @@ export function DemoEmployeeContent({
       <div id="demo-employee-offboarding-section" className="scroll-mt-4">
         <DemoEmployeeOffboardingCard
           activeOffboarding={
-          s.activeOffboarding
-            ? {
-                deadline: (s.activeOffboarding as { deadline?: number })
-                  .deadline,
-                returnedAssets: (s.activeOffboarding as { returnedAssets?: number })
-                  .returnedAssets,
-                totalAssets: (s.activeOffboarding as { totalAssets?: number })
-                  .totalAssets,
-              }
-            : null
-        }
-        bulkReturnInstructionsRead={s.bulkReturnInstructionsRead}
-        onBulkReturnInstructionsReadChange={s.setBulkReturnInstructionsRead}
-        onBulkSubmitReturnRequests={s.handleBulkSubmitReturnRequests}
-        bulkReturnSending={s.bulkReturnSending}
-        submitReturnRequestLoading={s.submitReturnRequestLoading}
-        selectedReturnAssetIds={s.selectedReturnAssetIds}
-        eligibleReturnAssignmentsLength={s.eligibleReturnAssignmentsLength}
-        selectAllEligibleReturns={s.selectAllEligibleReturns}
-        assignmentsToReturn={s.assignmentsToReturn}
-        pendingReturnRequestAssetIds={s.pendingReturnRequestAssetIds}
-        toggleReturnSelection={s.toggleReturnSelection}
-        onOpenReturnRequest={s.onOpenReturnRequest}
-        completeReturnLoading={s.completeReturnLoading}
-      />
+            s.activeOffboarding
+              ? {
+                  deadline: (s.activeOffboarding as { deadline?: number })
+                    .deadline,
+                  returnedAssets: (
+                    s.activeOffboarding as { returnedAssets?: number }
+                  ).returnedAssets,
+                  totalAssets: (s.activeOffboarding as { totalAssets?: number })
+                    .totalAssets,
+                }
+              : null
+          }
+          bulkReturnInstructionsRead={s.bulkReturnInstructionsRead}
+          onBulkReturnInstructionsReadChange={s.setBulkReturnInstructionsRead}
+          onBulkSubmitReturnRequests={s.handleBulkSubmitReturnRequests}
+          bulkReturnSending={s.bulkReturnSending}
+          submitReturnRequestLoading={s.submitReturnRequestLoading}
+          selectedReturnAssetIds={s.selectedReturnAssetIds}
+          eligibleReturnAssignmentsLength={s.eligibleReturnAssignmentsLength}
+          selectAllEligibleReturns={s.selectAllEligibleReturns}
+          assignmentsToReturn={s.assignmentsToReturn}
+          pendingReturnRequestAssetIds={s.pendingReturnRequestAssetIds}
+          toggleReturnSelection={s.toggleReturnSelection}
+          onOpenReturnRequest={s.onOpenReturnRequest}
+          completeReturnLoading={s.completeReturnLoading}
+        />
       </div>
 
       {/* Offboarding байхгүй үед “шар” мэдэгдлийн card-ууд (өмнөх шиг). */}
@@ -199,8 +219,8 @@ export function DemoEmployeeContent({
 
       {/* Offboarding-оос бусад ерөнхий “ирсэн хүсэлтүүд” UI (зураг дээрхтэй адил). */}
       <DemoEmployeeIncomingRequestsCard
-        pendingList={s.pendingList as any}
-        currentPending={s.currentPending as any}
+        pendingList={s.pendingList}
+        currentPending={s.currentPending}
         isChecked={s.isChecked}
         onConditionCheck={openSignModal}
         onOpenAsset={() => {}}
@@ -369,7 +389,9 @@ export function DemoEmployeeContent({
           censusId={openCensusId}
           employeeId={s.currentEmployeeId}
           notificationId={openNotificationId}
-          onMarkRead={(id) => void markRead({ variables: { id } }).catch(() => {})}
+          onMarkRead={(id) =>
+            markRead({ variables: { id } }).catch(() => undefined)
+          }
         />
       ) : null}
     </div>

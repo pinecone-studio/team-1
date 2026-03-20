@@ -5,7 +5,7 @@ import { useMutation, useQuery } from "@apollo/client";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -30,11 +30,16 @@ import {
   CloseCensusDocument,
   EmployeesDocument,
   OpenCensusProgressDocument,
+  OpenCensusProgressQuery,
   StartCensusDocument,
+  StartCensusMutation,
 } from "@/gql/graphql";
 
 type Scope = "ORG" | "EMPLOYEES";
 type CoverageMode = "ALL_ORG" | "BY_DEPARTMENT" | "BY_CATEGORY";
+type CensusProgressSnapshot =
+  | NonNullable<OpenCensusProgressQuery["openCensusProgress"]>
+  | StartCensusMutation["startCensus"];
 
 const CENSUS_POLL_INTERVAL_MS = 8000;
 
@@ -47,18 +52,37 @@ function formatDate(value?: number | null) {
   });
 }
 
+function getErrorMessage(error: unknown) {
+  const candidate = error as {
+    graphQLErrors?: Array<{ message?: string }>;
+    networkError?: { message?: string };
+    message?: string;
+  };
+
+  return (
+    candidate.graphQLErrors?.[0]?.message ||
+    candidate.networkError?.message ||
+    candidate.message ||
+    ""
+  );
+}
+
 export function QRCensusContent() {
   const [startOpen, setStartOpen] = useState(false);
   const [name, setName] = useState("1-р улирлын тооллого");
   const [coverageMode, setCoverageMode] = useState<CoverageMode | "">("");
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [lastProgress, setLastProgress] = useState<any>(null);
+  const [lastProgress, setLastProgress] =
+    useState<CensusProgressSnapshot | null>(null);
   const [endDialogOpen, setEndDialogOpen] = useState(false);
 
   const { data: employeesData, refetch: refetchEmployees } =
     useQuery(EmployeesDocument);
-  const employees = employeesData?.employees ?? [];
+  const employees = useMemo(
+    () => employeesData?.employees ?? [],
+    [employeesData?.employees],
+  );
   const { data: categoriesData } = useQuery(CategoriesDocument);
 
   const {
@@ -70,24 +94,15 @@ export function QRCensusContent() {
     fetchPolicy: "network-only",
   });
 
-  const openProgress = openData?.openCensusProgress ?? null;
-  const effectiveCensusId =
-    openProgress?.event?.id ?? lastProgress?.event?.id ?? null;
-  const progress = openProgress ?? lastProgress ?? undefined;
-
   useEffect(() => {
     startPolling(CENSUS_POLL_INTERVAL_MS);
     return () => stopPolling();
   }, [startPolling, stopPolling]);
 
-  // Stop polling when there's no active census
-  useEffect(() => {
-    if (!effectiveCensusId) {
-      stopPolling();
-    } else {
-      startPolling(CENSUS_POLL_INTERVAL_MS);
-    }
-  }, [effectiveCensusId, startPolling, stopPolling]);
+  const openProgress = openData?.openCensusProgress ?? null;
+  const effectiveCensusId =
+    openProgress?.event?.id ?? lastProgress?.event?.id ?? null;
+  const progress = openProgress ?? lastProgress ?? undefined;
 
   useEffect(() => {
     if (openProgress?.event?.id) {
@@ -95,10 +110,8 @@ export function QRCensusContent() {
       return;
     }
 
-    // Census was closed - clear state
     if (openData && openProgress == null) {
       setLastProgress(null);
-      setEndDialogOpen(false);
     }
   }, [openProgress, openData]);
 
@@ -111,25 +124,23 @@ export function QRCensusContent() {
   const [startCensus, { loading: starting }] = useMutation(StartCensusDocument);
 
   const [closeCensus, { loading: closing }] = useMutation(CloseCensusDocument, {
-    refetchQueries: [
-      {
-        query: OpenCensusProgressDocument,
-        fetchPolicy: "network-only",
-      },
-    ],
-    onError: (error) => {
-      console.error("Close census error:", error);
-      toast.error("Census хаахад алдаа гарлаа.");
-    },
+    onError: () => toast.error("Census хаахад алдаа гарлаа."),
   });
 
   const total = progress?.totalTasks ?? 0;
   const responded = progress?.respondedTasks ?? 0;
   const unassigned = progress?.unassignedTasks ?? 0;
-  const pending = Math.max(0, total - responded);
-  const percent = total > 0 ? Math.round((responded / total) * 100) : 0;
   const verifierRows = progress?.verifierProgress ?? [];
-  const doneCount = verifierRows.filter((v: any) => v.done).length;
+  const assignedTotal =
+    verifierRows.reduce(
+      (sum: number, row: { total?: number | null }) => sum + (row.total ?? 0),
+      0,
+    ) || Math.max(0, total - unassigned);
+  const pending = Math.max(0, assignedTotal - responded);
+  const percent =
+    assignedTotal > 0 ? Math.round((responded / assignedTotal) * 100) : 0;
+  const pendingPercent = assignedTotal > 0 ? Math.max(0, 100 - percent) : 0;
+  const doneCount = verifierRows.filter((verifier) => verifier.done).length;
   const taskDetails = taskDetailsData?.censusTaskDetails ?? [];
   const departmentOptions = useMemo(
     () =>
@@ -202,7 +213,7 @@ export function QRCensusContent() {
       categoryId = selectedCategory;
     }
 
-    const applyStarted = (started: any) => {
+    const applyStarted = (started?: CensusProgressSnapshot | null) => {
       if (!started?.event?.id) return false;
       setLastProgress(started);
       setStartOpen(false);
@@ -218,16 +229,15 @@ export function QRCensusContent() {
             scope,
             createdBy,
             scopeEmployeeIds,
+            coverageMode: safeCoverageMode,
+            department,
+            categoryId,
           },
         },
       });
       if (applyStarted(advancedResult.data?.startCensus)) return;
-    } catch (error: any) {
-      const msg =
-        error?.graphQLErrors?.[0]?.message ||
-        error?.networkError?.message ||
-        error?.message ||
-        "";
+    } catch (error: unknown) {
+      const msg = getErrorMessage(error);
 
       const isInputSchemaMismatch =
         msg.includes("coverageMode") ||
@@ -248,12 +258,9 @@ export function QRCensusContent() {
             },
           });
           if (applyStarted(legacyResult.data?.startCensus)) return;
-        } catch (legacyError: any) {
+        } catch (legacyError: unknown) {
           const legacyMessage =
-            legacyError?.graphQLErrors?.[0]?.message ||
-            legacyError?.networkError?.message ||
-            legacyError?.message ||
-            "Тооллого эхлүүлэхэд алдаа гарлаа.";
+            getErrorMessage(legacyError) || "Тооллого эхлүүлэхэд алдаа гарлаа.";
           toast.error(legacyMessage);
         }
       }
@@ -280,28 +287,11 @@ export function QRCensusContent() {
       return;
     }
 
-    try {
-      await closeCensus({
-        variables: { censusId: effectiveCensusId, closedBy },
-      });
-      const result = await refetchOpenCensus();
-
-      // Only clear state after successful close
-      setLastProgress(null);
-      setEndDialogOpen(false);
-      toast.success("Census хаагдлаа.");
-
-      // Add a small delay to ensure state is updated before any polling resumes
-      setTimeout(() => {
-        if (!result.data?.openCensusProgress) {
-          // If there's no open census, reset the state
-          setLastProgress(null);
-        }
-      }, 500);
-    } catch (error) {
-      console.error("Error closing census:", error);
-      toast.error("Census хаахад алдаа гарлаа. Дахин оролдоно уу.");
-    }
+    await closeCensus({ variables: { censusId: effectiveCensusId, closedBy } });
+    await refetchOpenCensus();
+    setLastProgress(null);
+    setEndDialogOpen(false);
+    toast.success("Census хаагдлаа.");
   };
 
   return (
@@ -379,7 +369,7 @@ export function QRCensusContent() {
                 <p className="mt-2 text-[32px] font-semibold leading-none text-slate-900">
                   {pending.toLocaleString("mn-MN")}
                 </p>
-                <p className="mt-3 text-sm text-slate-500">{100 - percent}%</p>
+                <p className="mt-3 text-sm text-slate-500">{pendingPercent}%</p>
               </CardContent>
             </Card>
             <Card className="rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
@@ -421,6 +411,10 @@ export function QRCensusContent() {
                   <span>{percent}%</span>
                 </div>
                 <Progress value={percent} className="h-3" />
+                <p className="text-xs text-slate-500">
+                  Явц нь зөвхөн ажилтанд очсон хөрөнгийн баталгаажуулалтаар
+                  тооцогдоно.
+                </p>
                 <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1.5">
                     <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -443,7 +437,7 @@ export function QRCensusContent() {
                 </p>
                 <div className="max-h-[260px] overflow-y-auto rounded-xl border border-slate-200">
                   <ul className="divide-y">
-                    {verifierRows.map((v: any) => {
+                    {verifierRows.map((v) => {
                       const label =
                         [v.employee?.firstName, v.employee?.lastName]
                           .filter(Boolean)
@@ -620,7 +614,7 @@ export function QRCensusContent() {
             <div className="rounded-lg border p-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">
-                  {responded}/{total} responses
+                  {responded}/{assignedTotal} responses
                 </span>
                 <span className="font-medium">{percent}%</span>
               </div>

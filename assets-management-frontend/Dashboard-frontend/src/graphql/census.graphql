@@ -30,6 +30,7 @@ query OpenCensusProgress {
       id
       name
       scope
+      scopeFilter
       startedAt
       closedAt
     }
@@ -47,6 +48,21 @@ query OpenCensusProgress {
       responded
       done
     }
+  }
+}
+
+query OpenCensusAssetScanStatus($assetId: ID!) {
+  openCensusAssetScanStatus(assetId: $assetId) {
+    censusId
+    censusName
+    coverageMode
+    assetId
+    taskId
+    taskStatus
+    canRegister
+    alreadyRegistered
+    isUnassignedAsset
+    reason
   }
 }
 
@@ -120,11 +136,22 @@ mutation StartCensus($input: StartCensusInput!) {
   }
 }
 
-mutation SubmitCensusResponses($censusId: ID!, $employeeId: ID!, $responses: [CensusResponseInput!]!) {
-  submitCensusResponses(censusId: $censusId, employeeId: $employeeId, responses: $responses)
+mutation SubmitCensusResponses(
+  $censusId: ID!
+  $employeeId: ID!
+  $responses: [CensusResponseInput!]!
+) {
+  submitCensusResponses(
+    censusId: $censusId
+    employeeId: $employeeId
+    responses: $responses
+  )
 }
 
 mutation CloseCensus($censusId: ID!, $closedBy: ID!) {
   closeCensus(censusId: $censusId, closedBy: $closedBy)
 }
 
+mutation RegisterOpenCensusAssetScan($assetId: ID!) {
+  registerOpenCensusAssetScan(assetId: $assetId)
+}

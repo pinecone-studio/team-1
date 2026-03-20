@@ -18,9 +18,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   AssignmentsDocument,
   type AssignmentFieldsFragment,
+  AssignmentFieldsFragmentDoc,
+  AssetFieldsFragmentDoc,
   EmployeesDocument,
   GetAuditLogsDocument,
 } from "@/gql/graphql";
+import { useFragment } from "@/gql";
 
 type ActivityType =
   | "assigned"
@@ -111,9 +114,13 @@ export function RecentActivities() {
     });
 
     const raw = assignmentsData?.assignments ?? [];
-    const assignments = (raw as AssignmentFieldsFragment[]).filter(
-      (a) => !a.asset?.deletedAt,
-    );
+    const assignments = (raw as AssignmentFieldsFragment[]).filter((a: any) => {
+      const assignment = useFragment(AssignmentFieldsFragmentDoc, a);
+      const asset = assignment.asset
+        ? useFragment(AssetFieldsFragmentDoc, assignment.asset)
+        : null;
+      return asset && !asset?.deletedAt;
+    });
 
     const sorted = [...assignments].sort((a, b) => {
       const timeA = a.returnedAt ?? a.assignedAt;
@@ -250,7 +257,7 @@ export function RecentActivities() {
       </CardHeader>
 
       <CardContent className="p-0">
-        <ScrollArea className="h-[320px] px-6">
+        <ScrollArea className="h-80 px-6">
           <div className="space-y-5 py-2">
             {loading || auditLoading ? (
               Array.from({ length: 6 }).map((_, index) => (

@@ -72,7 +72,7 @@ export function DemoEmployeeMyAssetsCard({
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 h-[32px] w-fit py-4"
+              className="gap-2 h-8 w-fit py-4"
               onClick={() => requireSelected(onSendToIt)}
             >
               <Send className="h-4 w-4" /> IT ажилтан руу явуулах
@@ -80,7 +80,7 @@ export function DemoEmployeeMyAssetsCard({
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 h-[32px] w-fit py-4"
+              className="gap-2 h-8 w-fit py-4"
               onClick={() => requireSelected(onSendToFinanceDisposal)}
             >
               <UserPlus className="h-4 w-4" /> Санхүү руу явуулах (устгах
@@ -89,7 +89,7 @@ export function DemoEmployeeMyAssetsCard({
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 h-[32px] w-fit py-4"
+              className="gap-2 h-8 w-fit py-4"
               onClick={() => requireSelected(onTransferToEmployee)}
             >
               <ArrowRightLeft className="h-4 w-4" /> Ажилтан руу шилжүүлэх
@@ -101,8 +101,8 @@ export function DemoEmployeeMyAssetsCard({
         <div className="overflow-hidden rounded-2xl border border-border/60">
           <Table>
             <TableHeader>
-              <TableRow className="border-0 bg-[#0f4c6e] hover:bg-[#0b6fae]">
-                <TableHead className="h-11 w-[44px] px-3 text-xs font-semibold text-white md:px-4">
+              <TableRow className="border-0 bg-[#0e5f8c] hover:bg-[#0e5f8c]">
+                <TableHead className="h-11 w-11 px-3 text-xs font-semibold text-white md:px-4">
                   <input
                     type="checkbox"
                     aria-label="Бүгдийг сонгох"
@@ -217,14 +217,19 @@ export function DemoEmployeeMyAssetsCard({
                         {(() => {
                           const first = assignment.employee?.firstName ?? "";
                           const last = assignment.employee?.lastName ?? "";
-                          const name = [last, first].filter(Boolean).join(" ").trim();
+                          const name = [last, first]
+                            .filter(Boolean)
+                            .join(" ")
+                            .trim();
                           return name || assignment.employee?.email || "—";
                         })()}
                       </TableCell>
                       <TableCell className="px-3 py-3 text-sm text-foreground md:px-4">
-                        {(assetAny?.currentBookValue ?? assetAny?.purchaseCost) != null
+                        {(assetAny?.currentBookValue ??
+                          assetAny?.purchaseCost) != null
                           ? new Intl.NumberFormat("mn-MN").format(
-                              (assetAny?.currentBookValue ?? assetAny?.purchaseCost) as number,
+                              (assetAny?.currentBookValue ??
+                                assetAny?.purchaseCost) as number,
                             )
                           : "—"}
                       </TableCell>

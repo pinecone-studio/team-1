@@ -17,4 +17,3 @@ export async function getOpenCensusProgress() {
   if (!event) return null;
   return getCensusProgress(event.id);
 }
-

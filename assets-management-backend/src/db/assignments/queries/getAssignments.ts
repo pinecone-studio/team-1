@@ -1,14 +1,16 @@
-import { isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
+
 import { getDb } from "../../client";
-import { assignments, assets } from "@/schema";
+import { assets, assignments } from "@/schema";
 
 export async function getAssignments() {
   const db = await getDb();
-  return db
-    .select()
+  const rows = await db
+    .select({ assignment: assignments })
     .from(assignments)
-    .innerJoin(assets, (a) => a.id.eq(assignments.assetId))
-    .where(isNull(assets.deletedAt))
-    .all()
-    .map((row) => row.assignments);
+    .innerJoin(assets, eq(assets.id, assignments.assetId))
+    .where(and(isNull(assignments.deletedAt), isNull(assets.deletedAt)))
+    .all();
+
+  return rows.map(({ assignment }) => assignment);
 }

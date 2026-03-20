@@ -16,4 +16,3 @@ export async function closeCensus(censusId: string, _closedBy: string) {
 
   return true;
 }
-
