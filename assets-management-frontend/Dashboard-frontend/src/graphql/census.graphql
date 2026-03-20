@@ -1,3 +1,5 @@
+# ================= Queries =================
+
 query CensusProgress($censusId: ID!) {
   censusProgress(censusId: $censusId) {
     event {
@@ -51,21 +53,6 @@ query OpenCensusProgress {
   }
 }
 
-query OpenCensusAssetScanStatus($assetId: ID!) {
-  openCensusAssetScanStatus(assetId: $assetId) {
-    censusId
-    censusName
-    coverageMode
-    assetId
-    taskId
-    taskStatus
-    canRegister
-    alreadyRegistered
-    isUnassignedAsset
-    reason
-  }
-}
-
 query CensusTaskDetails($censusId: ID!) {
   censusTaskDetails(censusId: $censusId) {
     id
@@ -110,6 +97,8 @@ query EmployeeCensusTasks($censusId: ID!, $employeeId: ID!) {
   }
 }
 
+# ================= Mutations =================
+
 mutation StartCensus($input: StartCensusInput!) {
   startCensus(input: $input) {
     event {
@@ -150,8 +139,4 @@ mutation SubmitCensusResponses(
 
 mutation CloseCensus($censusId: ID!, $closedBy: ID!) {
   closeCensus(censusId: $censusId, closedBy: $closedBy)
-}
-
-mutation RegisterOpenCensusAssetScan($assetId: ID!) {
-  registerOpenCensusAssetScan(assetId: $assetId)
 }

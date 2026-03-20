@@ -93,7 +93,9 @@ export async function startCensus(input: {
       )
       .all();
 
-    const departmentEmployeeIds = departmentEmployeeRows.map((row) => row.id);
+    const departmentEmployeeIds = departmentEmployeeRows.map(
+      (row: any) => row.id,
+    );
     effectiveEmployeeIds =
       effectiveEmployeeIds && effectiveEmployeeIds.length > 0
         ? effectiveEmployeeIds.filter((id) =>
