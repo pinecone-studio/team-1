@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@apollo/client";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronsUpDown, Search, X } from "lucide-react";
 
 import {
   Card,
@@ -136,6 +136,10 @@ function AssetRequestsTableSkeleton() {
 export function AssetRequestsTable() {
   const [detailRow, setDetailRow] = useState<AssetRequestRow | null>(null);
   const [showAllOpen, setShowAllOpen] = useState(false);
+  const [modalOpenFilter, setModalOpenFilter] = useState<string | null>(null);
+  const [nextUserSearch, setNextUserSearch] = useState("");
+  const [requestTypeFilter, setRequestTypeFilter] = useState("");
+  const modalFilterRef = useRef<HTMLDivElement>(null);
 
   const { data: assignmentsData, loading: assignmentsLoading } = useQuery(
     AssignmentsDocument,
@@ -212,6 +216,23 @@ export function AssetRequestsTable() {
 
   const rows = useMemo(() => allRows.slice(0, 5), [allRows]);
 
+  const requestTypeOptions = useMemo(
+    () => [...new Set(allRows.map((row) => row.requestType))],
+    [allRows],
+  );
+
+  const filteredModalRows = useMemo(() => {
+    return allRows.filter((row) => {
+      const nextUserMatch = row.nextUser
+        .toLowerCase()
+        .includes(nextUserSearch.toLowerCase());
+      const requestTypeMatch =
+        !requestTypeFilter || row.requestType === requestTypeFilter;
+
+      return nextUserMatch && requestTypeMatch;
+    });
+  }, [allRows, nextUserSearch, requestTypeFilter]);
+
   const isLoading =
     assignmentsLoading || assetsLoading || disposalsLoading;
 
@@ -231,6 +252,20 @@ export function AssetRequestsTable() {
     // disposal
     return `${detailRow.previousUser} устгах хүсэлт илгээсэн. Одоогоор IT баталгаажуулах хүлээгдэж байна.`;
   }, [detailRow]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        modalFilterRef.current &&
+        !modalFilterRef.current.contains(e.target as Node)
+      ) {
+        setModalOpenFilter(null);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <Card className="border bg-white p-0 shadow-none">
@@ -346,16 +381,24 @@ export function AssetRequestsTable() {
         </div>
       </CardContent>
 
-      <Dialog open={showAllOpen} onOpenChange={setShowAllOpen}>
+      <Dialog
+        open={showAllOpen}
+        onOpenChange={(open) => {
+          setShowAllOpen(open);
+          if (!open) {
+            setModalOpenFilter(null);
+          }
+        }}
+      >
         <DialogContent className="w-[calc(100vw-24px)] max-w-none sm:w-[min(98vw,1320px)]">
           <DialogHeader>
             <DialogTitle>Бүх хөрөнгийн хүсэлтүүд</DialogTitle>
             <DialogDescription className="text-[13px] leading-5">
-              Нийт {allRows.length} хүсэлт байна.
+              Нийт {allRows.length} хүсэлтээс {filteredModalRows.length} нь харагдаж байна.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="max-h-[70vh] overflow-auto rounded-2xl border border-[#efefef] bg-white">
+          <div className="h-[62vh] min-h-[360px] overflow-auto rounded-2xl border border-[#efefef] bg-white sm:h-[70vh] sm:min-h-[420px]">
             <Table>
               <colgroup>
                 <col className="w-13" />
@@ -380,11 +423,118 @@ export function AssetRequestsTable() {
                   <TableHead className="h-auto px-3 py-3 text-[13px] font-semibold text-[#111111] md:px-4">
                     Өмнөх хэрэглэгч
                   </TableHead>
-                  <TableHead className="h-auto px-3 py-3 text-[13px] font-semibold text-[#111111] md:px-4">
-                    Шинэ хэрэглэгч
+                  <TableHead className="relative h-auto px-3 py-3 text-[13px] font-semibold text-[#111111] md:px-4">
+                    <div
+                      className="flex items-center justify-between gap-2 cursor-pointer select-none group"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setModalOpenFilter((prev) =>
+                          prev === "nextUser" ? null : "nextUser",
+                        );
+                      }}
+                    >
+                      {modalOpenFilter === "nextUser" ? (
+                        <div
+                          ref={modalFilterRef}
+                          className="relative w-full"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            autoFocus
+                            placeholder="Шинэ хэрэглэгч хайх.."
+                            value={nextUserSearch}
+                            onChange={(e) => setNextUserSearch(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                setModalOpenFilter(null);
+                              }
+                            }}
+                            className="w-full rounded border border-blue-500 bg-white py-1 pl-2 pr-8 text-sm text-black outline-none shadow-sm"
+                          />
+                          <Search className="absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400" />
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between w-full">
+                          <span className="truncate">
+                            {nextUserSearch || "Шинэ хэрэглэгч"}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {nextUserSearch ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setNextUserSearch("");
+                                }}
+                                className="rounded-full p-1 transition-colors hover:bg-black/5"
+                              >
+                                <X className="h-3 w-3 text-slate-700" />
+                              </button>
+                            ) : (
+                              <Search className="h-3 w-3 text-slate-500 group-hover:text-slate-700" />
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </TableHead>
-                  <TableHead className="h-auto px-3 py-3 text-[13px] font-semibold text-[#111111] md:px-4">
-                    Шилжүүлгийн төрөл
+                  <TableHead className="relative h-auto px-3 py-3 text-[13px] font-semibold text-[#111111] md:px-4">
+                    <div
+                      className="flex items-center gap-1 cursor-pointer select-none"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setModalOpenFilter((prev) =>
+                          prev === "requestType" ? null : "requestType",
+                        );
+                      }}
+                    >
+                      <span className="truncate">
+                        {requestTypeFilter || "Шилжүүлгийн төрөл"}
+                      </span>
+                      <ChevronsUpDown className="h-3 w-3" />
+                    </div>
+
+                    {modalOpenFilter === "requestType" && (
+                      <div
+                        ref={modalFilterRef}
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute left-0 top-full z-[9999] mt-1 w-44 rounded bg-white p-2 shadow"
+                      >
+                        <div className="flex flex-col gap-1 text-xs text-black">
+                          <button
+                            type="button"
+                            className={`rounded px-2 py-1 text-left ${
+                              requestTypeFilter === ""
+                                ? "bg-gray-200 text-black"
+                                : "hover:bg-gray-300"
+                            }`}
+                            onClick={() => {
+                              setRequestTypeFilter("");
+                              setModalOpenFilter(null);
+                            }}
+                          >
+                            Бүгд
+                          </button>
+                          {requestTypeOptions.map((requestType) => (
+                            <button
+                              key={requestType}
+                              type="button"
+                              className={`rounded px-2 py-1 text-left ${
+                                requestTypeFilter === requestType
+                                  ? "bg-gray-200 text-black"
+                                  : "hover:bg-gray-300"
+                              }`}
+                              onClick={() => {
+                                setRequestTypeFilter(requestType);
+                                setModalOpenFilter(null);
+                              }}
+                            >
+                              {requestType}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </TableHead>
                   <TableHead className="h-auto px-3 py-3 text-[13px] font-semibold text-[#111111] md:px-4">
                     Төлөв
@@ -395,7 +545,7 @@ export function AssetRequestsTable() {
               <TableBody className="[&_tr:last-child]:border-0">
                 {isLoading ? (
                   <AssetRequestsTableSkeleton />
-                ) : allRows.length === 0 ? (
+                ) : filteredModalRows.length === 0 ? (
                   <TableRow className="border-0 bg-white hover:bg-white">
                     <TableCell
                       colSpan={7}
@@ -405,7 +555,7 @@ export function AssetRequestsTable() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  allRows.map((request, index) => (
+                  filteredModalRows.map((request, index) => (
                     <TableRow
                       key={`all-${request.id}`}
                       className={[
