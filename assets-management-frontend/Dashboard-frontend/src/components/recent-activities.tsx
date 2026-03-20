@@ -111,7 +111,9 @@ export function RecentActivities() {
     });
 
     const raw = assignmentsData?.assignments ?? [];
-    const assignments = raw as AssignmentFieldsFragment[];
+    const assignments = (raw as AssignmentFieldsFragment[]).filter(
+      (a) => !a.asset?.deletedAt,
+    );
 
     const sorted = [...assignments].sort((a, b) => {
       const timeA = a.returnedAt ?? a.assignedAt;

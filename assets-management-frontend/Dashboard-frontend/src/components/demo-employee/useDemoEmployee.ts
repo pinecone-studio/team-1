@@ -101,8 +101,7 @@ export function useDemoEmployee() {
   const currentEmployeeId = demoEmployeeId || null;
   const currentEmployee = useMemo(
     () =>
-      employeesData?.employees?.find((e) => e.id === currentEmployeeId) ??
-      null,
+      employeesData?.employees?.find((e) => e.id === currentEmployeeId) ?? null,
     [employeesData?.employees, currentEmployeeId],
   );
   const savedSignatureUrl = currentEmployee?.signUrl ?? null;
@@ -217,10 +216,7 @@ export function useDemoEmployee() {
     for (const n of census) {
       const eventId = (n.link ?? "").replace(/^census:/, "") || n.id;
       const existing = censusByEventId.get(eventId);
-      if (
-        !existing ||
-        (n.createdAt ?? 0) > (existing.createdAt ?? 0)
-      ) {
+      if (!existing || (n.createdAt ?? 0) > (existing.createdAt ?? 0)) {
         censusByEventId.set(eventId, n);
       }
     }
@@ -246,7 +242,9 @@ export function useDemoEmployee() {
         typeof (n as { link?: string | null }).link === "string" &&
         (n as { link: string }).link.startsWith("census:"),
     );
-    const unread = census.filter((n) => (n as { isRead?: boolean }).isRead !== true);
+    const unread = census.filter(
+      (n) => (n as { isRead?: boolean }).isRead !== true,
+    );
     if (unread.length === 0) return [];
     const sorted = [...unread].sort(
       (a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0),
@@ -299,16 +297,20 @@ export function useDemoEmployee() {
     });
   })();
   const currentPending = pendingList[0] ?? null;
-  const activeAssignments = activeData?.employeeAssignments ?? [];
+  const activeAssignments = (activeData?.employeeAssignments ?? []).filter(
+    (a) => (a.asset as any)?.assetTag,
+  );
   const myAssetsList = (() => {
     const seen = new Set<string>();
     const list: Array<(typeof activeAssignments)[0] & { status: string }> = [];
     activeAssignments.forEach((a) => {
-      seen.add(a.id);
-      list.push({ ...a, status: "ACTIVE" });
+      if ((a.asset as any)?.assetTag) {
+        seen.add(a.id);
+        list.push({ ...a, status: "ACTIVE" });
+      }
     });
     pendingList.forEach((a) => {
-      if (!seen.has(a.id)) {
+      if (!seen.has(a.id) && (a.asset as any)?.assetTag) {
         seen.add(a.id);
         list.push({
           ...a,
@@ -350,9 +352,7 @@ export function useDemoEmployee() {
   const assignmentsToReturn = useMemo(
     () =>
       (
-        myAssetsList as Array<
-          AssignmentItem & { returnedAt?: number | null }
-        >
+        myAssetsList as Array<AssignmentItem & { returnedAt?: number | null }>
       ).filter((a) => !a.returnedAt),
     [myAssetsList],
   );
@@ -737,7 +737,11 @@ export function useDemoEmployee() {
       );
       setSelectedAssignment(null);
       setDisposalReason("");
-      await Promise.all([refetchAssignRequested(), refetchPending(), refetchActive()]);
+      await Promise.all([
+        refetchAssignRequested(),
+        refetchPending(),
+        refetchActive(),
+      ]);
       await refetchOffboarding();
     } catch {
       toast.error("Устгах хүсэлт илгээхэд алдаа гарлаа.");

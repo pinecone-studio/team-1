@@ -1,6 +1,6 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { getDb } from "../../client";
-import { assignments } from "@/schema";
+import { assignments, assets } from "@/schema";
 
 export async function getAssignmentsByEmployee(
   employeeId: string,
@@ -12,7 +12,15 @@ export async function getAssignmentsByEmployee(
       ? and(
           eq(assignments.employeeId, employeeId),
           eq(assignments.status, status),
+          isNull(assets.deletedAt),
         )
-      : eq(assignments.employeeId, employeeId);
-  return db.select().from(assignments).where(conditions).all();
+      : and(eq(assignments.employeeId, employeeId), isNull(assets.deletedAt));
+
+  return db
+    .select()
+    .from(assignments)
+    .innerJoin(assets, (a) => a.id.eq(assignments.assetId))
+    .where(conditions)
+    .all()
+    .map((row) => row.assignments);
 }

@@ -165,7 +165,8 @@ export function AssetRequestsTable() {
 
   const allRows = useMemo(() => {
     const assets = (assetsData?.assets ?? []) as AssetLite[];
-    const assignments = (assignmentsData?.assignments ?? []) as AssignmentLite[];
+    const assignments = (assignmentsData?.assignments ??
+      []) as AssignmentLite[];
     const disposals = (disposalsData?.disposalRequests ?? []) as DisposalLite[];
 
     const assetById = new Map(
@@ -206,14 +207,14 @@ export function AssetRequestsTable() {
       sourceType: "disposal",
     }));
 
-    return [...transferRows, ...disposalRows]
-      .sort((a, b) => b.sortTime - a.sortTime)
+    return [...transferRows, ...disposalRows].sort(
+      (a, b) => b.sortTime - a.sortTime,
+    );
   }, [assetsData, assignmentsData, disposalsData]);
 
   const rows = useMemo(() => allRows.slice(0, 5), [allRows]);
 
-  const isLoading =
-    assignmentsLoading || assetsLoading || disposalsLoading;
+  const isLoading = assignmentsLoading || assetsLoading || disposalsLoading;
 
   const detailTitle = useMemo(() => {
     if (!detailRow) return "";

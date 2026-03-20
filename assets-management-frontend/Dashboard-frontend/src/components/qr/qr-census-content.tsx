@@ -70,15 +70,24 @@ export function QRCensusContent() {
     fetchPolicy: "network-only",
   });
 
+  const openProgress = openData?.openCensusProgress ?? null;
+  const effectiveCensusId =
+    openProgress?.event?.id ?? lastProgress?.event?.id ?? null;
+  const progress = openProgress ?? lastProgress ?? undefined;
+
   useEffect(() => {
     startPolling(CENSUS_POLL_INTERVAL_MS);
     return () => stopPolling();
   }, [startPolling, stopPolling]);
 
-  const openProgress = openData?.openCensusProgress ?? null;
-  const effectiveCensusId =
-    openProgress?.event?.id ?? lastProgress?.event?.id ?? null;
-  const progress = openProgress ?? lastProgress ?? undefined;
+  // Stop polling when there's no active census
+  useEffect(() => {
+    if (!effectiveCensusId) {
+      stopPolling();
+    } else {
+      startPolling(CENSUS_POLL_INTERVAL_MS);
+    }
+  }, [effectiveCensusId, startPolling, stopPolling]);
 
   useEffect(() => {
     if (openProgress?.event?.id) {
@@ -86,8 +95,10 @@ export function QRCensusContent() {
       return;
     }
 
+    // Census was closed - clear state
     if (openData && openProgress == null) {
       setLastProgress(null);
+      setEndDialogOpen(false);
     }
   }, [openProgress, openData]);
 
@@ -100,7 +111,16 @@ export function QRCensusContent() {
   const [startCensus, { loading: starting }] = useMutation(StartCensusDocument);
 
   const [closeCensus, { loading: closing }] = useMutation(CloseCensusDocument, {
-    onError: () => toast.error("Census хаахад алдаа гарлаа."),
+    refetchQueries: [
+      {
+        query: OpenCensusProgressDocument,
+        fetchPolicy: "network-only",
+      },
+    ],
+    onError: (error) => {
+      console.error("Close census error:", error);
+      toast.error("Census хаахад алдаа гарлаа.");
+    },
   });
 
   const total = progress?.totalTasks ?? 0;
@@ -260,11 +280,28 @@ export function QRCensusContent() {
       return;
     }
 
-    await closeCensus({ variables: { censusId: effectiveCensusId, closedBy } });
-    await refetchOpenCensus();
-    setLastProgress(null);
-    setEndDialogOpen(false);
-    toast.success("Census хаагдлаа.");
+    try {
+      await closeCensus({
+        variables: { censusId: effectiveCensusId, closedBy },
+      });
+      const result = await refetchOpenCensus();
+
+      // Only clear state after successful close
+      setLastProgress(null);
+      setEndDialogOpen(false);
+      toast.success("Census хаагдлаа.");
+
+      // Add a small delay to ensure state is updated before any polling resumes
+      setTimeout(() => {
+        if (!result.data?.openCensusProgress) {
+          // If there's no open census, reset the state
+          setLastProgress(null);
+        }
+      }, 500);
+    } catch (error) {
+      console.error("Error closing census:", error);
+      toast.error("Census хаахад алдаа гарлаа. Дахин оролдоно уу.");
+    }
   };
 
   return (

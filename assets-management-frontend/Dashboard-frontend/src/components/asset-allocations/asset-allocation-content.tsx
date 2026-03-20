@@ -89,29 +89,38 @@ export function AssetAllocationContent() {
   const rows = useMemo<AllocationRow[]>(() => {
     const assignments = assignmentsData?.assignments ?? [];
 
-    return assignments.map((a) => {
-      const assignment = useFragment(AssignmentFieldsFragmentDoc, a);
-      const asset = assignment.asset
-        ? useFragment(AssetFieldsFragmentDoc, assignment.asset)
-        : null;
+    return assignments
+      .filter((a) => {
+        const assignment = useFragment(AssignmentFieldsFragmentDoc, a);
+        const asset = assignment.asset
+          ? useFragment(AssetFieldsFragmentDoc, assignment.asset)
+          : null;
+        // Hide assignments where the asset is deleted, doesn't exist, or has no assetTag
+        return asset && !asset?.deletedAt && asset?.assetTag;
+      })
+      .map((a) => {
+        const assignment = useFragment(AssignmentFieldsFragmentDoc, a);
+        const asset = assignment.asset
+          ? useFragment(AssetFieldsFragmentDoc, assignment.asset)
+          : null;
 
-      const statusKey = assignment.status as keyof typeof STATUS_LABELS;
+        const statusKey = assignment.status as keyof typeof STATUS_LABELS;
 
-      return {
-        id: assignment.id,
-        assetTag: asset?.assetTag ?? assignment.assetId,
-        employeeEmail: assignment.employee?.email ?? assignment.employeeId,
-        assignedAt: assignment.assignedAt,
-        assignedDate: new Date(assignment.assignedAt).toLocaleDateString(),
-        status: STATUS_LABELS[statusKey] || statusKey,
-        statusKey: statusKey as any,
-        confirmedDate: assignment.returnedAt
-          ? new Date(assignment.returnedAt).toLocaleDateString()
-          : "—",
-        emailStatus: EMAIL_STATUS_LABELS.disabled,
-        emailStatusKey: "disabled",
-      };
-    });
+        return {
+          id: assignment.id,
+          assetTag: asset?.assetTag ?? assignment.assetId,
+          employeeEmail: assignment.employee?.email ?? assignment.employeeId,
+          assignedAt: assignment.assignedAt,
+          assignedDate: new Date(assignment.assignedAt).toLocaleDateString(),
+          status: STATUS_LABELS[statusKey] || statusKey,
+          statusKey: statusKey as any,
+          confirmedDate: assignment.returnedAt
+            ? new Date(assignment.returnedAt).toLocaleDateString()
+            : "—",
+          emailStatus: EMAIL_STATUS_LABELS.disabled,
+          emailStatusKey: "disabled",
+        };
+      });
   }, [assignmentsData]);
 
   const visibleRows = useMemo(() => {
