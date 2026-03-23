@@ -241,7 +241,8 @@ export function DemoHRContent() {
   const pendingRequests =
     offboardingRequestsData?.offboardingEvent?.pendingReturnRequests ?? [];
 
-  const employees = Array.isArray(data?.employees) ? data.employees : [];
+  const employeeRows = data?.employees;
+  const employees = Array.isArray(employeeRows) ? employeeRows : [];
   const activeEmployees = employees.filter(
     (e) => e.status !== "TERMINATED" && e.status !== "OFFBOARDING",
   );
@@ -264,12 +265,16 @@ export function DemoHRContent() {
     returnRequestId: string,
     conditionHr: string,
   ) => {
+    if (!hrActorId) {
+      toast.error("HR actor олдсонгүй.");
+      return;
+    }
     try {
       await approveReturnRequestMutation({
         variables: {
           returnRequestId,
           conditionHr,
-          inspectedBy: "demo-hr",
+          inspectedBy: hrActorId,
         },
       });
       const normalized = conditionHr.trim().toUpperCase();
@@ -298,6 +303,10 @@ export function DemoHRContent() {
     conditionHr: string,
     photoFile: File | null,
   ) => {
+    if (!hrActorId) {
+      toast.error("HR actor олдсонгүй.");
+      return;
+    }
     try {
       const photoR2Key = photoFile
         ? `demo-hr-photo-${Date.now()}-${photoFile.name}`
@@ -307,7 +316,7 @@ export function DemoHRContent() {
           returnRequestId,
           conditionHr,
           photoR2Key,
-          inspectedBy: "demo-hr",
+          inspectedBy: hrActorId,
         },
       });
       toast.success(

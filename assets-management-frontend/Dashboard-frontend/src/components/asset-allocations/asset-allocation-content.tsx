@@ -96,7 +96,7 @@ export function AssetAllocationContent() {
           ? useFragment(AssetFieldsFragmentDoc, assignment.asset)
           : null;
         // Hide assignments where the asset is deleted, doesn't exist, or has no assetTag
-        return asset && !asset?.deletedAt && asset?.assetTag;
+        return asset && !(asset as any).deletedAt && asset?.assetTag;
       })
       .map((a) => {
         const assignment = useFragment(AssignmentFieldsFragmentDoc, a);

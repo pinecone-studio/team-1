@@ -19,24 +19,23 @@ export async function requestRepair(
   const db = await getDb();
   const now = Date.now();
 
-  // Demo-friendly: allow generic inspector labels like "HR".
-  const fkInspectedBy = inspectedBy === "HR" ? null : inspectedBy;
-
   const inspector =
-    (await db
-      .select({ id: employees.id })
-      .from(employees)
-      .where(
-        or(
-          eq(employees.id, inspectedBy),
-          eq(employees.entraId, inspectedBy),
-          eq(employees.email, inspectedBy),
-        ),
-      )
-      .limit(1)
-      .get()) ?? null;
-  const actorId =
-    inspectedBy === "HR" ? null : (inspector?.id ?? inspectedBy);
+    inspectedBy === "HR"
+      ? null
+      : ((await db
+          .select({ id: employees.id })
+          .from(employees)
+          .where(
+            or(
+              eq(employees.id, inspectedBy),
+              eq(employees.entraId, inspectedBy),
+              eq(employees.email, inspectedBy),
+            ),
+          )
+          .limit(1)
+          .get()) ?? null);
+  const fkInspectedBy = inspector?.id ?? null;
+  const actorId = inspector?.id ?? null;
 
   const req = await db
     .select()

@@ -10,6 +10,8 @@ import {
 } from "@/schema";
 import type { CensusScope } from "../types";
 
+const CENSUS_TASK_INSERT_BATCH_SIZE = 10;
+
 export async function startCensus(input: {
   name: string;
   scope: CensusScope;
@@ -93,9 +95,7 @@ export async function startCensus(input: {
       )
       .all();
 
-    const departmentEmployeeIds = departmentEmployeeRows.map(
-      (row: any) => row.id,
-    );
+    const departmentEmployeeIds = departmentEmployeeRows.map((row) => row.id);
     effectiveEmployeeIds =
       effectiveEmployeeIds && effectiveEmployeeIds.length > 0
         ? effectiveEmployeeIds.filter((id) =>
@@ -193,20 +193,27 @@ export async function startCensus(input: {
   }
 
   // Create tasks (verifierId null for unassigned assets).
-  await db
-    .insert(censusTasks)
-    .values(
-      assetIds.map((assetId) => ({
-        id: crypto.randomUUID(),
-        censusId,
-        assetId,
-        verifierId: ownerByAssetId.get(assetId) ?? null,
-        status: "PENDING",
-        createdAt: now,
-        updatedAt: now,
-      })),
-    )
-    .execute();
+  const taskRows = assetIds.map((assetId) => ({
+    id: crypto.randomUUID(),
+    censusId,
+    assetId,
+    verifierId: ownerByAssetId.get(assetId) ?? null,
+    status: "PENDING",
+    createdAt: now,
+    updatedAt: now,
+  }));
+
+  for (
+    let startIndex = 0;
+    startIndex < taskRows.length;
+    startIndex += CENSUS_TASK_INSERT_BATCH_SIZE
+  ) {
+    const chunk = taskRows.slice(
+      startIndex,
+      startIndex + CENSUS_TASK_INSERT_BATCH_SIZE,
+    );
+    await db.insert(censusTasks).values(chunk).execute();
+  }
 
   // Notify only employees who have assigned assets.
   const verifierIds = Array.from(

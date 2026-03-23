@@ -1,9 +1,9 @@
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { getDb } from "../../client";
 import { writeAuditLog } from "../../auditLogger";
 import { completeAssetReturn } from "./completeAssetReturn";
 import { createDataWipeTask } from "../../dataWipeTasks/mutations/createDataWipeTask";
-import { offboardingReturnRequests } from "@/schema";
+import { employees, offboardingReturnRequests } from "@/schema";
 
 export async function approveReturnRequest(
   returnRequestId: string,
@@ -13,8 +13,22 @@ export async function approveReturnRequest(
   const db = await getDb();
   const now = Date.now();
 
-  // Demo-friendly: allow generic inspector labels like "HR".
-  const fkInspectedBy = inspectedBy === "HR" ? null : inspectedBy;
+  const inspector =
+    inspectedBy === "HR"
+      ? null
+      : ((await db
+          .select({ id: employees.id })
+          .from(employees)
+          .where(
+            or(
+              eq(employees.id, inspectedBy),
+              eq(employees.entraId, inspectedBy),
+              eq(employees.email, inspectedBy),
+            ),
+          )
+          .limit(1)
+          .get()) ?? null);
+  const fkInspectedBy = inspector?.id ?? null;
 
   const req = await db
     .select()

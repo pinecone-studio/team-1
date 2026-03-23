@@ -119,7 +119,7 @@ export function RecentActivities() {
       const asset = assignment.asset
         ? useFragment(AssetFieldsFragmentDoc, assignment.asset)
         : null;
-      return asset && !asset?.deletedAt;
+      return asset && !(asset as any).deletedAt;
     });
 
     const sorted = [...assignments].sort((a, b) => {
